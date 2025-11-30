@@ -4,10 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, FileText, Calendar, MapPin } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Plus, Search, FileText, Calendar, MapPin, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { NewTicketDialog } from '@/components/tickets/NewTicketDialog';
+import { TicketDetails } from '@/components/tickets/TicketDetails';
 
 interface Ticket {
   id: string;
@@ -16,7 +25,11 @@ interface Ticket {
   city: string;
   state: string;
   start_datetime: string;
+  service_type: string;
   clients: {
+    name: string;
+  };
+  agents: {
     name: string;
   };
 }
@@ -35,10 +48,21 @@ const statusLabels = {
   cancelado: 'Cancelado',
 };
 
+const serviceTypeLabels: Record<string, string> = {
+  alarme: 'Alarme',
+  averiguacao: 'Averiguação',
+  preservacao: 'Preservação',
+  acompanhamento_logistico: 'Acompanhamento Logístico',
+};
+
 const Tickets = () => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [newTicketOpen, setNewTicketOpen] = useState(false);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
     fetchTickets();
@@ -55,7 +79,11 @@ const Tickets = () => {
           city,
           state,
           start_datetime,
+          service_type,
           clients (
+            name
+          ),
+          agents:main_agent_id (
             name
           )
         `)
@@ -71,10 +99,26 @@ const Tickets = () => {
     }
   };
 
-  const filteredTickets = tickets.filter((ticket) =>
-    ticket.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ticket.clients?.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredTickets = tickets.filter((ticket) => {
+    const matchesSearch = 
+      ticket.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ticket.clients?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ticket.agents?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleViewDetails = (ticketId: string) => {
+    setSelectedTicketId(ticketId);
+    setDetailsOpen(true);
+  };
+
+  const handleEdit = (ticketId: string) => {
+    // TODO: Implement edit functionality
+    toast.info('Funcionalidade de edição em desenvolvimento');
+  };
 
   if (loading) {
     return (
@@ -94,20 +138,35 @@ const Tickets = () => {
           <h1 className="text-3xl font-bold text-foreground mb-2">Chamados</h1>
           <p className="text-muted-foreground">Gerencie todos os atendimentos</p>
         </div>
-        <Button>
+        <Button onClick={() => setNewTicketOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Novo Chamado
         </Button>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por código ou cliente..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-9"
-        />
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por código, cliente ou agente..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Filtrar por status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="aberto">Aberto</SelectItem>
+            <SelectItem value="em_andamento">Em Andamento</SelectItem>
+            <SelectItem value="finalizado">Finalizado</SelectItem>
+            <SelectItem value="cancelado">Cancelado</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {filteredTickets.length === 0 ? (
@@ -116,10 +175,12 @@ const Tickets = () => {
             <FileText className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg font-medium text-foreground mb-2">Nenhum chamado encontrado</p>
             <p className="text-sm text-muted-foreground mb-4">
-              {searchTerm ? 'Tente buscar com outros termos' : 'Comece criando um novo chamado'}
+              {searchTerm || statusFilter !== 'all' 
+                ? 'Tente buscar com outros termos ou filtros' 
+                : 'Comece criando um novo chamado'}
             </p>
-            {!searchTerm && (
-              <Button>
+            {!searchTerm && statusFilter === 'all' && (
+              <Button onClick={() => setNewTicketOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Chamado
               </Button>
@@ -129,7 +190,11 @@ const Tickets = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredTickets.map((ticket) => (
-            <Card key={ticket.id} className="hover:shadow-lg transition-shadow">
+            <Card 
+              key={ticket.id} 
+              className="hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => handleViewDetails(ticket.id)}
+            >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
@@ -155,11 +220,26 @@ const Tickets = () => {
                     {format(new Date(ticket.start_datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </span>
                 </div>
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" className="flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {serviceTypeLabels[ticket.service_type]} • {ticket.agents?.name}
+                  </span>
+                </div>
+                <div className="flex gap-2 pt-2" onClick={(e) => e.stopPropagation()}>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleViewDetails(ticket.id)}
+                  >
                     Ver Detalhes
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleEdit(ticket.id)}
+                  >
                     Editar
                   </Button>
                 </div>
@@ -168,6 +248,20 @@ const Tickets = () => {
           ))}
         </div>
       )}
+
+      <NewTicketDialog 
+        open={newTicketOpen} 
+        onOpenChange={setNewTicketOpen}
+        onSuccess={fetchTickets}
+      />
+
+      <TicketDetails
+        ticketId={selectedTicketId}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        onEdit={handleEdit}
+        onStatusChange={fetchTickets}
+      />
     </div>
   );
 };
