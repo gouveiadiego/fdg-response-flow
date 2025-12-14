@@ -16,37 +16,46 @@ export type Database = {
     Tables: {
       agents: {
         Row: {
+          address: string | null
           created_at: string
           document: string
           email: string | null
           id: string
+          is_armed: boolean | null
           name: string
           notes: string | null
           phone: string
           status: Database["public"]["Enums"]["agent_status"]
           updated_at: string
+          vehicle_plate: string | null
         }
         Insert: {
+          address?: string | null
           created_at?: string
           document: string
           email?: string | null
           id?: string
+          is_armed?: boolean | null
           name: string
           notes?: string | null
           phone: string
           status?: Database["public"]["Enums"]["agent_status"]
           updated_at?: string
+          vehicle_plate?: string | null
         }
         Update: {
+          address?: string | null
           created_at?: string
           document?: string
           email?: string | null
           id?: string
+          is_armed?: boolean | null
           name?: string
           notes?: string | null
           phone?: string
           status?: Database["public"]["Enums"]["agent_status"]
           updated_at?: string
+          vehicle_plate?: string | null
         }
         Relationships: []
       }
@@ -339,6 +348,21 @@ export type Database = {
           id: string
           plate_main: string
           plate_trailer: string | null
+          tractor_brand: string | null
+          tractor_model: string | null
+          tractor_plate: string | null
+          trailer1_body_type:
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
+          trailer1_plate: string | null
+          trailer2_body_type:
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
+          trailer2_plate: string | null
+          trailer3_body_type:
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
+          trailer3_plate: string | null
           type: string | null
           updated_at: string
           year: number | null
@@ -351,6 +375,21 @@ export type Database = {
           id?: string
           plate_main: string
           plate_trailer?: string | null
+          tractor_brand?: string | null
+          tractor_model?: string | null
+          tractor_plate?: string | null
+          trailer1_body_type?:
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
+          trailer1_plate?: string | null
+          trailer2_body_type?:
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
+          trailer2_plate?: string | null
+          trailer3_body_type?:
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
+          trailer3_plate?: string | null
           type?: string | null
           updated_at?: string
           year?: number | null
@@ -363,6 +402,21 @@ export type Database = {
           id?: string
           plate_main?: string
           plate_trailer?: string | null
+          tractor_brand?: string | null
+          tractor_model?: string | null
+          tractor_plate?: string | null
+          trailer1_body_type?:
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
+          trailer1_plate?: string | null
+          trailer2_body_type?:
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
+          trailer2_plate?: string | null
+          trailer3_body_type?:
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
+          trailer3_plate?: string | null
           type?: string | null
           updated_at?: string
           year?: number | null
@@ -393,6 +447,14 @@ export type Database = {
     Enums: {
       agent_status: "ativo" | "inativo"
       app_role: "admin" | "operador" | "agente" | "cliente_visualizacao"
+      body_type_enum:
+        | "grade_baixa"
+        | "grade_alta"
+        | "bau"
+        | "sider"
+        | "frigorifico"
+        | "container"
+        | "prancha"
       service_type:
         | "alarme"
         | "averiguacao"
@@ -528,6 +590,15 @@ export const Constants = {
     Enums: {
       agent_status: ["ativo", "inativo"],
       app_role: ["admin", "operador", "agente", "cliente_visualizacao"],
+      body_type_enum: [
+        "grade_baixa",
+        "grade_alta",
+        "bau",
+        "sider",
+        "frigorifico",
+        "container",
+        "prancha",
+      ],
       service_type: [
         "alarme",
         "averiguacao",
