@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { NewTicketDialog } from '@/components/tickets/NewTicketDialog';
+import { EditTicketDialog } from '@/components/tickets/EditTicketDialog';
 import { TicketDetails } from '@/components/tickets/TicketDetails';
 
 interface Ticket {
@@ -61,6 +62,7 @@ const Tickets = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [newTicketOpen, setNewTicketOpen] = useState(false);
+  const [editTicketOpen, setEditTicketOpen] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -116,8 +118,8 @@ const Tickets = () => {
   };
 
   const handleEdit = (ticketId: string) => {
-    // TODO: Implement edit functionality
-    toast.info('Funcionalidade de edição em desenvolvimento');
+    setSelectedTicketId(ticketId);
+    setEditTicketOpen(true);
   };
 
   if (loading) {
@@ -135,8 +137,8 @@ const Tickets = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Chamados</h1>
-          <p className="text-muted-foreground">Gerencie todos os atendimentos</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">Chamados</h1>
+          <p className="text-sm text-muted-foreground">Gerencie todos os atendimentos</p>
         </div>
         <Button onClick={() => setNewTicketOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
@@ -195,14 +197,14 @@ const Tickets = () => {
               className="hover:shadow-lg transition-shadow cursor-pointer"
               onClick={() => handleViewDetails(ticket.id)}
             >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-primary" />
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <FileText className="h-5 w-5 text-primary flex-shrink-0" />
                       <span>{ticket.code}</span>
                     </CardTitle>
-                    <CardDescription>{ticket.clients?.name}</CardDescription>
+                    <CardDescription className="truncate">{ticket.clients?.name}</CardDescription>
                   </div>
                   <Badge className={statusColors[ticket.status]}>
                     {statusLabels[ticket.status]}
@@ -211,17 +213,17 @@ const Tickets = () => {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  <span>{ticket.city}, {ticket.state}</span>
+                  <MapPin className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">{ticket.city}, {ticket.state}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="h-4 w-4 flex-shrink-0" />
                   <span>
                     {format(new Date(ticket.start_datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground truncate">
                     {serviceTypeLabels[ticket.service_type]} • {ticket.agents?.name}
                   </span>
                 </div>
@@ -252,6 +254,13 @@ const Tickets = () => {
       <NewTicketDialog 
         open={newTicketOpen} 
         onOpenChange={setNewTicketOpen}
+        onSuccess={fetchTickets}
+      />
+
+      <EditTicketDialog
+        open={editTicketOpen}
+        onOpenChange={setEditTicketOpen}
+        ticketId={selectedTicketId}
         onSuccess={fetchTickets}
       />
 
