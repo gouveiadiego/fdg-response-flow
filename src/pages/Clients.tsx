@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Search, Building2, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
+import { NewClientDialog } from '@/components/clients/NewClientDialog';
+import { EditClientDialog } from '@/components/clients/EditClientDialog';
 
 interface Client {
   id: string;
@@ -16,9 +19,13 @@ interface Client {
 }
 
 const Clients = () => {
+  const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [newClientOpen, setNewClientOpen] = useState(false);
+  const [editClientOpen, setEditClientOpen] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchClients();
@@ -41,6 +48,15 @@ const Clients = () => {
     }
   };
 
+  const handleEdit = (clientId: string) => {
+    setSelectedClientId(clientId);
+    setEditClientOpen(true);
+  };
+
+  const handleViewVehicles = (clientId: string) => {
+    navigate(`/vehicles?client=${clientId}`);
+  };
+
   const filteredClients = clients.filter((client) =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -60,10 +76,10 @@ const Clients = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Clientes</h1>
-          <p className="text-muted-foreground">Gerencie os clientes do sistema</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">Clientes</h1>
+          <p className="text-sm text-muted-foreground">Gerencie os clientes do sistema</p>
         </div>
-        <Button>
+        <Button onClick={() => setNewClientOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Novo Cliente
         </Button>
@@ -88,7 +104,7 @@ const Clients = () => {
               {searchTerm ? 'Tente buscar com outros termos' : 'Comece cadastrando um novo cliente'}
             </p>
             {!searchTerm && (
-              <Button>
+              <Button onClick={() => setNewClientOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Cadastrar Cliente
               </Button>
@@ -99,26 +115,36 @@ const Clients = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredClients.map((client) => (
             <Card key={client.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-primary" />
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Building2 className="h-5 w-5 text-primary flex-shrink-0" />
                   <span className="truncate">{client.name}</span>
                 </CardTitle>
                 <CardDescription className="font-mono text-xs">{client.document}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  <span>{client.city}, {client.state}</span>
+                  <MapPin className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">{client.city}, {client.state}</span>
                 </div>
                 {client.contact_phone && (
-                  <p className="text-sm text-muted-foreground">{client.contact_phone}</p>
+                  <p className="text-sm text-muted-foreground truncate">{client.contact_phone}</p>
                 )}
                 <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleViewVehicles(client.id)}
+                  >
                     Ver Veículos
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => handleEdit(client.id)}
+                  >
                     Editar
                   </Button>
                 </div>
@@ -127,6 +153,19 @@ const Clients = () => {
           ))}
         </div>
       )}
+
+      <NewClientDialog 
+        open={newClientOpen} 
+        onOpenChange={setNewClientOpen}
+        onSuccess={fetchClients}
+      />
+
+      <EditClientDialog
+        open={editClientOpen}
+        onOpenChange={setEditClientOpen}
+        clientId={selectedClientId}
+        onSuccess={fetchClients}
+      />
     </div>
   );
 };

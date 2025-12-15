@@ -1,4 +1,4 @@
-import { Home, Users, UserCheck, FileText, LogOut, Menu } from 'lucide-react';
+import { Home, Users, UserCheck, FileText, LogOut, Truck, ClipboardList } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,16 +20,22 @@ const menuItems = [
   { title: 'Dashboard', url: '/dashboard', icon: Home },
   { title: 'Chamados', url: '/tickets', icon: FileText },
   { title: 'Clientes', url: '/clients', icon: Users },
+  { title: 'Veículos', url: '/vehicles', icon: Truck },
   { title: 'Agentes', url: '/agents', icon: UserCheck },
+  { title: 'Planos', url: '/plans', icon: ClipboardList },
 ];
 
 export function AppSidebar() {
-  const { open } = useSidebar();
+  const { open, setOpenMobile } = useSidebar();
   const location = useLocation();
   const { signOut } = useAuth();
   const currentPath = location.pathname;
 
   const isActive = (path: string) => currentPath === path;
+
+  const handleNavClick = () => {
+    setOpenMobile(false);
+  };
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
@@ -53,7 +59,11 @@ export function AppSidebar() {
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} className="flex items-center gap-3">
+                    <NavLink 
+                      to={item.url} 
+                      className="flex items-center gap-3"
+                      onClick={handleNavClick}
+                    >
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </NavLink>
