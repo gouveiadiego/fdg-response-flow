@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useGeocoding } from '@/hooks/useGeocoding';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -34,7 +35,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { MapPin, Upload, X, Camera } from 'lucide-react';
+import { MapPin, Upload, X, Camera, Search, Loader2 } from 'lucide-react';
 
 const ticketSchema = z.object({
   client_id: z.string().min(1, 'Selecione um cliente'),
@@ -42,6 +43,12 @@ const ticketSchema = z.object({
   plan_id: z.string().min(1, 'Selecione um plano'),
   service_type: z.enum(['alarme', 'averiguacao', 'preservacao', 'acompanhamento_logistico']),
   main_agent_id: z.string().min(1, 'Selecione um agente'),
+  support_agent_1_id: z.string().optional(),
+  support_agent_1_arrival: z.string().optional(),
+  support_agent_1_departure: z.string().optional(),
+  support_agent_2_id: z.string().optional(),
+  support_agent_2_arrival: z.string().optional(),
+  support_agent_2_departure: z.string().optional(),
   city: z.string().min(1, 'Informe a cidade'),
   state: z.string().min(2, 'Informe o estado').max(2),
   start_datetime: z.string().min(1, 'Informe a data/hora inicial'),
@@ -80,6 +87,13 @@ interface Plan {
 interface Agent {
   id: string;
   name: string;
+  is_armed: boolean | null;
+}
+
+interface PhotoToUpload {
+  file: File;
+  preview: string;
+  caption: string;
 }
 
 interface NewTicketDialogProps {
@@ -97,14 +111,14 @@ const SERVICE_TYPE_LABELS = {
 
 export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDialogProps) {
   const { user } = useAuth();
+  const { reverseGeocode, isLoading: isGeocoding } = useGeocoding();
   const [activeTab, setActiveTab] = useState('cliente');
   const [clients, setClients] = useState<Client[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [photos, setPhotos] = useState<File[]>([]);
-  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<PhotoToUpload[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<TicketFormData>({
@@ -113,8 +127,14 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
       client_id: '',
       vehicle_id: '',
       plan_id: '',
-      service_type: 'alarme',
+      service_type: 'acompanhamento_logistico',
       main_agent_id: '',
+      support_agent_1_id: '',
+      support_agent_1_arrival: '',
+      support_agent_1_departure: '',
+      support_agent_2_id: '',
+      support_agent_2_arrival: '',
+      support_agent_2_departure: '',
       city: '',
       state: '',
       start_datetime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
@@ -135,6 +155,8 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
   const foodCost = form.watch('food_cost') || 0;
   const otherCosts = form.watch('other_costs') || 0;
   const totalCost = tollCost + foodCost + otherCosts;
+  const coordLat = form.watch('coordinates_lat');
+  const coordLng = form.watch('coordinates_lng');
 
   useEffect(() => {
     if (open) {
@@ -147,14 +169,12 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
       const clientVehicles = vehicles.filter(v => v.client_id === selectedClientId);
       setFilteredVehicles(clientVehicles);
       
-      // Auto-fill city/state from selected client
       const selectedClient = clients.find(c => c.id === selectedClientId);
       if (selectedClient) {
         form.setValue('city', selectedClient.city);
         form.setValue('state', selectedClient.state);
       }
       
-      // Reset vehicle if not from selected client
       const currentVehicle = form.getValues('vehicle_id');
       if (currentVehicle && !clientVehicles.some(v => v.id === currentVehicle)) {
         form.setValue('vehicle_id', '');
@@ -170,7 +190,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
         supabase.from('clients').select('id, name, city, state').order('name'),
         supabase.from('vehicles').select('id, description, plate_main, client_id'),
         supabase.from('plans').select('id, name').order('name'),
-        supabase.from('agents').select('id, name').eq('status', 'ativo').order('name'),
+        supabase.from('agents').select('id, name, is_armed').eq('status', 'ativo').order('name'),
       ]);
 
       if (clientsRes.data) setClients(clientsRes.data);
@@ -202,34 +222,55 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
     );
   };
 
-  const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newPhotos = Array.from(files);
-      setPhotos(prev => [...prev, ...newPhotos]);
-      
-      // Create preview URLs
-      newPhotos.forEach(file => {
-        const url = URL.createObjectURL(file);
-        setPhotoUrls(prev => [...prev, url]);
-      });
+  const handleReverseGeocode = async () => {
+    const lat = form.getValues('coordinates_lat');
+    const lng = form.getValues('coordinates_lng');
+    
+    if (!lat || !lng) {
+      toast.error('Informe as coordenadas primeiro');
+      return;
+    }
+
+    const result = await reverseGeocode(lat, lng);
+    if (result) {
+      form.setValue('city', result.city);
+      form.setValue('state', result.state);
+      toast.success('Cidade e estado preenchidos!');
     }
   };
 
+  const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      const newPhotos: PhotoToUpload[] = Array.from(files).map(file => ({
+        file,
+        preview: URL.createObjectURL(file),
+        caption: '',
+      }));
+      setPhotos(prev => [...prev, ...newPhotos]);
+    }
+    e.target.value = '';
+  };
+
   const removePhoto = (index: number) => {
+    URL.revokeObjectURL(photos[index].preview);
     setPhotos(prev => prev.filter((_, i) => i !== index));
-    URL.revokeObjectURL(photoUrls[index]);
-    setPhotoUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateCaption = (index: number, caption: string) => {
+    setPhotos(prev => prev.map((photo, i) => 
+      i === index ? { ...photo, caption } : photo
+    ));
   };
 
   const uploadPhotos = async (ticketId: string) => {
-    const uploadedUrls: string[] = [];
+    const uploadedPhotos: Array<{ url: string; caption: string }> = [];
     
     for (const photo of photos) {
-      const fileName = `${ticketId}/${Date.now()}-${photo.name}`;
-      const { data, error } = await supabase.storage
+      const fileName = `${ticketId}/${Date.now()}-${photo.file.name}`;
+      const { error } = await supabase.storage
         .from('ticket-photos')
-        .upload(fileName, photo);
+        .upload(fileName, photo.file);
       
       if (error) {
         console.error('Erro ao fazer upload:', error);
@@ -240,10 +281,10 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
         .from('ticket-photos')
         .getPublicUrl(fileName);
       
-      uploadedUrls.push(urlData.publicUrl);
+      uploadedPhotos.push({ url: urlData.publicUrl, caption: photo.caption });
     }
     
-    return uploadedUrls;
+    return uploadedPhotos;
   };
 
   const onSubmit = async (data: TicketFormData) => {
@@ -254,7 +295,6 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
 
     setIsSubmitting(true);
     try {
-      // Create ticket
       const { data: ticket, error: ticketError } = await supabase
         .from('tickets')
         .insert({
@@ -263,6 +303,12 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
           plan_id: data.plan_id,
           service_type: data.service_type,
           main_agent_id: data.main_agent_id,
+          support_agent_1_id: data.support_agent_1_id || null,
+          support_agent_1_arrival: data.support_agent_1_arrival || null,
+          support_agent_1_departure: data.support_agent_1_departure || null,
+          support_agent_2_id: data.support_agent_2_id || null,
+          support_agent_2_arrival: data.support_agent_2_arrival || null,
+          support_agent_2_departure: data.support_agent_2_departure || null,
           city: data.city,
           state: data.state,
           start_datetime: data.start_datetime,
@@ -276,22 +322,21 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
           other_costs: data.other_costs,
           detailed_report: data.detailed_report,
           created_by_user_id: user.id,
-          code: '', // Will be generated by trigger
+          code: '',
         })
         .select()
         .single();
 
       if (ticketError) throw ticketError;
 
-      // Upload photos if any
       if (photos.length > 0 && ticket) {
-        const photoUrls = await uploadPhotos(ticket.id);
+        const uploadedPhotos = await uploadPhotos(ticket.id);
         
-        // Save photo references
-        for (const url of photoUrls) {
+        for (const photo of uploadedPhotos) {
           await supabase.from('ticket_photos').insert({
             ticket_id: ticket.id,
-            file_url: url,
+            file_url: photo.url,
+            caption: photo.caption || null,
             uploaded_by_user_id: user.id,
           });
         }
@@ -299,8 +344,8 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
 
       toast.success('Chamado criado com sucesso!');
       form.reset();
+      photos.forEach(p => URL.revokeObjectURL(p.preview));
       setPhotos([]);
-      setPhotoUrls([]);
       setActiveTab('cliente');
       onSuccess();
       onOpenChange(false);
@@ -337,7 +382,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="cliente">Cliente</TabsTrigger>
-                <TabsTrigger value="agente">Agente</TabsTrigger>
+                <TabsTrigger value="agente">Agente/Despesas</TabsTrigger>
                 <TabsTrigger value="fotos">Fotos</TabsTrigger>
               </TabsList>
 
@@ -504,54 +549,61 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                   />
                 </div>
 
-                <div className="flex items-end gap-2">
-                  <div className="flex-1 grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="coordinates_lat"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Latitude</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="any"
-                              placeholder="Ex: -23.5505"
-                              {...field}
-                              value={field.value ?? ''}
-                              onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="coordinates_lng"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Longitude</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="any"
-                              placeholder="Ex: -46.6333"
-                              {...field}
-                              value={field.value ?? ''}
-                              onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                <div className="space-y-2">
+                  <Label>Coordenadas</Label>
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1 grid grid-cols-2 gap-2">
+                      <FormField
+                        control={form.control}
+                        name="coordinates_lat"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="any"
+                                placeholder="Latitude"
+                                {...field}
+                                value={field.value ?? ''}
+                                onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="coordinates_lng"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="any"
+                                placeholder="Longitude"
+                                {...field}
+                                value={field.value ?? ''}
+                                onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <Button type="button" variant="outline" size="icon" onClick={getLocation} title="Localização atual">
+                      <MapPin className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="icon" 
+                      onClick={handleReverseGeocode}
+                      disabled={!coordLat || !coordLng || isGeocoding}
+                      title="Buscar cidade/estado"
+                    >
+                      {isGeocoding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    </Button>
                   </div>
-                  <Button type="button" variant="outline" onClick={getLocation}>
-                    <MapPin className="h-4 w-4 mr-2" />
-                    Localização Atual
-                  </Button>
                 </div>
 
                 <div className="flex justify-end">
@@ -578,7 +630,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                           <SelectContent>
                             {agents.map((agent) => (
                               <SelectItem key={agent.id} value={agent.id}>
-                                {agent.name}
+                                {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -588,16 +640,111 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                     )}
                   />
 
-                  <div>
-                    <Label>Veículo Selecionado</Label>
-                    <Input 
-                      value={
-                        filteredVehicles.find(v => v.id === form.getValues('vehicle_id'))
-                          ? `${filteredVehicles.find(v => v.id === form.getValues('vehicle_id'))?.description} - ${filteredVehicles.find(v => v.id === form.getValues('vehicle_id'))?.plate_main}`
-                          : 'Nenhum veículo selecionado'
-                      }
-                      disabled
-                      className="mt-2"
+                  <div></div>
+
+                  {/* Apoio 1 */}
+                  <FormField
+                    control={form.control}
+                    name="support_agent_1_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Apoio 1</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione (opcional)" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="">Nenhum</SelectItem>
+                            {agents.map((agent) => (
+                              <SelectItem key={agent.id} value={agent.id}>
+                                {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <FormField
+                      control={form.control}
+                      name="support_agent_1_arrival"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Chegada Apoio 1</FormLabel>
+                          <FormControl>
+                            <Input type="datetime-local" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="support_agent_1_departure"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Saída Apoio 1</FormLabel>
+                          <FormControl>
+                            <Input type="datetime-local" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Apoio 2 */}
+                  <FormField
+                    control={form.control}
+                    name="support_agent_2_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Apoio 2</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione (opcional)" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="">Nenhum</SelectItem>
+                            {agents.map((agent) => (
+                              <SelectItem key={agent.id} value={agent.id}>
+                                {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <FormField
+                      control={form.control}
+                      name="support_agent_2_arrival"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Chegada Apoio 2</FormLabel>
+                          <FormControl>
+                            <Input type="datetime-local" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="support_agent_2_departure"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Saída Apoio 2</FormLabel>
+                          <FormControl>
+                            <Input type="datetime-local" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
                     />
                   </div>
 
@@ -616,7 +763,6 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                             onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                           />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -636,7 +782,6 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                             onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                           />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -657,7 +802,6 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                             onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                           />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -678,7 +822,6 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                             onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                           />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -699,7 +842,6 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                             onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                           />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -723,11 +865,10 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                       <FormControl>
                         <Textarea 
                           placeholder="Descreva os detalhes do atendimento..."
-                          className="min-h-[120px]"
+                          className="min-h-[100px]"
                           {...field}
                         />
                       </FormControl>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -770,22 +911,33 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                   </div>
                 </div>
 
-                {photoUrls.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {photoUrls.map((url, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={url}
-                          alt={`Foto ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg border border-border"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removePhoto(index)}
-                          className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                {photos.length > 0 && (
+                  <div className="space-y-4">
+                    {photos.map((photo, index) => (
+                      <div key={index} className="flex gap-4 p-4 border border-border rounded-lg">
+                        <div className="relative flex-shrink-0">
+                          <img
+                            src={photo.preview}
+                            alt={`Foto ${index + 1}`}
+                            className="w-20 h-20 object-cover rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(index)}
+                            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-xs">Legenda (opcional)</Label>
+                          <Input
+                            placeholder="Descreva esta foto..."
+                            value={photo.caption}
+                            onChange={(e) => updateCaption(index, e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>

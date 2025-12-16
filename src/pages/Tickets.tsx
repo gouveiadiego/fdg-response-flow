@@ -30,7 +30,7 @@ interface Ticket {
   clients: {
     name: string;
   };
-  agents: {
+  main_agent: {
     name: string;
   };
 }
@@ -60,6 +60,8 @@ const Tickets = () => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [loading, setLoading] = useState(true);
   const [newTicketOpen, setNewTicketOpen] = useState(false);
   const [editTicketOpen, setEditTicketOpen] = useState(false);
@@ -85,14 +87,14 @@ const Tickets = () => {
           clients (
             name
           ),
-          agents:main_agent_id (
+          main_agent:agents!tickets_main_agent_id_fkey (
             name
           )
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTickets(data || []);
+      setTickets((data as unknown as Ticket[]) || []);
     } catch (error) {
       console.error('Erro ao buscar chamados:', error);
       toast.error('Erro ao carregar chamados');
@@ -105,11 +107,26 @@ const Tickets = () => {
     const matchesSearch = 
       ticket.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.clients?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.agents?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      ticket.main_agent?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
     
-    return matchesSearch && matchesStatus;
+    // Date filter
+    let matchesDate = true;
+    if (dateFrom) {
+      const ticketDate = new Date(ticket.start_datetime);
+      const fromDate = new Date(dateFrom);
+      fromDate.setHours(0, 0, 0, 0);
+      matchesDate = matchesDate && ticketDate >= fromDate;
+    }
+    if (dateTo) {
+      const ticketDate = new Date(ticket.start_datetime);
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      matchesDate = matchesDate && ticketDate <= toDate;
+    }
+    
+    return matchesSearch && matchesStatus && matchesDate;
   });
 
   const handleViewDetails = (ticketId: string) => {
@@ -120,6 +137,11 @@ const Tickets = () => {
   const handleEdit = (ticketId: string) => {
     setSelectedTicketId(ticketId);
     setEditTicketOpen(true);
+  };
+
+  const clearDateFilters = () => {
+    setDateFrom('');
+    setDateTo('');
   };
 
   if (loading) {
@@ -134,41 +156,71 @@ const Tickets = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 lg:pb-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">Chamados</h1>
           <p className="text-sm text-muted-foreground">Gerencie todos os atendimentos</p>
         </div>
-        <Button onClick={() => setNewTicketOpen(true)}>
+        <Button onClick={() => setNewTicketOpen(true)} className="hidden lg:flex">
           <Plus className="h-4 w-4 mr-2" />
           Novo Chamado
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por código, cliente ou agente..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
+      {/* Filters */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por código, cliente ou agente..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Filtrar por status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="aberto">Aberto</SelectItem>
+              <SelectItem value="em_andamento">Em Andamento</SelectItem>
+              <SelectItem value="finalizado">Finalizado</SelectItem>
+              <SelectItem value="cancelado">Cancelado</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filtrar por status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="aberto">Aberto</SelectItem>
-            <SelectItem value="em_andamento">Em Andamento</SelectItem>
-            <SelectItem value="finalizado">Finalizado</SelectItem>
-            <SelectItem value="cancelado">Cancelado</SelectItem>
-          </SelectContent>
-        </Select>
+
+        {/* Date Range Filter */}
+        <div className="flex flex-col sm:flex-row gap-4 items-end">
+          <div className="flex-1 grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Data Inicial</label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Data Final</label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
+          </div>
+          {(dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={clearDateFilters}>
+              Limpar datas
+            </Button>
+          )}
+        </div>
       </div>
 
       {filteredTickets.length === 0 ? (
@@ -177,11 +229,11 @@ const Tickets = () => {
             <FileText className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg font-medium text-foreground mb-2">Nenhum chamado encontrado</p>
             <p className="text-sm text-muted-foreground mb-4">
-              {searchTerm || statusFilter !== 'all' 
+              {searchTerm || statusFilter !== 'all' || dateFrom || dateTo
                 ? 'Tente buscar com outros termos ou filtros' 
                 : 'Comece criando um novo chamado'}
             </p>
-            {!searchTerm && statusFilter === 'all' && (
+            {!searchTerm && statusFilter === 'all' && !dateFrom && !dateTo && (
               <Button onClick={() => setNewTicketOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Criar Chamado
@@ -224,7 +276,7 @@ const Tickets = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground truncate">
-                    {serviceTypeLabels[ticket.service_type]} • {ticket.agents?.name}
+                    {serviceTypeLabels[ticket.service_type]} • {ticket.main_agent?.name}
                   </span>
                 </div>
                 <div className="flex gap-2 pt-2" onClick={(e) => e.stopPropagation()}>
@@ -250,6 +302,14 @@ const Tickets = () => {
           ))}
         </div>
       )}
+
+      {/* Floating Action Button for Mobile */}
+      <Button
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg lg:hidden z-50"
+        onClick={() => setNewTicketOpen(true)}
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
 
       <NewTicketDialog 
         open={newTicketOpen} 
