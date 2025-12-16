@@ -26,7 +26,12 @@ import {
   Navigation,
   CheckCircle,
   Edit,
+  FileDown,
+  Plus,
+  Users,
 } from 'lucide-react';
+import { AddPhotosDialog } from './AddPhotosDialog';
+import { generateTicketPDF, type TicketPDFData } from './TicketPDFGenerator';
 
 interface TicketDetailsProps {
   ticketId: string | null;
@@ -56,9 +61,26 @@ interface TicketFull {
   detailed_report: string | null;
   summary: string | null;
   service_type: string;
-  clients: { name: string; document: string };
-  agents: { name: string };
-  vehicles: { description: string; plate_main: string; plate_trailer: string | null };
+  support_agent_1_arrival: string | null;
+  support_agent_1_departure: string | null;
+  support_agent_2_arrival: string | null;
+  support_agent_2_departure: string | null;
+  clients: { name: string; document: string; contact_phone: string | null };
+  main_agent: { name: string; is_armed: boolean | null };
+  support_agent_1: { name: string; is_armed: boolean | null } | null;
+  support_agent_2: { name: string; is_armed: boolean | null } | null;
+  vehicles: { 
+    description: string; 
+    tractor_plate: string | null;
+    tractor_brand: string | null;
+    tractor_model: string | null;
+    trailer1_plate: string | null;
+    trailer1_body_type: string | null;
+    trailer2_plate: string | null;
+    trailer2_body_type: string | null;
+    trailer3_plate: string | null;
+    trailer3_body_type: string | null;
+  };
   plans: { name: string };
 }
 
@@ -90,11 +112,23 @@ const serviceTypeLabels: Record<string, string> = {
   acompanhamento_logistico: 'Acompanhamento Logístico',
 };
 
+const bodyTypeLabels: Record<string, string> = {
+  grade_baixa: 'Grade Baixa',
+  grade_alta: 'Grade Alta',
+  bau: 'Baú',
+  sider: 'Sider',
+  frigorifico: 'Frigorífico',
+  container: 'Contêiner',
+  prancha: 'Prancha',
+};
+
 export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusChange }: TicketDetailsProps) {
   const [ticket, setTicket] = useState<TicketFull | null>(null);
   const [photos, setPhotos] = useState<TicketPhoto[]>([]);
   const [loading, setLoading] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [generatingPDF, setGeneratingPDF] = useState(false);
+  const [addPhotosOpen, setAddPhotosOpen] = useState(false);
 
   useEffect(() => {
     if (ticketId && open) {
@@ -112,16 +146,29 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
         .from('tickets')
         .select(`
           *,
-          clients (name, document),
-          agents:main_agent_id (name),
-          vehicles (description, plate_main, plate_trailer),
+          clients (name, document, contact_phone),
+          main_agent:agents!tickets_main_agent_id_fkey (name, is_armed),
+          support_agent_1:agents!tickets_support_agent_1_id_fkey (name, is_armed),
+          support_agent_2:agents!tickets_support_agent_2_id_fkey (name, is_armed),
+          vehicles (
+            description, 
+            tractor_plate, 
+            tractor_brand, 
+            tractor_model,
+            trailer1_plate,
+            trailer1_body_type,
+            trailer2_plate,
+            trailer2_body_type,
+            trailer3_plate,
+            trailer3_body_type
+          ),
           plans (name)
         `)
         .eq('id', ticketId)
         .maybeSingle();
 
       if (error) throw error;
-      setTicket(data);
+      setTicket(data as unknown as TicketFull);
     } catch (error) {
       console.error('Erro ao buscar detalhes:', error);
       toast.error('Erro ao carregar detalhes do chamado');
@@ -179,11 +226,83 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
     }
   };
 
+  const handleGeneratePDF = async () => {
+    if (!ticket) return;
+
+    setGeneratingPDF(true);
+    try {
+      const pdfData: TicketPDFData = {
+        code: ticket.code,
+        status: ticket.status,
+        city: ticket.city,
+        state: ticket.state,
+        start_datetime: ticket.start_datetime,
+        end_datetime: ticket.end_datetime,
+        coordinates_lat: ticket.coordinates_lat,
+        coordinates_lng: ticket.coordinates_lng,
+        km_start: ticket.km_start,
+        km_end: ticket.km_end,
+        toll_cost: ticket.toll_cost,
+        food_cost: ticket.food_cost,
+        other_costs: ticket.other_costs,
+        total_cost: ticket.total_cost,
+        duration_minutes: ticket.duration_minutes,
+        detailed_report: ticket.detailed_report,
+        service_type: ticket.service_type,
+        client: {
+          name: ticket.clients?.name || '',
+          contact_phone: ticket.clients?.contact_phone || null,
+        },
+        agent: {
+          name: ticket.main_agent?.name || '',
+          is_armed: ticket.main_agent?.is_armed || null,
+        },
+        support_agent_1: ticket.support_agent_1 ? {
+          name: ticket.support_agent_1.name,
+          is_armed: ticket.support_agent_1.is_armed,
+        } : null,
+        support_agent_2: ticket.support_agent_2 ? {
+          name: ticket.support_agent_2.name,
+          is_armed: ticket.support_agent_2.is_armed,
+        } : null,
+        vehicle: {
+          description: ticket.vehicles?.description || '',
+          tractor_plate: ticket.vehicles?.tractor_plate || null,
+          tractor_brand: ticket.vehicles?.tractor_brand || null,
+          tractor_model: ticket.vehicles?.tractor_model || null,
+          trailer1_plate: ticket.vehicles?.trailer1_plate || null,
+          trailer1_body_type: ticket.vehicles?.trailer1_body_type || null,
+          trailer2_plate: ticket.vehicles?.trailer2_plate || null,
+          trailer2_body_type: ticket.vehicles?.trailer2_body_type || null,
+          trailer3_plate: ticket.vehicles?.trailer3_plate || null,
+          trailer3_body_type: ticket.vehicles?.trailer3_body_type || null,
+        },
+        plan: {
+          name: ticket.plans?.name || '',
+        },
+        photos: photos.map(p => ({
+          file_url: p.file_url,
+          caption: p.caption,
+        })),
+      };
+
+      await generateTicketPDF(pdfData);
+      toast.success('PDF gerado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast.error('Erro ao gerar PDF');
+    } finally {
+      setGeneratingPDF(false);
+    }
+  };
+
   const formatDuration = (minutes: number | null) => {
     if (!minutes) return '-';
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${hours}h ${mins}min`;
+    if (hours === 0) return `${mins} minutos`;
+    if (mins === 0) return `${hours} hora${hours > 1 ? 's' : ''}`;
+    return `${hours} hora${hours > 1 ? 's' : ''} e ${mins} minuto${mins > 1 ? 's' : ''}`;
   };
 
   const formatCurrency = (value: number | null) => {
@@ -204,254 +323,331 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              {ticket.code}
-            </DialogTitle>
-            <Badge className={statusColors[ticket.status]}>
-              {statusLabels[ticket.status]}
-            </Badge>
-          </div>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                {ticket.code}
+              </DialogTitle>
+              <Badge className={statusColors[ticket.status]}>
+                {statusLabels[ticket.status]}
+              </Badge>
+            </div>
+          </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Info Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-6">
+            {/* Info Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <User className="h-4 w-4 text-primary" />
+                    Cliente
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="font-semibold">{ticket.clients?.name}</p>
+                  <p className="text-sm text-muted-foreground">{ticket.clients?.document}</p>
+                  {ticket.clients?.contact_phone && (
+                    <p className="text-sm text-muted-foreground">{ticket.clients.contact_phone}</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Truck className="h-4 w-4 text-primary" />
+                    Veículo
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                  <p className="font-semibold">{ticket.vehicles?.description}</p>
+                  {ticket.vehicles?.tractor_plate && (
+                    <p className="text-sm text-muted-foreground">
+                      Cavalo: {ticket.vehicles.tractor_plate}
+                      {ticket.vehicles.tractor_brand && ` - ${ticket.vehicles.tractor_brand}`}
+                      {ticket.vehicles.tractor_model && ` ${ticket.vehicles.tractor_model}`}
+                    </p>
+                  )}
+                  {ticket.vehicles?.trailer1_plate && (
+                    <p className="text-xs text-muted-foreground">
+                      Carreta 1: {ticket.vehicles.trailer1_plate} ({bodyTypeLabels[ticket.vehicles.trailer1_body_type || ''] || ticket.vehicles.trailer1_body_type})
+                    </p>
+                  )}
+                  {ticket.vehicles?.trailer2_plate && (
+                    <p className="text-xs text-muted-foreground">
+                      Carreta 2: {ticket.vehicles.trailer2_plate} ({bodyTypeLabels[ticket.vehicles.trailer2_body_type || ''] || ticket.vehicles.trailer2_body_type})
+                    </p>
+                  )}
+                  {ticket.vehicles?.trailer3_plate && (
+                    <p className="text-xs text-muted-foreground">
+                      Carreta 3: {ticket.vehicles.trailer3_plate} ({bodyTypeLabels[ticket.vehicles.trailer3_body_type || ''] || ticket.vehicles.trailer3_body_type})
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary" />
+                    Equipe
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div>
+                    <p className="font-semibold">{ticket.main_agent?.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Principal {ticket.main_agent?.is_armed ? '(Armado)' : '(Desarmado)'} • {ticket.plans?.name}
+                    </p>
+                  </div>
+                  {ticket.support_agent_1 && (
+                    <div className="pt-1 border-t border-border">
+                      <p className="text-sm font-medium">{ticket.support_agent_1.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Apoio 1 {ticket.support_agent_1.is_armed ? '(Armado)' : '(Desarmado)'}
+                        {ticket.support_agent_1_arrival && ` • Chegada: ${format(new Date(ticket.support_agent_1_arrival), 'HH:mm')}`}
+                        {ticket.support_agent_1_departure && ` • Saída: ${format(new Date(ticket.support_agent_1_departure), 'HH:mm')}`}
+                      </p>
+                    </div>
+                  )}
+                  {ticket.support_agent_2 && (
+                    <div className="pt-1 border-t border-border">
+                      <p className="text-sm font-medium">{ticket.support_agent_2.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Apoio 2 {ticket.support_agent_2.is_armed ? '(Armado)' : '(Desarmado)'}
+                        {ticket.support_agent_2_arrival && ` • Chegada: ${format(new Date(ticket.support_agent_2_arrival), 'HH:mm')}`}
+                        {ticket.support_agent_2_departure && ` • Saída: ${format(new Date(ticket.support_agent_2_departure), 'HH:mm')}`}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    Localização
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="font-semibold">{ticket.city}, {ticket.state}</p>
+                  {ticket.coordinates_lat && ticket.coordinates_lng && (
+                    <p className="text-sm text-muted-foreground">
+                      {Number(ticket.coordinates_lat).toFixed(6)}, {Number(ticket.coordinates_lng).toFixed(6)}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Dates and Duration */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <User className="h-4 w-4 text-primary" />
-                  Cliente
+                  <Calendar className="h-4 w-4 text-primary" />
+                  Datas e Duração
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="font-semibold">{ticket.clients?.name}</p>
-                <p className="text-sm text-muted-foreground">{ticket.clients?.document}</p>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Início</p>
+                    <p className="font-semibold">
+                      {format(new Date(ticket.start_datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Fim</p>
+                    <p className="font-semibold">
+                      {ticket.end_datetime 
+                        ? format(new Date(ticket.end_datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                        : '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Duração</p>
+                    <p className="font-semibold flex items-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      {formatDuration(ticket.duration_minutes)}
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
+            {/* KM and Costs */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-primary" />
-                  Veículo
+                  <DollarSign className="h-4 w-4 text-primary" />
+                  Quilometragem e Custos
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="font-semibold">{ticket.vehicles?.description}</p>
-                <p className="text-sm text-muted-foreground">
-                  {ticket.vehicles?.plate_main}
-                  {ticket.vehicles?.plate_trailer && ` / ${ticket.vehicles.plate_trailer}`}
-                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">KM Inicial</p>
+                    <p className="font-semibold flex items-center gap-1">
+                      <Navigation className="h-4 w-4" />
+                      {ticket.km_start ?? '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">KM Final</p>
+                    <p className="font-semibold flex items-center gap-1">
+                      <Navigation className="h-4 w-4" />
+                      {ticket.km_end ?? '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">KM Rodados</p>
+                    <p className="font-semibold">
+                      {ticket.km_start && ticket.km_end 
+                        ? `${Number(ticket.km_end) - Number(ticket.km_start)} km`
+                        : '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Tipo Serviço</p>
+                    <p className="font-semibold">{serviceTypeLabels[ticket.service_type]}</p>
+                  </div>
+                </div>
+                
+                <Separator className="my-4" />
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pedágio</p>
+                    <p className="font-semibold">{formatCurrency(ticket.toll_cost)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Alimentação</p>
+                    <p className="font-semibold">{formatCurrency(ticket.food_cost)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Outros</p>
+                    <p className="font-semibold">{formatCurrency(ticket.other_costs)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total</p>
+                    <p className="font-semibold text-primary">{formatCurrency(ticket.total_cost)}</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <User className="h-4 w-4 text-primary" />
-                  Agente
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="font-semibold">{ticket.agents?.name}</p>
-                <p className="text-sm text-muted-foreground">{ticket.plans?.name}</p>
-              </CardContent>
-            </Card>
+            {/* Report */}
+            {ticket.detailed_report && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Relatório Detalhado
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="whitespace-pre-wrap text-sm">{ticket.detailed_report}</p>
+                </CardContent>
+              </Card>
+            )}
 
+            {/* Photos */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-primary" />
-                  Localização
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Image className="h-4 w-4 text-primary" />
+                    Fotos ({photos.length})
+                  </CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => setAddPhotosOpen(true)}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Adicionar
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-                <p className="font-semibold">{ticket.city}, {ticket.state}</p>
-                {ticket.coordinates_lat && ticket.coordinates_lng && (
-                  <p className="text-sm text-muted-foreground">
-                    {ticket.coordinates_lat.toFixed(6)}, {ticket.coordinates_lng.toFixed(6)}
+                {photos.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {photos.map((photo) => (
+                      <div key={photo.id} className="space-y-1">
+                        <a
+                          href={photo.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block"
+                        >
+                          <img
+                            src={photo.file_url}
+                            alt={photo.caption || 'Foto do chamado'}
+                            className="w-full h-24 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity"
+                          />
+                        </a>
+                        {photo.caption && (
+                          <p className="text-xs text-muted-foreground truncate">{photo.caption}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Nenhuma foto adicionada
                   </p>
                 )}
               </CardContent>
             </Card>
-          </div>
 
-          {/* Dates and Duration */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-primary" />
-                Datas e Duração
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Início</p>
-                  <p className="font-semibold">
-                    {format(new Date(ticket.start_datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Fim</p>
-                  <p className="font-semibold">
-                    {ticket.end_datetime 
-                      ? format(new Date(ticket.end_datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
-                      : '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Duração</p>
-                  <p className="font-semibold flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    {formatDuration(ticket.duration_minutes)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* KM and Costs */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-primary" />
-                Quilometragem e Custos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">KM Inicial</p>
-                  <p className="font-semibold flex items-center gap-1">
-                    <Navigation className="h-4 w-4" />
-                    {ticket.km_start ?? '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">KM Final</p>
-                  <p className="font-semibold flex items-center gap-1">
-                    <Navigation className="h-4 w-4" />
-                    {ticket.km_end ?? '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">KM Rodados</p>
-                  <p className="font-semibold">
-                    {ticket.km_start && ticket.km_end 
-                      ? `${ticket.km_end - ticket.km_start} km`
-                      : '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Tipo Serviço</p>
-                  <p className="font-semibold">{serviceTypeLabels[ticket.service_type]}</p>
-                </div>
-              </div>
-              
-              <Separator className="my-4" />
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Pedágio</p>
-                  <p className="font-semibold">{formatCurrency(ticket.toll_cost)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Alimentação</p>
-                  <p className="font-semibold">{formatCurrency(ticket.food_cost)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Outros</p>
-                  <p className="font-semibold">{formatCurrency(ticket.other_costs)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total</p>
-                  <p className="font-semibold text-primary">{formatCurrency(ticket.total_cost)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Report */}
-          {ticket.detailed_report && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  Relatório Detalhado
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-wrap text-sm">{ticket.detailed_report}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Photos */}
-          {photos.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Image className="h-4 w-4 text-primary" />
-                  Fotos ({photos.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {photos.map((photo) => (
-                    <a
-                      key={photo.id}
-                      href={photo.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block"
-                    >
-                      <img
-                        src={photo.file_url}
-                        alt={photo.caption || 'Foto do chamado'}
-                        className="w-full h-24 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity"
-                      />
-                    </a>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => onEdit(ticket.id)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Editar
-            </Button>
-            
-            {ticket.status === 'aberto' && (
-              <Button 
-                onClick={() => updateStatus('em_andamento')}
-                disabled={updatingStatus}
-              >
-                Iniciar Atendimento
+            {/* Actions */}
+            <div className="flex flex-wrap gap-2 justify-end">
+              <Button variant="outline" onClick={() => onEdit(ticket.id)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Editar
               </Button>
-            )}
-            
-            {ticket.status === 'em_andamento' && (
+              
               <Button 
-                onClick={() => updateStatus('finalizado')}
-                disabled={updatingStatus}
-                className="bg-success hover:bg-success/90"
+                variant="outline" 
+                onClick={handleGeneratePDF}
+                disabled={generatingPDF}
               >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Finalizar Chamado
+                <FileDown className="h-4 w-4 mr-2" />
+                {generatingPDF ? 'Gerando...' : 'Gerar PDF'}
               </Button>
-            )}
+              
+              {ticket.status === 'aberto' && (
+                <Button 
+                  onClick={() => updateStatus('em_andamento')}
+                  disabled={updatingStatus}
+                >
+                  Iniciar Atendimento
+                </Button>
+              )}
+              
+              {ticket.status === 'em_andamento' && (
+                <Button 
+                  onClick={() => updateStatus('finalizado')}
+                  disabled={updatingStatus}
+                  className="bg-success hover:bg-success/90"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Finalizar Chamado
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <AddPhotosDialog
+        ticketId={ticketId || ''}
+        open={addPhotosOpen}
+        onOpenChange={setAddPhotosOpen}
+        onSuccess={fetchTicketPhotos}
+      />
+    </>
   );
 }

@@ -226,6 +226,12 @@ export type Database = {
           state: string
           status: Database["public"]["Enums"]["ticket_status"]
           summary: string | null
+          support_agent_1_arrival: string | null
+          support_agent_1_departure: string | null
+          support_agent_1_id: string | null
+          support_agent_2_arrival: string | null
+          support_agent_2_departure: string | null
+          support_agent_2_id: string | null
           toll_cost: number | null
           total_cost: number | null
           updated_at: string
@@ -254,6 +260,12 @@ export type Database = {
           state: string
           status?: Database["public"]["Enums"]["ticket_status"]
           summary?: string | null
+          support_agent_1_arrival?: string | null
+          support_agent_1_departure?: string | null
+          support_agent_1_id?: string | null
+          support_agent_2_arrival?: string | null
+          support_agent_2_departure?: string | null
+          support_agent_2_id?: string | null
           toll_cost?: number | null
           total_cost?: number | null
           updated_at?: string
@@ -282,6 +294,12 @@ export type Database = {
           state?: string
           status?: Database["public"]["Enums"]["ticket_status"]
           summary?: string | null
+          support_agent_1_arrival?: string | null
+          support_agent_1_departure?: string | null
+          support_agent_1_id?: string | null
+          support_agent_2_arrival?: string | null
+          support_agent_2_departure?: string | null
+          support_agent_2_id?: string | null
           toll_cost?: number | null
           total_cost?: number | null
           updated_at?: string
@@ -307,6 +325,20 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_support_agent_1_id_fkey"
+            columns: ["support_agent_1_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_support_agent_2_id_fkey"
+            columns: ["support_agent_2_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
             referencedColumns: ["id"]
           },
           {

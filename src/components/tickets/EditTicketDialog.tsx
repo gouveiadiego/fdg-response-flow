@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { useGeocoding } from '@/hooks/useGeocoding';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -23,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -31,22 +33,27 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { Database } from '@/integrations/supabase/types';
-
-type TicketStatus = Database['public']['Enums']['ticket_status'];
-type ServiceType = Database['public']['Enums']['service_type'];
+import { MapPin, Search, Loader2 } from 'lucide-react';
 
 const ticketSchema = z.object({
   status: z.enum(['aberto', 'em_andamento', 'finalizado', 'cancelado']),
   client_id: z.string().min(1, 'Cliente é obrigatório'),
   vehicle_id: z.string().min(1, 'Veículo é obrigatório'),
   main_agent_id: z.string().min(1, 'Agente é obrigatório'),
+  support_agent_1_id: z.string().optional(),
+  support_agent_1_arrival: z.string().optional(),
+  support_agent_1_departure: z.string().optional(),
+  support_agent_2_id: z.string().optional(),
+  support_agent_2_arrival: z.string().optional(),
+  support_agent_2_departure: z.string().optional(),
   plan_id: z.string().min(1, 'Plano é obrigatório'),
   service_type: z.enum(['alarme', 'averiguacao', 'preservacao', 'acompanhamento_logistico']),
   city: z.string().min(1, 'Cidade é obrigatória'),
   state: z.string().min(2, 'Estado é obrigatório').max(2),
   start_datetime: z.string().min(1, 'Data/hora início é obrigatória'),
   end_datetime: z.string().optional(),
+  coordinates_lat: z.coerce.number().optional().nullable(),
+  coordinates_lng: z.coerce.number().optional().nullable(),
   km_start: z.coerce.number().optional().nullable(),
   km_end: z.coerce.number().optional().nullable(),
   toll_cost: z.coerce.number().optional().nullable(),
@@ -72,6 +79,7 @@ interface Vehicle {
 interface Agent {
   id: string;
   name: string;
+  is_armed: boolean | null;
 }
 
 interface Plan {
@@ -87,6 +95,7 @@ interface EditTicketDialogProps {
 }
 
 export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: EditTicketDialogProps) {
+  const { reverseGeocode, isLoading: isGeocoding } = useGeocoding();
   const [isLoading, setIsLoading] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -101,12 +110,20 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
       client_id: '',
       vehicle_id: '',
       main_agent_id: '',
+      support_agent_1_id: '',
+      support_agent_1_arrival: '',
+      support_agent_1_departure: '',
+      support_agent_2_id: '',
+      support_agent_2_arrival: '',
+      support_agent_2_departure: '',
       plan_id: '',
       service_type: 'acompanhamento_logistico',
       city: '',
       state: '',
       start_datetime: '',
       end_datetime: '',
+      coordinates_lat: null,
+      coordinates_lng: null,
       km_start: null,
       km_end: null,
       toll_cost: null,
@@ -118,6 +135,8 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
   });
 
   const selectedClientId = form.watch('client_id');
+  const coordLat = form.watch('coordinates_lat');
+  const coordLng = form.watch('coordinates_lng');
 
   useEffect(() => {
     if (open) {
@@ -144,7 +163,7 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
       const [clientsRes, vehiclesRes, agentsRes, plansRes] = await Promise.all([
         supabase.from('clients').select('id, name').order('name'),
         supabase.from('vehicles').select('id, description, client_id'),
-        supabase.from('agents').select('id, name').eq('status', 'ativo').order('name'),
+        supabase.from('agents').select('id, name, is_armed').eq('status', 'ativo').order('name'),
         supabase.from('plans').select('id, name').order('name'),
       ]);
 
@@ -175,12 +194,20 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           client_id: data.client_id,
           vehicle_id: data.vehicle_id,
           main_agent_id: data.main_agent_id,
+          support_agent_1_id: data.support_agent_1_id || '',
+          support_agent_1_arrival: data.support_agent_1_arrival ? new Date(data.support_agent_1_arrival).toISOString().slice(0, 16) : '',
+          support_agent_1_departure: data.support_agent_1_departure ? new Date(data.support_agent_1_departure).toISOString().slice(0, 16) : '',
+          support_agent_2_id: data.support_agent_2_id || '',
+          support_agent_2_arrival: data.support_agent_2_arrival ? new Date(data.support_agent_2_arrival).toISOString().slice(0, 16) : '',
+          support_agent_2_departure: data.support_agent_2_departure ? new Date(data.support_agent_2_departure).toISOString().slice(0, 16) : '',
           plan_id: data.plan_id,
           service_type: data.service_type,
           city: data.city,
           state: data.state,
           start_datetime: data.start_datetime ? new Date(data.start_datetime).toISOString().slice(0, 16) : '',
           end_datetime: data.end_datetime ? new Date(data.end_datetime).toISOString().slice(0, 16) : '',
+          coordinates_lat: data.coordinates_lat ? Number(data.coordinates_lat) : null,
+          coordinates_lng: data.coordinates_lng ? Number(data.coordinates_lng) : null,
           km_start: data.km_start ? Number(data.km_start) : null,
           km_end: data.km_end ? Number(data.km_end) : null,
           toll_cost: data.toll_cost ? Number(data.toll_cost) : null,
@@ -196,6 +223,39 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
     }
   };
 
+  const getLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocalização não suportada');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        form.setValue('coordinates_lat', position.coords.latitude);
+        form.setValue('coordinates_lng', position.coords.longitude);
+        toast.success('Localização capturada');
+      },
+      () => toast.error('Erro ao obter localização')
+    );
+  };
+
+  const handleReverseGeocode = async () => {
+    const lat = form.getValues('coordinates_lat');
+    const lng = form.getValues('coordinates_lng');
+    
+    if (!lat || !lng) {
+      toast.error('Informe as coordenadas primeiro');
+      return;
+    }
+
+    const result = await reverseGeocode(lat, lng);
+    if (result) {
+      form.setValue('city', result.city);
+      form.setValue('state', result.state);
+      toast.success('Cidade e estado preenchidos!');
+    }
+  };
+
   const onSubmit = async (data: TicketFormData) => {
     if (!ticketId) return;
 
@@ -208,12 +268,20 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           client_id: data.client_id,
           vehicle_id: data.vehicle_id,
           main_agent_id: data.main_agent_id,
+          support_agent_1_id: data.support_agent_1_id || null,
+          support_agent_1_arrival: data.support_agent_1_arrival || null,
+          support_agent_1_departure: data.support_agent_1_departure || null,
+          support_agent_2_id: data.support_agent_2_id || null,
+          support_agent_2_arrival: data.support_agent_2_arrival || null,
+          support_agent_2_departure: data.support_agent_2_departure || null,
           plan_id: data.plan_id,
           service_type: data.service_type,
           city: data.city,
           state: data.state,
           start_datetime: data.start_datetime,
           end_datetime: data.end_datetime || null,
+          coordinates_lat: data.coordinates_lat || null,
+          coordinates_lng: data.coordinates_lng || null,
           km_start: data.km_start || null,
           km_end: data.km_end || null,
           toll_cost: data.toll_cost || null,
@@ -333,31 +401,6 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="main_agent_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Agente Principal *</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o agente" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {agents.map((agent) => (
-                                <SelectItem key={agent.id} value={agent.id}>
-                                  {agent.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
                       name="plan_id"
                       render={({ field }) => (
                         <FormItem>
@@ -380,31 +423,31 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                         </FormItem>
                       )}
                     />
-                  </div>
 
-                  <FormField
-                    control={form.control}
-                    name="service_type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tipo de Serviço *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o tipo" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="alarme">Alarme</SelectItem>
-                            <SelectItem value="averiguacao">Averiguação</SelectItem>
-                            <SelectItem value="preservacao">Preservação</SelectItem>
-                            <SelectItem value="acompanhamento_logistico">Acompanhamento Logístico</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <FormField
+                      control={form.control}
+                      name="service_type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tipo de Serviço *</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o tipo" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="alarme">Alarme</SelectItem>
+                              <SelectItem value="averiguacao">Averiguação</SelectItem>
+                              <SelectItem value="preservacao">Preservação</SelectItem>
+                              <SelectItem value="acompanhamento_logistico">Acompanhamento Logístico</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
@@ -435,9 +478,193 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                       )}
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Coordenadas</Label>
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1 grid grid-cols-2 gap-2">
+                        <FormField
+                          control={form.control}
+                          name="coordinates_lat"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  step="any"
+                                  placeholder="Latitude"
+                                  {...field}
+                                  value={field.value ?? ''}
+                                  onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="coordinates_lng"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  step="any"
+                                  placeholder="Longitude"
+                                  {...field}
+                                  value={field.value ?? ''}
+                                  onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <Button type="button" variant="outline" size="icon" onClick={getLocation} title="Localização atual">
+                        <MapPin className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={handleReverseGeocode}
+                        disabled={!coordLat || !coordLng || isGeocoding}
+                        title="Buscar cidade/estado"
+                      >
+                        {isGeocoding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="operation" className="space-y-4 mt-4">
+                  <FormField
+                    control={form.control}
+                    name="main_agent_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Agente Principal *</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o agente" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {agents.map((agent) => (
+                              <SelectItem key={agent.id} value={agent.id}>
+                                {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="support_agent_1_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Apoio 1</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ''}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="">Nenhum</SelectItem>
+                              {agents.map((agent) => (
+                                <SelectItem key={agent.id} value={agent.id}>
+                                  {agent.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="support_agent_1_arrival"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Chegada</FormLabel>
+                          <FormControl>
+                            <Input type="datetime-local" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="support_agent_1_departure"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Saída</FormLabel>
+                          <FormControl>
+                            <Input type="datetime-local" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="support_agent_2_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Apoio 2</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ''}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="">Nenhum</SelectItem>
+                              {agents.map((agent) => (
+                                <SelectItem key={agent.id} value={agent.id}>
+                                  {agent.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="support_agent_2_arrival"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Chegada</FormLabel>
+                          <FormControl>
+                            <Input type="datetime-local" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="support_agent_2_departure"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Saída</FormLabel>
+                          <FormControl>
+                            <Input type="datetime-local" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -462,7 +689,6 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                           <FormControl>
                             <Input type="datetime-local" {...field} />
                           </FormControl>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -484,7 +710,6 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                               onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
                             />
                           </FormControl>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -504,7 +729,6 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                               onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
                             />
                           </FormControl>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -527,7 +751,6 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                               onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
                             />
                           </FormControl>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -548,7 +771,6 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                               onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
                             />
                           </FormControl>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -569,7 +791,6 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                               onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
                             />
                           </FormControl>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -591,7 +812,6 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -610,7 +830,6 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
