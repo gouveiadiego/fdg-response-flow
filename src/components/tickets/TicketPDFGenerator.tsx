@@ -88,6 +88,42 @@ const formatCurrency = (value: number | null): string => {
   return `R$ ${value.toFixed(2).replace('.', ',')}`;
 };
 
+// Calculate "Efetivo mobilizado" based on agents
+const calculateEfetivoMobilizado = (data: TicketPDFData): string => {
+  let armados = 0;
+  let desarmados = 0;
+
+  // Main agent
+  if (data.agent) {
+    if (data.agent.is_armed) armados++;
+    else desarmados++;
+  }
+
+  // Support agent 1
+  if (data.support_agent_1) {
+    if (data.support_agent_1.is_armed) armados++;
+    else desarmados++;
+  }
+
+  // Support agent 2
+  if (data.support_agent_2) {
+    if (data.support_agent_2.is_armed) armados++;
+    else desarmados++;
+  }
+
+  const parts: string[] = [];
+  
+  if (armados > 0) {
+    parts.push(`${armados.toString().padStart(2, '0')} agente${armados > 1 ? 's' : ''} armado${armados > 1 ? 's' : ''}`);
+  }
+  
+  if (desarmados > 0) {
+    parts.push(`${desarmados.toString().padStart(2, '0')} agente${desarmados > 1 ? 's' : ''} desarmado${desarmados > 1 ? 's' : ''}`);
+  }
+
+  return parts.length > 0 ? parts.join(' + ') : '-';
+};
+
 export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -196,6 +232,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   pdf.setFontSize(10);
   addRow('Cliente', data.client.name);
   addRow('Plano', data.plan.name);
+  addRow('Efetivo Mobilizado', calculateEfetivoMobilizado(data));
   
   // Team info
   y += 4;

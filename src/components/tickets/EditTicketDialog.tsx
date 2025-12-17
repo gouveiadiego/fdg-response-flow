@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { useGeocoding } from '@/hooks/useGeocoding';
 import { toast } from 'sonner';
 import {
@@ -33,7 +34,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MapPin, Search, Loader2 } from 'lucide-react';
+import { MapPin, Search, Loader2, Upload, X, Camera } from 'lucide-react';
 
 const ticketSchema = z.object({
   status: z.enum(['aberto', 'em_andamento', 'finalizado', 'cancelado']),
@@ -87,6 +88,18 @@ interface Plan {
   name: string;
 }
 
+interface ExistingPhoto {
+  id: string;
+  file_url: string;
+  caption: string | null;
+}
+
+interface PhotoToUpload {
+  file: File;
+  preview: string;
+  caption: string;
+}
+
 interface EditTicketDialogProps {
   ticketId: string | null;
   open: boolean;
@@ -95,13 +108,17 @@ interface EditTicketDialogProps {
 }
 
 export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: EditTicketDialogProps) {
+  const { user } = useAuth();
   const { reverseGeocode, isLoading: isGeocoding } = useGeocoding();
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('cliente');
   const [clients, setClients] = useState<Client[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [existingPhotos, setExistingPhotos] = useState<ExistingPhoto[]>([]);
+  const [newPhotos, setNewPhotos] = useState<PhotoToUpload[]>([]);
 
   const form = useForm<TicketFormData>({
     resolver: zodResolver(ticketSchema),
@@ -137,16 +154,27 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
   const selectedClientId = form.watch('client_id');
   const coordLat = form.watch('coordinates_lat');
   const coordLng = form.watch('coordinates_lng');
+  const kmStart = form.watch('km_start');
+  const kmEnd = form.watch('km_end');
+  const tollCost = form.watch('toll_cost') || 0;
+  const foodCost = form.watch('food_cost') || 0;
+  const otherCosts = form.watch('other_costs') || 0;
+  
+  const kmRodado = kmStart && kmEnd && kmEnd >= kmStart ? kmEnd - kmStart : null;
+  const totalCost = tollCost + foodCost + otherCosts;
 
   useEffect(() => {
     if (open) {
       fetchData();
+      setActiveTab('cliente');
+      setNewPhotos([]);
     }
   }, [open]);
 
   useEffect(() => {
     if (ticketId && open && clients.length > 0) {
       fetchTicket();
+      fetchPhotos();
     }
   }, [ticketId, open, clients.length]);
 
@@ -223,6 +251,23 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
     }
   };
 
+  const fetchPhotos = async () => {
+    if (!ticketId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('ticket_photos')
+        .select('id, file_url, caption')
+        .eq('ticket_id', ticketId)
+        .order('created_at');
+
+      if (error) throw error;
+      setExistingPhotos(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar fotos:', error);
+    }
+  };
+
   const getLocation = () => {
     if (!navigator.geolocation) {
       toast.error('Geolocalização não suportada');
@@ -256,8 +301,79 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
     }
   };
 
+  const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      const newPhotosList: PhotoToUpload[] = Array.from(files).map(file => ({
+        file,
+        preview: URL.createObjectURL(file),
+        caption: '',
+      }));
+      setNewPhotos(prev => [...prev, ...newPhotosList]);
+    }
+    e.target.value = '';
+  };
+
+  const removeNewPhoto = (index: number) => {
+    URL.revokeObjectURL(newPhotos[index].preview);
+    setNewPhotos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateNewPhotoCaption = (index: number, caption: string) => {
+    setNewPhotos(prev => prev.map((photo, i) => 
+      i === index ? { ...photo, caption } : photo
+    ));
+  };
+
+  const uploadNewPhotos = async () => {
+    if (!ticketId || !user || newPhotos.length === 0) return;
+
+    for (const photo of newPhotos) {
+      const fileName = `${ticketId}/${Date.now()}-${photo.file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('ticket-photos')
+        .upload(fileName, photo.file);
+      
+      if (uploadError) {
+        console.error('Erro ao fazer upload:', uploadError);
+        continue;
+      }
+      
+      const { data: urlData } = supabase.storage
+        .from('ticket-photos')
+        .getPublicUrl(fileName);
+      
+      await supabase.from('ticket_photos').insert({
+        ticket_id: ticketId,
+        file_url: urlData.publicUrl,
+        caption: photo.caption || null,
+        uploaded_by_user_id: user.id,
+      });
+    }
+  };
+
+  const validateBusinessRules = (data: TicketFormData): boolean => {
+    if (data.km_start && data.km_end && data.km_end < data.km_start) {
+      toast.error('KM Final deve ser maior ou igual ao KM Inicial');
+      return false;
+    }
+
+    if (data.start_datetime && data.end_datetime) {
+      const start = new Date(data.start_datetime);
+      const end = new Date(data.end_datetime);
+      if (end < start) {
+        toast.error('Data/hora final deve ser posterior à data/hora inicial');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const onSubmit = async (data: TicketFormData) => {
     if (!ticketId) return;
+
+    if (!validateBusinessRules(data)) return;
 
     setIsLoading(true);
     try {
@@ -294,7 +410,14 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
 
       if (error) throw error;
 
+      // Upload new photos
+      if (newPhotos.length > 0) {
+        await uploadNewPhotos();
+      }
+
       toast.success('Chamado atualizado com sucesso!');
+      newPhotos.forEach(p => URL.revokeObjectURL(p.preview));
+      setNewPhotos([]);
       onOpenChange(false);
       onSuccess();
     } catch (error) {
@@ -316,14 +439,14 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
         <ScrollArea className="max-h-[calc(90vh-120px)]">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pr-4">
-              <Tabs defaultValue="basic" className="w-full">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="basic">Dados Básicos</TabsTrigger>
-                  <TabsTrigger value="operation">Operação</TabsTrigger>
-                  <TabsTrigger value="report">Relatório</TabsTrigger>
+                  <TabsTrigger value="cliente">Cliente</TabsTrigger>
+                  <TabsTrigger value="agente">Agente/Despesas</TabsTrigger>
+                  <TabsTrigger value="fotos">Fotos</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="basic" className="space-y-4 mt-4">
+                <TabsContent value="cliente" className="space-y-4 mt-4">
                   <FormField
                     control={form.control}
                     name="status"
@@ -479,6 +602,35 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                     />
                   </div>
 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="start_datetime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Data/Hora Início *</FormLabel>
+                          <FormControl>
+                            <Input type="datetime-local" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="end_datetime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Data/Hora Fim</FormLabel>
+                          <FormControl>
+                            <Input type="datetime-local" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <div className="space-y-2">
                     <Label>Coordenadas</Label>
                     <div className="flex items-end gap-2">
@@ -537,7 +689,7 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                   </div>
                 </TabsContent>
 
-                <TabsContent value="operation" className="space-y-4 mt-4">
+                <TabsContent value="agente" className="space-y-4 mt-4">
                   <FormField
                     control={form.control}
                     name="main_agent_id"
@@ -563,138 +715,118 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                     )}
                   />
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="support_agent_1_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Apoio 1</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ''}>
+                  {/* Apoio 1 */}
+                  <div className="space-y-2 p-3 border rounded-lg">
+                    <Label className="font-medium">Apoio 1</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="support_agent_1_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Agente</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || ''}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="">Nenhum</SelectItem>
+                                {agents.map((agent) => (
+                                  <SelectItem key={agent.id} value={agent.id}>
+                                    {agent.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="support_agent_1_arrival"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Chegada</FormLabel>
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione" />
-                              </SelectTrigger>
+                              <Input type="datetime-local" {...field} />
                             </FormControl>
-                            <SelectContent>
-                              <SelectItem value="">Nenhum</SelectItem>
-                              {agents.map((agent) => (
-                                <SelectItem key={agent.id} value={agent.id}>
-                                  {agent.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="support_agent_1_arrival"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Chegada</FormLabel>
-                          <FormControl>
-                            <Input type="datetime-local" {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="support_agent_1_departure"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Saída</FormLabel>
-                          <FormControl>
-                            <Input type="datetime-local" {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="support_agent_2_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Apoio 2</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ''}>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="support_agent_1_departure"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Saída</FormLabel>
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione" />
-                              </SelectTrigger>
+                              <Input type="datetime-local" {...field} />
                             </FormControl>
-                            <SelectContent>
-                              <SelectItem value="">Nenhum</SelectItem>
-                              {agents.map((agent) => (
-                                <SelectItem key={agent.id} value={agent.id}>
-                                  {agent.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="support_agent_2_arrival"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Chegada</FormLabel>
-                          <FormControl>
-                            <Input type="datetime-local" {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="support_agent_2_departure"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Saída</FormLabel>
-                          <FormControl>
-                            <Input type="datetime-local" {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="start_datetime"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Data/Hora Início *</FormLabel>
-                          <FormControl>
-                            <Input type="datetime-local" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="end_datetime"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Data/Hora Fim</FormLabel>
-                          <FormControl>
-                            <Input type="datetime-local" {...field} />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+                  {/* Apoio 2 */}
+                  <div className="space-y-2 p-3 border rounded-lg">
+                    <Label className="font-medium">Apoio 2</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="support_agent_2_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Agente</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || ''}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="">Nenhum</SelectItem>
+                                {agents.map((agent) => (
+                                  <SelectItem key={agent.id} value={agent.id}>
+                                    {agent.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="support_agent_2_arrival"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Chegada</FormLabel>
+                            <FormControl>
+                              <Input type="datetime-local" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="support_agent_2_departure"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Saída</FormLabel>
+                            <FormControl>
+                              <Input type="datetime-local" {...field} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Quilometragem */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <FormField
                       control={form.control}
                       name="km_start"
@@ -732,9 +864,20 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                         </FormItem>
                       )}
                     />
+
+                    <div>
+                      <Label>KM Rodado</Label>
+                      <Input 
+                        type="text" 
+                        value={kmRodado !== null ? `${kmRodado} km` : '-'} 
+                        disabled 
+                        className="bg-muted"
+                      />
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Despesas */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <FormField
                       control={form.control}
                       name="toll_cost"
@@ -794,27 +937,17 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                         </FormItem>
                       )}
                     />
-                  </div>
-                </TabsContent>
 
-                <TabsContent value="report" className="space-y-4 mt-4">
-                  <FormField
-                    control={form.control}
-                    name="summary"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Resumo</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Breve resumo do atendimento..."
-                            className="resize-none"
-                            rows={3}
-                            {...field}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                    <div>
+                      <Label>Total (R$)</Label>
+                      <Input 
+                        type="text" 
+                        value={`R$ ${totalCost.toFixed(2).replace('.', ',')}`} 
+                        disabled 
+                        className="bg-muted"
+                      />
+                    </div>
+                  </div>
 
                   <FormField
                     control={form.control}
@@ -826,13 +959,96 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                           <Textarea
                             placeholder="Relatório detalhado do atendimento..."
                             className="resize-none"
-                            rows={8}
+                            rows={6}
                             {...field}
                           />
                         </FormControl>
                       </FormItem>
                     )}
                   />
+                </TabsContent>
+
+                <TabsContent value="fotos" className="space-y-4 mt-4">
+                  {/* Existing photos */}
+                  {existingPhotos.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="font-medium">Fotos já anexadas</Label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {existingPhotos.map((photo) => (
+                          <div key={photo.id} className="relative">
+                            <img
+                              src={photo.file_url}
+                              alt={photo.caption || 'Foto do chamado'}
+                              className="w-full h-24 object-cover rounded-lg border"
+                            />
+                            {photo.caption && (
+                              <p className="text-xs text-muted-foreground mt-1 truncate">{photo.caption}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upload area */}
+                  <div className="space-y-2">
+                    <Label className="font-medium">Adicionar novas fotos</Label>
+                    <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+                      <input
+                        type="file"
+                        id="photo-upload-edit"
+                        accept="image/*"
+                        multiple
+                        onChange={handlePhotoAdd}
+                        className="hidden"
+                      />
+                      <label htmlFor="photo-upload-edit" className="cursor-pointer">
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="flex gap-2">
+                            <Upload className="h-8 w-8 text-muted-foreground" />
+                            <Camera className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                          <span className="text-sm text-muted-foreground">
+                            Clique para selecionar fotos ou usar a câmera
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* New photos preview */}
+                  {newPhotos.length > 0 && (
+                    <div className="space-y-3">
+                      <Label className="font-medium">Novas fotos ({newPhotos.length})</Label>
+                      {newPhotos.map((photo, index) => (
+                        <div key={index} className="flex gap-3 items-start p-3 border rounded-lg">
+                          <div className="relative">
+                            <img
+                              src={photo.preview}
+                              alt={`Preview ${index + 1}`}
+                              className="w-20 h-20 object-cover rounded-lg"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="absolute -top-2 -right-2 h-6 w-6"
+                              onClick={() => removeNewPhoto(index)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <div className="flex-1">
+                            <Input
+                              placeholder="Legenda da foto (opcional)"
+                              value={photo.caption}
+                              onChange={(e) => updateNewPhotoCaption(index, e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
 
