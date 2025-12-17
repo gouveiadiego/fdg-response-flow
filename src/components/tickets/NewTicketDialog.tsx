@@ -287,11 +287,31 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
     return uploadedPhotos;
   };
 
+  const validateBusinessRules = (data: TicketFormData): boolean => {
+    if (data.km_start && data.km_end && data.km_end < data.km_start) {
+      toast.error('KM Final deve ser maior ou igual ao KM Inicial');
+      return false;
+    }
+
+    if (data.start_datetime && data.end_datetime) {
+      const start = new Date(data.start_datetime);
+      const end = new Date(data.end_datetime);
+      if (end < start) {
+        toast.error('Data/hora final deve ser posterior à data/hora inicial');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const onSubmit = async (data: TicketFormData) => {
     if (!user) {
       toast.error('Usuário não autenticado');
       return;
     }
+
+    if (!validateBusinessRules(data)) return;
 
     setIsSubmitting(true);
     try {

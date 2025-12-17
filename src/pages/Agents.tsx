@@ -4,8 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, UserCheck, Phone, Mail } from 'lucide-react';
+import { Plus, Search, UserCheck, Phone, Mail, Shield, ShieldOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { NewAgentDialog } from '@/components/agents/NewAgentDialog';
+import { EditAgentDialog } from '@/components/agents/EditAgentDialog';
+import { RoleGuard } from '@/components/RoleGuard';
 
 interface Agent {
   id: string;
@@ -14,12 +17,16 @@ interface Agent {
   phone: string;
   email: string | null;
   status: 'ativo' | 'inativo';
+  is_armed: boolean | null;
 }
 
 const Agents = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [newDialogOpen, setNewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAgents();
@@ -29,7 +36,7 @@ const Agents = () => {
     try {
       const { data, error } = await supabase
         .from('agents')
-        .select('id, name, document, phone, email, status')
+        .select('id, name, document, phone, email, status, is_armed')
         .order('name');
 
       if (error) throw error;
@@ -40,6 +47,11 @@ const Agents = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEdit = (agentId: string) => {
+    setSelectedAgentId(agentId);
+    setEditDialogOpen(true);
   };
 
   const filteredAgents = agents.filter((agent) =>
@@ -64,10 +76,12 @@ const Agents = () => {
           <h1 className="text-3xl font-bold text-foreground mb-2">Agentes</h1>
           <p className="text-muted-foreground">Gerencie a equipe de agentes</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Agente
-        </Button>
+        <RoleGuard allowedRoles={['admin', 'operador']}>
+          <Button onClick={() => setNewDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Agente
+          </Button>
+        </RoleGuard>
       </div>
 
       <div className="relative">
@@ -89,10 +103,12 @@ const Agents = () => {
               {searchTerm ? 'Tente buscar com outros termos' : 'Comece cadastrando um novo agente'}
             </p>
             {!searchTerm && (
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Cadastrar Agente
-              </Button>
+              <RoleGuard allowedRoles={['admin', 'operador']}>
+                <Button onClick={() => setNewDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Cadastrar Agente
+                </Button>
+              </RoleGuard>
             )}
           </CardContent>
         </Card>
@@ -106,11 +122,26 @@ const Agents = () => {
                     <UserCheck className="h-5 w-5 text-primary" />
                     <span className="truncate">{agent.name}</span>
                   </CardTitle>
-                  <Badge variant={agent.status === 'ativo' ? 'default' : 'secondary'}>
+                  <div className="flex gap-1">
+                    {agent.is_armed ? (
+                      <Badge variant="destructive" className="text-xs">
+                        <Shield className="h-3 w-3 mr-1" />
+                        Armado
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">
+                        <ShieldOff className="h-3 w-3 mr-1" />
+                        Desarmado
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CardDescription className="font-mono text-xs">{agent.document}</CardDescription>
+                  <Badge variant={agent.status === 'ativo' ? 'default' : 'outline'}>
                     {agent.status === 'ativo' ? 'Ativo' : 'Inativo'}
                   </Badge>
                 </div>
-                <CardDescription className="font-mono text-xs">{agent.document}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -123,16 +154,36 @@ const Agents = () => {
                     <span className="truncate">{agent.email}</span>
                   </div>
                 )}
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    Editar
-                  </Button>
-                </div>
+                <RoleGuard allowedRoles={['admin', 'operador']}>
+                  <div className="flex gap-2 pt-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => handleEdit(agent.id)}
+                    >
+                      Editar
+                    </Button>
+                  </div>
+                </RoleGuard>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <NewAgentDialog
+        open={newDialogOpen}
+        onOpenChange={setNewDialogOpen}
+        onSuccess={fetchAgents}
+      />
+
+      <EditAgentDialog
+        agentId={selectedAgentId}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSuccess={fetchAgents}
+      />
     </div>
   );
 };
