@@ -689,35 +689,51 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                   </div>
                 </TabsContent>
 
-                <TabsContent value="agente" className="space-y-4 mt-4">
-                  <FormField
-                    control={form.control}
-                    name="main_agent_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Agente Principal *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o agente" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {agents.map((agent) => (
-                              <SelectItem key={agent.id} value={agent.id}>
-                                {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <TabsContent value="agente" className="space-y-6 mt-4">
+                  {/* Agente Principal e Veículo */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="main_agent_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Agente Principal *</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o agente" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {agents.map((agent) => (
+                                <SelectItem key={agent.id} value={agent.id}>
+                                  {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  {/* Apoio 1 */}
-                  <div className="space-y-2 p-3 border rounded-lg">
-                    <Label className="font-medium">Apoio 1</Label>
+                    <div>
+                      <Label>Veículo Selecionado</Label>
+                      <Input 
+                        value={filteredVehicles.find(v => v.id === form.watch('vehicle_id'))?.description || 'Selecione um veículo na aba Cliente'}
+                        disabled
+                        className="mt-2 bg-muted"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Seção Apoios */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm border-b pb-2">Apoios</h4>
+
+                    {/* Apoio 1 */}
+                    <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
+                      <Label className="font-medium">Apoio 1</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <FormField
                         control={form.control}
@@ -767,11 +783,11 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                           </FormItem>
                         )}
                       />
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Apoio 2 */}
-                  <div className="space-y-2 p-3 border rounded-lg">
+                    {/* Apoio 2 */}
+                    <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
                     <Label className="font-medium">Apoio 2</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <FormField
@@ -822,143 +838,168 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                           </FormItem>
                         )}
                       />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Quilometragem */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="km_start"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>KM Inicial</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              placeholder="0" 
-                              {...field}
-                              value={field.value || ''}
-                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="km_end"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>KM Final</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              placeholder="0" 
-                              {...field}
-                              value={field.value || ''}
-                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <div>
-                      <Label>KM Rodado</Label>
-                      <Input 
-                        type="text" 
-                        value={kmRodado !== null ? `${kmRodado} km` : '-'} 
-                        disabled 
-                        className="bg-muted"
+                  {/* Seção Quilometragem */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm border-b pb-2">Quilometragem</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="km_start"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>KM Inicial</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                placeholder="0" 
+                                {...field}
+                                value={field.value || ''}
+                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                  </div>
 
-                  {/* Despesas */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="toll_cost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Pedágio (R$)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01"
-                              placeholder="0,00" 
-                              {...field}
-                              value={field.value || ''}
-                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="food_cost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Alimentação (R$)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01"
-                              placeholder="0,00" 
-                              {...field}
-                              value={field.value || ''}
-                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="other_costs"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Outros (R$)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01"
-                              placeholder="0,00" 
-                              {...field}
-                              value={field.value || ''}
-                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <div>
-                      <Label>Total (R$)</Label>
-                      <Input 
-                        type="text" 
-                        value={`R$ ${totalCost.toFixed(2).replace('.', ',')}`} 
-                        disabled 
-                        className="bg-muted"
+                      <FormField
+                        control={form.control}
+                        name="km_end"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>KM Final</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                placeholder="0" 
+                                {...field}
+                                value={field.value || ''}
+                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
                       />
+
+                      <div>
+                        <Label>KM Rodado</Label>
+                        <Input 
+                          type="text" 
+                          value={kmRodado !== null ? `${kmRodado} km` : '-'} 
+                          disabled 
+                          className="bg-muted font-semibold"
+                        />
+                      </div>
                     </div>
                   </div>
+
+                  {/* Seção Despesas */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm border-b pb-2">Despesas</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="toll_cost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Pedágio (R$)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                placeholder="0,00" 
+                                {...field}
+                                value={field.value || ''}
+                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="food_cost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Alimentação (R$)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                placeholder="0,00" 
+                                {...field}
+                                value={field.value || ''}
+                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="other_costs"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Outros (R$)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                step="0.01"
+                                placeholder="0,00" 
+                                {...field}
+                                value={field.value || ''}
+                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <div>
+                        <Label>Total</Label>
+                        <Input 
+                          type="text" 
+                          value={`R$ ${totalCost.toFixed(2)}`} 
+                          disabled 
+                          className="bg-muted font-semibold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Resumo e Descrição */}
+                  <FormField
+                    control={form.control}
+                    name="summary"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Resumo (opcional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Breve resumo do atendimento..."
+                            maxLength={500}
+                            {...field}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}
                     name="detailed_report"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Relatório Detalhado</FormLabel>
+                        <FormLabel>Descrição do Evento</FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Relatório detalhado do atendimento..."
-                            className="resize-none"
+                            className="resize-none min-h-[100px]"
                             rows={6}
                             {...field}
                           />
