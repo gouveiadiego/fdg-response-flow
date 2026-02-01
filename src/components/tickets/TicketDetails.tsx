@@ -227,60 +227,98 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
   };
 
   const handleGeneratePDF = async () => {
-    if (!ticket) return;
+    if (!ticketId) return;
 
     setGeneratingPDF(true);
     try {
+      // Fetch fresh data from database to ensure PDF has latest info
+      const { data: freshTicket, error: ticketError } = await supabase
+        .from('tickets')
+        .select(`
+          *,
+          clients (name, document, contact_phone),
+          main_agent:agents!tickets_main_agent_id_fkey (name, is_armed),
+          support_agent_1:agents!tickets_support_agent_1_id_fkey (name, is_armed),
+          support_agent_2:agents!tickets_support_agent_2_id_fkey (name, is_armed),
+          vehicles (
+            description, 
+            tractor_plate, 
+            tractor_brand, 
+            tractor_model,
+            trailer1_plate,
+            trailer1_body_type,
+            trailer2_plate,
+            trailer2_body_type,
+            trailer3_plate,
+            trailer3_body_type
+          ),
+          plans (name)
+        `)
+        .eq('id', ticketId)
+        .maybeSingle();
+
+      if (ticketError) throw ticketError;
+      if (!freshTicket) throw new Error('Ticket not found');
+
+      // Fetch fresh photos
+      const { data: freshPhotos, error: photosError } = await supabase
+        .from('ticket_photos')
+        .select('*')
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: false });
+
+      if (photosError) throw photosError;
+
       const pdfData: TicketPDFData = {
-        code: ticket.code,
-        status: ticket.status,
-        city: ticket.city,
-        state: ticket.state,
-        start_datetime: ticket.start_datetime,
-        end_datetime: ticket.end_datetime,
-        coordinates_lat: ticket.coordinates_lat,
-        coordinates_lng: ticket.coordinates_lng,
-        km_start: ticket.km_start,
-        km_end: ticket.km_end,
-        toll_cost: ticket.toll_cost,
-        food_cost: ticket.food_cost,
-        other_costs: ticket.other_costs,
-        total_cost: ticket.total_cost,
-        duration_minutes: ticket.duration_minutes,
-        detailed_report: ticket.detailed_report,
-        service_type: ticket.service_type,
+        code: freshTicket.code,
+        status: freshTicket.status,
+        city: freshTicket.city,
+        state: freshTicket.state,
+        start_datetime: freshTicket.start_datetime,
+        end_datetime: freshTicket.end_datetime,
+        coordinates_lat: freshTicket.coordinates_lat,
+        coordinates_lng: freshTicket.coordinates_lng,
+        km_start: freshTicket.km_start,
+        km_end: freshTicket.km_end,
+        toll_cost: freshTicket.toll_cost,
+        food_cost: freshTicket.food_cost,
+        other_costs: freshTicket.other_costs,
+        total_cost: freshTicket.total_cost,
+        duration_minutes: freshTicket.duration_minutes,
+        detailed_report: freshTicket.detailed_report,
+        service_type: freshTicket.service_type,
         client: {
-          name: ticket.clients?.name || '',
-          contact_phone: ticket.clients?.contact_phone || null,
+          name: (freshTicket as any).clients?.name || '',
+          contact_phone: (freshTicket as any).clients?.contact_phone || null,
         },
         agent: {
-          name: ticket.main_agent?.name || '',
-          is_armed: ticket.main_agent?.is_armed || null,
+          name: (freshTicket as any).main_agent?.name || '',
+          is_armed: (freshTicket as any).main_agent?.is_armed || null,
         },
-        support_agent_1: ticket.support_agent_1 ? {
-          name: ticket.support_agent_1.name,
-          is_armed: ticket.support_agent_1.is_armed,
+        support_agent_1: (freshTicket as any).support_agent_1 ? {
+          name: (freshTicket as any).support_agent_1.name,
+          is_armed: (freshTicket as any).support_agent_1.is_armed,
         } : null,
-        support_agent_2: ticket.support_agent_2 ? {
-          name: ticket.support_agent_2.name,
-          is_armed: ticket.support_agent_2.is_armed,
+        support_agent_2: (freshTicket as any).support_agent_2 ? {
+          name: (freshTicket as any).support_agent_2.name,
+          is_armed: (freshTicket as any).support_agent_2.is_armed,
         } : null,
         vehicle: {
-          description: ticket.vehicles?.description || '',
-          tractor_plate: ticket.vehicles?.tractor_plate || null,
-          tractor_brand: ticket.vehicles?.tractor_brand || null,
-          tractor_model: ticket.vehicles?.tractor_model || null,
-          trailer1_plate: ticket.vehicles?.trailer1_plate || null,
-          trailer1_body_type: ticket.vehicles?.trailer1_body_type || null,
-          trailer2_plate: ticket.vehicles?.trailer2_plate || null,
-          trailer2_body_type: ticket.vehicles?.trailer2_body_type || null,
-          trailer3_plate: ticket.vehicles?.trailer3_plate || null,
-          trailer3_body_type: ticket.vehicles?.trailer3_body_type || null,
+          description: (freshTicket as any).vehicles?.description || '',
+          tractor_plate: (freshTicket as any).vehicles?.tractor_plate || null,
+          tractor_brand: (freshTicket as any).vehicles?.tractor_brand || null,
+          tractor_model: (freshTicket as any).vehicles?.tractor_model || null,
+          trailer1_plate: (freshTicket as any).vehicles?.trailer1_plate || null,
+          trailer1_body_type: (freshTicket as any).vehicles?.trailer1_body_type || null,
+          trailer2_plate: (freshTicket as any).vehicles?.trailer2_plate || null,
+          trailer2_body_type: (freshTicket as any).vehicles?.trailer2_body_type || null,
+          trailer3_plate: (freshTicket as any).vehicles?.trailer3_plate || null,
+          trailer3_body_type: (freshTicket as any).vehicles?.trailer3_body_type || null,
         },
         plan: {
-          name: ticket.plans?.name || '',
+          name: (freshTicket as any).plans?.name || '',
         },
-        photos: photos.map(p => ({
+        photos: (freshPhotos || []).map(p => ({
           file_url: p.file_url,
           caption: p.caption,
         })),
