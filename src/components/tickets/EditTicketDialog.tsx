@@ -384,10 +384,10 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           client_id: data.client_id,
           vehicle_id: data.vehicle_id,
           main_agent_id: data.main_agent_id,
-          support_agent_1_id: data.support_agent_1_id || null,
+          support_agent_1_id: data.support_agent_1_id && data.support_agent_1_id !== 'none' ? data.support_agent_1_id : null,
           support_agent_1_arrival: data.support_agent_1_arrival || null,
           support_agent_1_departure: data.support_agent_1_departure || null,
-          support_agent_2_id: data.support_agent_2_id || null,
+          support_agent_2_id: data.support_agent_2_id && data.support_agent_2_id !== 'none' ? data.support_agent_2_id : null,
           support_agent_2_arrival: data.support_agent_2_arrival || null,
           support_agent_2_departure: data.support_agent_2_departure || null,
           plan_id: data.plan_id,
@@ -748,10 +748,10 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">Nenhum</SelectItem>
+                                <SelectItem value="none">Nenhum</SelectItem>
                                 {agents.map((agent) => (
                                   <SelectItem key={agent.id} value={agent.id}>
-                                    {agent.name}
+                                    {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -803,10 +803,10 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">Nenhum</SelectItem>
+                                <SelectItem value="none">Nenhum</SelectItem>
                                 {agents.map((agent) => (
                                   <SelectItem key={agent.id} value={agent.id}>
-                                    {agent.name}
+                                    {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
