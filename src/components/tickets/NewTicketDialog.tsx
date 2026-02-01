@@ -331,10 +331,10 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
           plan_id: data.plan_id,
           service_type: data.service_type,
           main_agent_id: data.main_agent_id,
-          support_agent_1_id: data.support_agent_1_id || null,
+          support_agent_1_id: data.support_agent_1_id && data.support_agent_1_id !== 'none' ? data.support_agent_1_id : null,
           support_agent_1_arrival: data.support_agent_1_arrival || null,
           support_agent_1_departure: data.support_agent_1_departure || null,
-          support_agent_2_id: data.support_agent_2_id || null,
+          support_agent_2_id: data.support_agent_2_id && data.support_agent_2_id !== 'none' ? data.support_agent_2_id : null,
           support_agent_2_arrival: data.support_agent_2_arrival || null,
           support_agent_2_departure: data.support_agent_2_departure || null,
           city: data.city,
@@ -701,7 +701,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">Nenhum</SelectItem>
+                                <SelectItem value="none">Nenhum</SelectItem>
                                 {agents.map((agent) => (
                                   <SelectItem key={agent.id} value={agent.id}>
                                     {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
@@ -756,7 +756,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">Nenhum</SelectItem>
+                                <SelectItem value="none">Nenhum</SelectItem>
                                 {agents.map((agent) => (
                                   <SelectItem key={agent.id} value={agent.id}>
                                     {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
