@@ -14,16 +14,19 @@ const COMPANY_INFO = {
   website: 'www.fdgprontaresposta.com.br',
 };
 
-// Premium color palette
+// Premium color palette - Black theme matching logo
 const COLORS = {
-  primary: { r: 30, g: 41, b: 59 },      // Dark slate
-  secondary: { r: 71, g: 85, b: 105 },   // Slate
+  primary: { r: 18, g: 18, b: 18 },      // Pure black (matching logo background)
+  secondary: { r: 40, g: 40, b: 40 },    // Dark gray
   accent: { r: 59, g: 130, b: 246 },     // Blue
-  gold: { r: 180, g: 160, b: 120 },      // Gold/bronze
-  light: { r: 241, g: 245, b: 249 },     // Light gray
+  gold: { r: 212, g: 175, b: 55 },       // Premium gold
+  silver: { r: 192, g: 192, b: 192 },    // Silver for icons
+  light: { r: 248, g: 250, b: 252 },     // Light gray background
   white: { r: 255, g: 255, b: 255 },
   text: { r: 30, g: 41, b: 59 },
   muted: { r: 100, g: 116, b: 139 },
+  cardBg: { r: 255, g: 255, b: 255 },    // White cards
+  cardBorder: { r: 226, g: 232, b: 240 }, // Light border
 };
 
 interface TicketPDFData {
@@ -156,50 +159,86 @@ const setColor = (pdf: jsPDF, color: { r: number; g: number; b: number }) => {
   pdf.setTextColor(color.r, color.g, color.b);
 };
 
-// Draw premium header with logo
+// Draw premium header with logo - Black theme with icons
 const drawHeader = async (pdf: jsPDF, pageWidth: number, margin: number, logoImg: string | null): Promise<number> => {
-  let y = 10;
-  
-  // Premium header background with gradient effect (dark bar)
+  // Premium header background - Pure black matching logo
   setColor(pdf, COLORS.primary);
-  pdf.rect(0, 0, pageWidth, 45, 'F');
+  pdf.rect(0, 0, pageWidth, 48, 'F');
   
-  // Accent line
+  // Bottom accent line - Gold
   setColor(pdf, COLORS.gold);
-  pdf.rect(0, 45, pageWidth, 2, 'F');
+  pdf.rect(0, 48, pageWidth, 1.5, 'F');
   
-  // Logo
+  // Logo with background highlight
   if (logoImg) {
     try {
-      pdf.addImage(logoImg, 'PNG', margin, 5, 35, 35);
+      // Logo area
+      pdf.addImage(logoImg, 'PNG', margin, 4, 40, 40);
     } catch (e) {
       console.error('Error adding logo:', e);
     }
   }
   
-  // Company name
+  // Company name - Large and bold
+  const textStartX = logoImg ? margin + 48 : margin;
   setColor(pdf, COLORS.white);
-  pdf.setFontSize(18);
+  pdf.setFontSize(20);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('FDG PRONTA RESPOSTA', logoImg ? margin + 42 : margin, 20);
+  pdf.text('FDG PRONTA RESPOSTA', textStartX, 18);
   
-  // Tagline
-  pdf.setFontSize(9);
+  // Tagline with gold color
+  pdf.setFontSize(10);
   pdf.setFont('helvetica', 'normal');
   setColor(pdf, COLORS.gold);
-  pdf.text('Segurança e Monitoramento de Cargas', logoImg ? margin + 42 : margin, 28);
+  pdf.text('Segurança e Monitoramento de Cargas', textStartX, 26);
   
-  // Contact info on the right
-  pdf.setFontSize(7);
-  setColor(pdf, COLORS.white);
+  // Contact info on the right - With icons (using symbols)
   const rightX = pageWidth - margin;
-  pdf.text(COMPANY_INFO.phoneCommercial + ' (Comercial)', rightX, 14, { align: 'right' });
-  pdf.text(COMPANY_INFO.phoneMonitoring + ' (Monitoramento)', rightX, 20, { align: 'right' });
-  pdf.text(COMPANY_INFO.email, rightX, 26, { align: 'right' });
-  pdf.text(COMPANY_INFO.website, rightX, 32, { align: 'right' });
-  pdf.text(COMPANY_INFO.instagram, rightX, 38, { align: 'right' });
+  const iconOffset = 3;
   
-  return 55;
+  pdf.setFontSize(8);
+  
+  // Phone Commercial - with icon
+  setColor(pdf, COLORS.gold);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('☎', rightX - pdf.getTextWidth(COMPANY_INFO.phoneCommercial + ' (Comercial)') - iconOffset, 12);
+  setColor(pdf, COLORS.white);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(COMPANY_INFO.phoneCommercial + ' (Comercial)', rightX, 12, { align: 'right' });
+  
+  // Phone Monitoring - with icon
+  setColor(pdf, COLORS.gold);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('☎', rightX - pdf.getTextWidth(COMPANY_INFO.phoneMonitoring + ' (Monitoramento)') - iconOffset, 19);
+  setColor(pdf, COLORS.white);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(COMPANY_INFO.phoneMonitoring + ' (Monitoramento)', rightX, 19, { align: 'right' });
+  
+  // Email - with icon
+  setColor(pdf, COLORS.gold);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('✉', rightX - pdf.getTextWidth(COMPANY_INFO.email) - iconOffset, 26);
+  setColor(pdf, COLORS.white);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(COMPANY_INFO.email, rightX, 26, { align: 'right' });
+  
+  // Website - with icon
+  setColor(pdf, COLORS.gold);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('🌐', rightX - pdf.getTextWidth(COMPANY_INFO.website) - iconOffset, 33);
+  setColor(pdf, COLORS.white);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(COMPANY_INFO.website, rightX, 33, { align: 'right' });
+  
+  // Instagram - with icon
+  setColor(pdf, COLORS.gold);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('📷', rightX - pdf.getTextWidth(COMPANY_INFO.instagram) - iconOffset, 40);
+  setColor(pdf, COLORS.white);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(COMPANY_INFO.instagram, rightX, 40, { align: 'right' });
+  
+  return 58;
 };
 
 // Draw footer
@@ -227,48 +266,63 @@ const drawFooter = (pdf: jsPDF, pageWidth: number, pageHeight: number) => {
   pdf.text(`${COMPANY_INFO.website}`, pageWidth - 15, footerY + 10, { align: 'right' });
 };
 
-// Draw section title
+// Draw section title - Black background matching header
 const drawSectionTitle = (pdf: jsPDF, title: string, x: number, y: number, width: number): number => {
   setColor(pdf, COLORS.primary);
   drawRoundedRect(pdf, x, y, width, 8, 2);
   
+  // Gold accent line on left
+  setColor(pdf, COLORS.gold);
+  pdf.rect(x, y, 3, 8, 'F');
+  
   setColor(pdf, COLORS.white);
-  pdf.setFontSize(10);
+  pdf.setFontSize(9);
   pdf.setFont('helvetica', 'bold');
-  pdf.text(title, x + 4, y + 5.5);
+  pdf.text(title, x + 6, y + 5.5);
   
   return y + 12;
 };
 
-// Draw info row with label and value
-const drawInfoRow = (pdf: jsPDF, label: string, value: string, x: number, y: number, labelWidth: number = 45): number => {
+// Draw info row with label and value - Fixed width handling
+const drawInfoRow = (pdf: jsPDF, label: string, value: string, x: number, y: number, labelWidth: number = 35, maxValueWidth: number = 50): number => {
   setColor(pdf, COLORS.muted);
   pdf.setFontSize(8);
   pdf.setFont('helvetica', 'normal');
   pdf.text(label, x, y);
   
   setColor(pdf, COLORS.text);
-  pdf.setFontSize(9);
+  pdf.setFontSize(8);
   pdf.setFont('helvetica', 'bold');
-  pdf.text(value || '-', x + labelWidth, y);
   
-  return y + 6;
+  // Truncate value if too long
+  let displayValue = value || '-';
+  const valueWidth = pdf.getTextWidth(displayValue);
+  if (valueWidth > maxValueWidth) {
+    while (pdf.getTextWidth(displayValue + '...') > maxValueWidth && displayValue.length > 0) {
+      displayValue = displayValue.slice(0, -1);
+    }
+    displayValue += '...';
+  }
+  
+  pdf.text(displayValue, x + labelWidth, y);
+  
+  return y + 5.5;
 };
 
-// Draw card-style box
+// Draw card-style box - Premium with subtle shadow
 const drawCard = (pdf: jsPDF, x: number, y: number, w: number, h: number) => {
-  // Shadow effect
-  pdf.setFillColor(200, 200, 200);
-  drawRoundedRect(pdf, x + 1, y + 1, w, h, 3);
+  // Subtle shadow effect
+  pdf.setFillColor(180, 180, 180);
+  drawRoundedRect(pdf, x + 0.8, y + 0.8, w, h, 4);
   
-  // Card background
-  setColor(pdf, COLORS.white);
-  drawRoundedRect(pdf, x, y, w, h, 3);
+  // Card background - Pure white
+  setColor(pdf, COLORS.cardBg);
+  drawRoundedRect(pdf, x, y, w, h, 4);
   
-  // Border
-  pdf.setDrawColor(COLORS.light.r, COLORS.light.g, COLORS.light.b);
-  pdf.setLineWidth(0.5);
-  pdf.roundedRect(x, y, w, h, 3, 3, 'S');
+  // Border - Subtle
+  pdf.setDrawColor(COLORS.cardBorder.r, COLORS.cardBorder.g, COLORS.cardBorder.b);
+  pdf.setLineWidth(0.3);
+  pdf.roundedRect(x, y, w, h, 4, 4, 'S');
 };
 
 export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
@@ -315,72 +369,76 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   
   y += 25;
   
-  // Main info cards row
-  const cardWidth = (contentWidth - 6) / 2;
+  // Main info cards row - Better spacing
+  const cardWidth = (contentWidth - 8) / 2;
+  const cardPadding = 4;
+  const labelWidth = 32;
+  const maxValueWidth = cardWidth - labelWidth - cardPadding * 2 - 8;
   
   // Card 1: Client Info
-  drawCard(pdf, margin, y, cardWidth, 38);
+  drawCard(pdf, margin, y, cardWidth, 36);
   let cardY = drawSectionTitle(pdf, 'SOLICITANTE', margin + 2, y + 3, cardWidth - 4);
-  cardY = drawInfoRow(pdf, 'Cliente:', data.client.name, margin + 4, cardY);
-  cardY = drawInfoRow(pdf, 'Contato:', data.client.contact_phone || '-', margin + 4, cardY);
-  cardY = drawInfoRow(pdf, 'Processo:', data.code, margin + 4, cardY);
-  cardY = drawInfoRow(pdf, 'Plano:', data.plan.name, margin + 4, cardY);
+  cardY = drawInfoRow(pdf, 'Cliente:', data.client.name, margin + cardPadding, cardY, labelWidth, maxValueWidth);
+  cardY = drawInfoRow(pdf, 'Contato:', data.client.contact_phone || '-', margin + cardPadding, cardY, labelWidth, maxValueWidth);
+  cardY = drawInfoRow(pdf, 'Processo:', data.code, margin + cardPadding, cardY, labelWidth, maxValueWidth);
+  cardY = drawInfoRow(pdf, 'Plano:', data.plan.name, margin + cardPadding, cardY, labelWidth, maxValueWidth);
   
   // Card 2: Location Info
-  drawCard(pdf, margin + cardWidth + 6, y, cardWidth, 38);
-  cardY = drawSectionTitle(pdf, 'LOCALIZAÇÃO', margin + cardWidth + 8, y + 3, cardWidth - 4);
-  cardY = drawInfoRow(pdf, 'Cidade/UF:', `${data.city}/${data.state}`, margin + cardWidth + 10, cardY);
+  const card2X = margin + cardWidth + 8;
+  drawCard(pdf, card2X, y, cardWidth, 36);
+  cardY = drawSectionTitle(pdf, 'LOCALIZAÇÃO', card2X + 2, y + 3, cardWidth - 4);
+  cardY = drawInfoRow(pdf, 'Cidade/UF:', `${data.city}/${data.state}`, card2X + cardPadding, cardY, labelWidth, maxValueWidth);
   cardY = drawInfoRow(pdf, 'Coordenadas:', 
     data.coordinates_lat && data.coordinates_lng 
       ? `${data.coordinates_lat.toFixed(6)}, ${data.coordinates_lng.toFixed(6)}` 
       : '-', 
-    margin + cardWidth + 10, cardY);
+    card2X + cardPadding, cardY, 42, maxValueWidth);
   
-  y += 44;
+  y += 42;
   
   // Card 3: Date/Time Info
-  drawCard(pdf, margin, y, cardWidth, 38);
+  drawCard(pdf, margin, y, cardWidth, 36);
   cardY = drawSectionTitle(pdf, 'DATA E HORA', margin + 2, y + 3, cardWidth - 4);
   
   if (data.start_datetime) {
     const startDate = new Date(data.start_datetime);
-    cardY = drawInfoRow(pdf, 'Início:', format(startDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }), margin + 4, cardY);
+    cardY = drawInfoRow(pdf, 'Início:', format(startDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }), margin + cardPadding, cardY, labelWidth, maxValueWidth);
   }
   
   if (data.end_datetime) {
     const endDate = new Date(data.end_datetime);
-    cardY = drawInfoRow(pdf, 'Término:', format(endDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }), margin + 4, cardY);
+    cardY = drawInfoRow(pdf, 'Término:', format(endDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }), margin + cardPadding, cardY, labelWidth, maxValueWidth);
   }
   
-  cardY = drawInfoRow(pdf, 'Duração:', formatDurationText(data.duration_minutes), margin + 4, cardY);
+  cardY = drawInfoRow(pdf, 'Duração:', formatDurationText(data.duration_minutes), margin + cardPadding, cardY, labelWidth, maxValueWidth);
   cardY = drawInfoRow(pdf, 'KM Rodado:', 
     data.km_start && data.km_end ? `${data.km_end - data.km_start} km` : '-', 
-    margin + 4, cardY);
+    margin + cardPadding, cardY, labelWidth, maxValueWidth);
   
   // Card 4: Vehicle Info
-  drawCard(pdf, margin + cardWidth + 6, y, cardWidth, 38);
-  cardY = drawSectionTitle(pdf, 'VEÍCULO', margin + cardWidth + 8, y + 3, cardWidth - 4);
-  cardY = drawInfoRow(pdf, 'Descrição:', data.vehicle.description, margin + cardWidth + 10, cardY);
+  drawCard(pdf, card2X, y, cardWidth, 36);
+  cardY = drawSectionTitle(pdf, 'VEÍCULO', card2X + 2, y + 3, cardWidth - 4);
+  cardY = drawInfoRow(pdf, 'Descrição:', data.vehicle.description, card2X + cardPadding, cardY, labelWidth, maxValueWidth);
   
   if (data.vehicle.tractor_plate) {
     cardY = drawInfoRow(pdf, 'Cavalo:', 
       `${data.vehicle.tractor_plate}${data.vehicle.tractor_brand ? ' - ' + data.vehicle.tractor_brand : ''}${data.vehicle.tractor_model ? ' ' + data.vehicle.tractor_model : ''}`,
-      margin + cardWidth + 10, cardY);
+      card2X + cardPadding, cardY, labelWidth, maxValueWidth);
   }
   
   if (data.vehicle.trailer1_plate) {
     cardY = drawInfoRow(pdf, 'Carreta 1:', 
       `${data.vehicle.trailer1_plate} (${bodyTypeLabels[data.vehicle.trailer1_body_type || ''] || data.vehicle.trailer1_body_type || '-'})`,
-      margin + cardWidth + 10, cardY);
+      card2X + cardPadding, cardY, labelWidth, maxValueWidth);
   }
   
   if (data.vehicle.trailer2_plate) {
     cardY = drawInfoRow(pdf, 'Carreta 2:', 
       `${data.vehicle.trailer2_plate} (${bodyTypeLabels[data.vehicle.trailer2_body_type || ''] || data.vehicle.trailer2_body_type || '-'})`,
-      margin + cardWidth + 10, cardY);
+      card2X + cardPadding, cardY, labelWidth, maxValueWidth);
   }
   
-  y += 44;
+  y += 42;
   
   // Card 5: Team Info (full width)
   drawCard(pdf, margin, y, contentWidth, 32);
