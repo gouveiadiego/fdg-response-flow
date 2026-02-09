@@ -42,6 +42,11 @@ const agentSchema = z.object({
   vehicle_plate: z.string().max(10).optional(),
   status: z.enum(['ativo', 'inativo']).default('ativo'),
   notes: z.string().max(1000).optional(),
+  pix_key: z.string().max(100).optional(),
+  bank_name: z.string().max(100).optional(),
+  bank_agency: z.string().max(20).optional(),
+  bank_account: z.string().max(30).optional(),
+  bank_account_type: z.enum(['corrente', 'poupanca']).optional(),
 });
 
 type AgentFormData = z.infer<typeof agentSchema>;
@@ -67,6 +72,11 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
       vehicle_plate: '',
       status: 'ativo',
       notes: '',
+      pix_key: '',
+      bank_name: '',
+      bank_agency: '',
+      bank_account: '',
+      bank_account_type: undefined,
     },
   });
 
@@ -83,6 +93,11 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
         vehicle_plate: data.vehicle_plate || null,
         status: data.status,
         notes: data.notes || null,
+        pix_key: data.pix_key || null,
+        bank_name: data.bank_name || null,
+        bank_agency: data.bank_agency || null,
+        bank_account: data.bank_account || null,
+        bank_account_type: data.bank_account_type || null,
       });
 
       if (error) throw error;
@@ -240,6 +255,93 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
                   </FormItem>
                 )}
               />
+
+              {/* Seção de Dados Bancários */}
+              <div className="pt-4 border-t">
+                <h3 className="text-sm font-semibold mb-3">Dados Bancários</h3>
+                
+                <FormField
+                  control={form.control}
+                  name="pix_key"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Chave PIX</FormLabel>
+                      <FormControl>
+                        <Input placeholder="CPF, E-mail, Telefone ou Chave Aleatória" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                  <FormField
+                    control={form.control}
+                    name="bank_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Banco</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nome do banco" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="bank_account_type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipo de Conta</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o tipo" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="corrente">Conta Corrente</SelectItem>
+                            <SelectItem value="poupanca">Conta Poupança</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                  <FormField
+                    control={form.control}
+                    name="bank_agency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Agência</FormLabel>
+                        <FormControl>
+                          <Input placeholder="0000" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="bank_account"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Conta</FormLabel>
+                        <FormControl>
+                          <Input placeholder="00000-0" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
 
               <FormField
                 control={form.control}

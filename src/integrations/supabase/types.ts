@@ -17,6 +17,10 @@ export type Database = {
       agents: {
         Row: {
           address: string | null
+          bank_account: string | null
+          bank_account_type: string | null
+          bank_agency: string | null
+          bank_name: string | null
           created_at: string
           document: string
           email: string | null
@@ -25,12 +29,17 @@ export type Database = {
           name: string
           notes: string | null
           phone: string
+          pix_key: string | null
           status: Database["public"]["Enums"]["agent_status"]
           updated_at: string
           vehicle_plate: string | null
         }
         Insert: {
           address?: string | null
+          bank_account?: string | null
+          bank_account_type?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
           created_at?: string
           document: string
           email?: string | null
@@ -39,12 +48,17 @@ export type Database = {
           name: string
           notes?: string | null
           phone: string
+          pix_key?: string | null
           status?: Database["public"]["Enums"]["agent_status"]
           updated_at?: string
           vehicle_plate?: string | null
         }
         Update: {
           address?: string | null
+          bank_account?: string | null
+          bank_account_type?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
           created_at?: string
           document?: string
           email?: string | null
@@ -53,6 +67,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string
+          pix_key?: string | null
           status?: Database["public"]["Enums"]["agent_status"]
           updated_at?: string
           vehicle_plate?: string | null
