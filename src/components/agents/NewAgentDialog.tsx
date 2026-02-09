@@ -4,6 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Search, Loader2 } from 'lucide-react';
+import { useCepLookup } from '@/hooks/useCepLookup';
 import {
   Dialog,
   DialogContent,
@@ -38,6 +40,7 @@ const agentSchema = z.object({
   phone: z.string().min(1, 'Telefone é obrigatório').max(20),
   email: z.string().email('E-mail inválido').optional().or(z.literal('')),
   address: z.string().max(500).optional(),
+  cep: z.string().max(10).optional(),
   is_armed: z.boolean().default(false),
   vehicle_plate: z.string().max(10).optional(),
   status: z.enum(['ativo', 'inativo']).default('ativo'),
@@ -59,6 +62,7 @@ interface NewAgentDialogProps {
 
 export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const { lookupCep, isLoading: isCepLoading } = useCepLookup();
 
   const form = useForm<AgentFormData>({
     resolver: zodResolver(agentSchema),
@@ -68,6 +72,7 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
       phone: '',
       email: '',
       address: '',
+      cep: '',
       is_armed: false,
       vehicle_plate: '',
       status: 'ativo',
@@ -80,6 +85,20 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
     },
   });
 
+  const handleCepLookup = async () => {
+    const cep = form.getValues('cep');
+    if (!cep) {
+      toast.error('Digite um CEP');
+      return;
+    }
+    
+    const result = await lookupCep(cep);
+    if (result) {
+      form.setValue('address', result.address);
+      toast.success('Endereço encontrado!');
+    }
+  };
+
   const onSubmit = async (data: AgentFormData) => {
     setIsLoading(true);
     try {
@@ -89,6 +108,7 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
         phone: data.phone,
         email: data.email || null,
         address: data.address || null,
+        cep: data.cep || null,
         is_armed: data.is_armed,
         vehicle_plate: data.vehicle_plate || null,
         status: data.status,
@@ -182,6 +202,35 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="cep"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CEP</FormLabel>
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input placeholder="00000-000" {...field} />
+                      </FormControl>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleCepLookup}
+                        disabled={isCepLoading}
+                      >
+                        {isCepLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Search className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
