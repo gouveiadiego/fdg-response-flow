@@ -440,85 +440,13 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   
   y += 42;
   
-  // Card 5: Team Info (full width)
-  drawCard(pdf, margin, y, contentWidth, 32);
+  // Card 5: Team Info (full width) - Only showing count, no names
+  drawCard(pdf, margin, y, contentWidth, 18);
   cardY = drawSectionTitle(pdf, 'EQUIPE MOBILIZADA', margin + 2, y + 3, contentWidth - 4);
   
   cardY = drawInfoRow(pdf, 'Efetivo:', calculateEfetivoMobilizado(data), margin + 4, cardY);
   
-  // Team members
-  const teamY = cardY + 2;
-  const memberWidth = contentWidth / 3 - 8;
-  
-  // Main agent
-  setColor(pdf, COLORS.primary);
-  pdf.setFontSize(8);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('AGENTE PRINCIPAL', margin + 4, teamY);
-  setColor(pdf, COLORS.text);
-  pdf.setFontSize(9);
-  pdf.text(data.agent.name, margin + 4, teamY + 5);
-  setColor(pdf, COLORS.muted);
-  pdf.setFontSize(7);
-  pdf.text(data.agent.is_armed ? 'Armado' : 'Desarmado', margin + 4, teamY + 9);
-  
-  // Support agent 1
-  if (data.support_agent_1) {
-    setColor(pdf, COLORS.primary);
-    pdf.setFontSize(8);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('APOIO 1', margin + memberWidth + 10, teamY);
-    setColor(pdf, COLORS.text);
-    pdf.setFontSize(9);
-    pdf.text(data.support_agent_1.name, margin + memberWidth + 10, teamY + 5);
-    setColor(pdf, COLORS.muted);
-    pdf.setFontSize(7);
-    pdf.text(data.support_agent_1.is_armed ? 'Armado' : 'Desarmado', margin + memberWidth + 10, teamY + 9);
-  }
-  
-  // Support agent 2
-  if (data.support_agent_2) {
-    setColor(pdf, COLORS.primary);
-    pdf.setFontSize(8);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('APOIO 2', margin + memberWidth * 2 + 16, teamY);
-    setColor(pdf, COLORS.text);
-    pdf.setFontSize(9);
-    pdf.text(data.support_agent_2.name, margin + memberWidth * 2 + 16, teamY + 5);
-    setColor(pdf, COLORS.muted);
-    pdf.setFontSize(7);
-    pdf.text(data.support_agent_2.is_armed ? 'Armado' : 'Desarmado', margin + memberWidth * 2 + 16, teamY + 9);
-  }
-  
-  y += 38;
-  
-  // Card 6: Costs (if applicable)
-  if (data.toll_cost || data.food_cost || data.other_costs || data.total_cost) {
-    drawCard(pdf, margin, y, contentWidth, 20);
-    cardY = drawSectionTitle(pdf, 'DESPESAS', margin + 2, y + 3, contentWidth - 4);
-    
-    const costSpacing = contentWidth / 4;
-    setColor(pdf, COLORS.muted);
-    pdf.setFontSize(7);
-    pdf.text('Pedágio', margin + 4, cardY);
-    pdf.text('Alimentação', margin + costSpacing, cardY);
-    pdf.text('Outros', margin + costSpacing * 2, cardY);
-    pdf.text('TOTAL', margin + costSpacing * 3, cardY);
-    
-    setColor(pdf, COLORS.text);
-    pdf.setFontSize(9);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(formatCurrency(data.toll_cost), margin + 4, cardY + 5);
-    pdf.text(formatCurrency(data.food_cost), margin + costSpacing, cardY + 5);
-    pdf.text(formatCurrency(data.other_costs), margin + costSpacing * 2, cardY + 5);
-    
-    // Total with accent color
-    setColor(pdf, COLORS.accent);
-    pdf.setFontSize(11);
-    pdf.text(formatCurrency(data.total_cost), margin + costSpacing * 3, cardY + 5);
-    
-    y += 26;
-  }
+  y += 24;
   
   // Footer
   drawFooter(pdf, pageWidth, pageHeight);
