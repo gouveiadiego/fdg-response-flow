@@ -21,6 +21,7 @@ export type Database = {
           bank_account_type: string | null
           bank_agency: string | null
           bank_name: string | null
+          cep: string | null
           created_at: string
           document: string
           email: string | null
@@ -40,6 +41,7 @@ export type Database = {
           bank_account_type?: string | null
           bank_agency?: string | null
           bank_name?: string | null
+          cep?: string | null
           created_at?: string
           document: string
           email?: string | null
@@ -59,6 +61,7 @@ export type Database = {
           bank_account_type?: string | null
           bank_agency?: string | null
           bank_name?: string | null
+          cep?: string | null
           created_at?: string
           document?: string
           email?: string | null
