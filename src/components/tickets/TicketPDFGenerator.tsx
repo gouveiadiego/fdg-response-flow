@@ -519,119 +519,110 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   // Footer
   drawFooter(pdf, pageWidth, pageHeight);
   
-  // ==================== PAGE 3+: PHOTOS (2x2 grid) ====================
+  // ==================== PAGE 3+: PHOTOS (2x2 grid, 4 per page) ====================
   if (data.photos && data.photos.length > 0) {
-    pdf.addPage();
+    const photosPerPage = 4;
+    const totalPages = Math.ceil(data.photos.length / photosPerPage);
     
-    // Background
-    setColor(pdf, COLORS.light);
-    pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+    // Fixed grid dimensions for uniform alignment
+    const gapX = 8; // horizontal gap between photos
+    const gapY = 10; // vertical gap between rows (photo + caption)
+    const photoWidth = (contentWidth - gapX) / 2;
+    const photoHeight = photoWidth * 0.6; // 5:3 landscape ratio
+    const captionHeight = 7; // reserved space for caption below photo
+    const cellHeight = photoHeight + captionHeight + gapY;
     
-    // Header
-    y = await drawHeader(pdf, pageWidth, margin, logoImg);
-    
-    // Title
-    drawCard(pdf, margin, y, contentWidth, 12);
-    setColor(pdf, COLORS.primary);
-    pdf.setFontSize(14);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('REGISTRO FOTOGRÁFICO', pageWidth / 2, y + 8, { align: 'center' });
-    
-    y += 18;
-    
-    const photoWidth = (contentWidth - 8) / 2;
-    const photoHeight = photoWidth * 0.6; // Landscape ratio
-    let photoIndex = 0;
-    
-    for (let i = 0; i < data.photos.length; i++) {
-      const photo = data.photos[i];
-      const col = photoIndex % 2;
-      const row = Math.floor(photoIndex % 4 / 2);
+    for (let page = 0; page < totalPages; page++) {
+      pdf.addPage();
       
-      const x = margin + col * (photoWidth + 8);
-      const photoY = y + row * (photoHeight + 18);
+      // Background
+      setColor(pdf, COLORS.light);
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
       
-      // Check if we need a new page
-      if (photoY + photoHeight + 18 > pageHeight - 30) {
-        drawFooter(pdf, pageWidth, pageHeight);
-        pdf.addPage();
-        
-        setColor(pdf, COLORS.light);
-        pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-        
-        y = await drawHeader(pdf, pageWidth, margin, logoImg);
-        photoIndex = 0;
-        i--; // Retry this photo on new page
-        continue;
-      }
+      // Header
+      y = await drawHeader(pdf, pageWidth, margin, logoImg);
       
-      try {
-        // Photo frame with shadow
-        pdf.setFillColor(180, 180, 180);
-        drawRoundedRect(pdf, x + 2, photoY + 2, photoWidth, photoHeight, 3);
+      // Title
+      drawCard(pdf, margin, y, contentWidth, 12);
+      setColor(pdf, COLORS.primary);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('REGISTRO FOTOGRÁFICO', pageWidth / 2, y + 8, { align: 'center' });
+      
+      // Page counter
+      setColor(pdf, COLORS.muted);
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Página ${page + 1} de ${totalPages} — Fotos ${page * photosPerPage + 1} a ${Math.min((page + 1) * photosPerPage, data.photos.length)} de ${data.photos.length}`, pageWidth / 2, y + 16, { align: 'center' });
+      
+      y += 22;
+      
+      const startIdx = page * photosPerPage;
+      const endIdx = Math.min(startIdx + photosPerPage, data.photos.length);
+      
+      for (let i = startIdx; i < endIdx; i++) {
+        const photo = data.photos[i];
+        const localIdx = i - startIdx;
+        const col = localIdx % 2;
+        const row = Math.floor(localIdx / 2);
         
-        setColor(pdf, COLORS.white);
-        drawRoundedRect(pdf, x, photoY, photoWidth, photoHeight, 3);
+        const x = margin + col * (photoWidth + gapX);
+        const photoY = y + row * cellHeight;
         
-        // Load and add image
-        const img = await loadImage(photo.file_url);
-        
-        // Clip rounded corners effect (simple rectangle for jspdf)
-        pdf.addImage(img, 'JPEG', x + 2, photoY + 2, photoWidth - 4, photoHeight - 4);
-        
-        // Photo border
-        pdf.setDrawColor(COLORS.light.r, COLORS.light.g, COLORS.light.b);
-        pdf.setLineWidth(1);
-        pdf.roundedRect(x, photoY, photoWidth, photoHeight, 3, 3, 'S');
-        
-        // Caption
-        if (photo.caption) {
+        try {
+          // Photo frame with subtle shadow
+          pdf.setFillColor(200, 200, 200);
+          drawRoundedRect(pdf, x + 1, photoY + 1, photoWidth, photoHeight, 3);
+          
+          // White background
+          setColor(pdf, COLORS.white);
+          drawRoundedRect(pdf, x, photoY, photoWidth, photoHeight, 3);
+          
+          // Load and add image - uniform padding
+          const img = await loadImage(photo.file_url);
+          const imgPad = 2;
+          pdf.addImage(img, 'JPEG', x + imgPad, photoY + imgPad, photoWidth - imgPad * 2, photoHeight - imgPad * 2);
+          
+          // Border
+          pdf.setDrawColor(COLORS.cardBorder.r, COLORS.cardBorder.g, COLORS.cardBorder.b);
+          pdf.setLineWidth(0.5);
+          pdf.roundedRect(x, photoY, photoWidth, photoHeight, 3, 3, 'S');
+          
+          // Caption below photo - fixed position
+          if (photo.caption) {
+            setColor(pdf, COLORS.muted);
+            pdf.setFontSize(7);
+            pdf.setFont('helvetica', 'italic');
+            const captionLines = pdf.splitTextToSize(photo.caption, photoWidth - 4);
+            pdf.text(captionLines[0], x + photoWidth / 2, photoY + photoHeight + 4, { align: 'center' });
+          }
+          
+          // Photo number badge
+          setColor(pdf, COLORS.accent);
+          pdf.circle(x + 7, photoY + 7, 4.5, 'F');
+          setColor(pdf, COLORS.white);
+          pdf.setFontSize(7);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text((i + 1).toString(), x + 7, photoY + 8.5, { align: 'center' });
+          
+        } catch (error) {
+          console.error('Erro ao carregar imagem:', error);
+          
+          // Placeholder
+          setColor(pdf, COLORS.light);
+          drawRoundedRect(pdf, x, photoY, photoWidth, photoHeight, 3);
+          pdf.setDrawColor(200, 200, 200);
+          pdf.roundedRect(x, photoY, photoWidth, photoHeight, 3, 3, 'S');
+          
           setColor(pdf, COLORS.muted);
-          pdf.setFontSize(8);
-          pdf.setFont('helvetica', 'italic');
-          const captionLines = pdf.splitTextToSize(photo.caption, photoWidth - 4);
-          pdf.text(captionLines[0], x + photoWidth / 2, photoY + photoHeight + 5, { align: 'center' });
+          pdf.setFontSize(9);
+          pdf.text('Imagem não disponível', x + photoWidth / 2, photoY + photoHeight / 2, { align: 'center' });
         }
-        
-        // Photo number badge
-        setColor(pdf, COLORS.accent);
-        pdf.circle(x + 8, photoY + 8, 5, 'F');
-        setColor(pdf, COLORS.white);
-        pdf.setFontSize(8);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text((i + 1).toString(), x + 8, photoY + 9.5, { align: 'center' });
-        
-      } catch (error) {
-        console.error('Erro ao carregar imagem:', error);
-        
-        // Placeholder for failed image
-        setColor(pdf, COLORS.light);
-        drawRoundedRect(pdf, x, photoY, photoWidth, photoHeight, 3);
-        
-        pdf.setDrawColor(200, 200, 200);
-        pdf.roundedRect(x, photoY, photoWidth, photoHeight, 3, 3, 'S');
-        
-        setColor(pdf, COLORS.muted);
-        pdf.setFontSize(9);
-        pdf.text('Imagem não disponível', x + photoWidth / 2, photoY + photoHeight / 2, { align: 'center' });
       }
       
-      photoIndex++;
-      
-      // New page every 4 photos
-      if (photoIndex % 4 === 0 && i < data.photos.length - 1) {
-        drawFooter(pdf, pageWidth, pageHeight);
-        pdf.addPage();
-        
-        setColor(pdf, COLORS.light);
-        pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-        
-        y = await drawHeader(pdf, pageWidth, margin, logoImg);
-      }
+      // Footer
+      drawFooter(pdf, pageWidth, pageHeight);
     }
-    
-    // Footer for last photo page
-    drawFooter(pdf, pageWidth, pageHeight);
   }
   
   // Save PDF
