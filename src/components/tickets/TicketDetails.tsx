@@ -603,39 +603,67 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                     <Image className="h-4 w-4 text-primary" />
                     Fotos ({photos.length})
                   </CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => setAddPhotosOpen(true)}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Adicionar
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
                 {photos.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {photos.map((photo) => (
-                      <div key={photo.id} className="space-y-1">
-                        <a
-                          href={photo.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block"
-                        >
-                          <img
-                            src={photo.file_url}
-                            alt={photo.caption || 'Foto do chamado'}
-                            className="w-full h-24 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity"
-                          />
-                        </a>
-                        {photo.caption && (
-                          <p className="text-xs text-muted-foreground truncate">{photo.caption}</p>
-                        )}
-                      </div>
-                    ))}
+                  <div className="space-y-4">
+                    {Array.from({ length: Math.ceil(photos.length / 4) }).map((_, groupIndex) => {
+                      const groupPhotos = photos.slice(groupIndex * 4, (groupIndex + 1) * 4);
+                      return (
+                        <div key={groupIndex} className="space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            Quadro {groupIndex + 1} — Fotos {groupIndex * 4 + 1} a {groupIndex * 4 + groupPhotos.length}
+                          </p>
+                          <div className="grid grid-cols-2 gap-3">
+                            {groupPhotos.map((photo) => (
+                              <div key={photo.id} className="space-y-1">
+                                <a
+                                  href={photo.file_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block"
+                                >
+                                  <div className="relative w-full aspect-[4/3] overflow-hidden rounded-lg border border-border hover:opacity-80 transition-opacity bg-muted">
+                                    <img
+                                      src={photo.file_url}
+                                      alt={photo.caption || 'Foto do chamado'}
+                                      className="absolute inset-0 w-full h-full object-cover"
+                                    />
+                                  </div>
+                                </a>
+                                {photo.caption && (
+                                  <p className="text-xs text-muted-foreground line-clamp-2">{photo.caption}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          {groupIndex < Math.ceil(photos.length / 4) - 1 && (
+                            <Separator className="mt-3" />
+                          )}
+                        </div>
+                      );
+                    })}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => setAddPhotosOpen(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Adicionar Mais Fotos
+                    </Button>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Nenhuma foto adicionada
-                  </p>
+                  <div className="text-center py-4 space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma foto adicionada
+                    </p>
+                    <Button variant="outline" size="sm" onClick={() => setAddPhotosOpen(true)}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Adicionar Fotos
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>
