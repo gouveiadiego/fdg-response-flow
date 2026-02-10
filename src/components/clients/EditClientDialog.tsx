@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ClientVehiclesSection } from '@/components/clients/ClientVehiclesSection';
 
 const clientSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(255),
@@ -296,6 +297,8 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
                   </FormItem>
                 )}
               />
+
+              {clientId && <ClientVehiclesSection clientId={clientId} />}
 
               <div className="flex gap-3 pt-4">
                 <Button
