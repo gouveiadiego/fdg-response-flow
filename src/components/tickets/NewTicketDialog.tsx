@@ -351,7 +351,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
           summary: data.summary || null,
           detailed_report: data.detailed_report,
           created_by_user_id: user.id,
-          code: '',
+          code: null,
         })
         .select()
         .single();

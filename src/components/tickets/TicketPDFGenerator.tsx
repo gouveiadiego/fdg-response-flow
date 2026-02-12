@@ -30,7 +30,8 @@ const COLORS = {
 };
 
 interface TicketPDFData {
-  code: string;
+  code: string | null;
+  operator_name: string | null;
   status: string;
   city: string;
   state: string;
@@ -380,7 +381,9 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   let cardY = drawSectionTitle(pdf, 'SOLICITANTE', margin + 2, y + 3, cardWidth - 4);
   cardY = drawInfoRow(pdf, 'Cliente:', data.client.name, margin + cardPadding, cardY, labelWidth, maxValueWidth);
   cardY = drawInfoRow(pdf, 'Contato:', data.client.contact_phone || '-', margin + cardPadding, cardY, labelWidth, maxValueWidth);
-  cardY = drawInfoRow(pdf, 'Processo:', data.code, margin + cardPadding, cardY, labelWidth, maxValueWidth);
+  if (data.code) {
+    cardY = drawInfoRow(pdf, 'Processo:', data.code, margin + cardPadding, cardY, labelWidth, maxValueWidth);
+  }
   cardY = drawInfoRow(pdf, 'Plano:', data.plan.name, margin + cardPadding, cardY, labelWidth, maxValueWidth);
   
   // Card 2: Location Info
@@ -440,13 +443,16 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   
   y += 42;
   
-  // Card 5: Team Info (full width) - Only showing count, no names
-  drawCard(pdf, margin, y, contentWidth, 18);
+  // Card 5: Team & Operator Info (full width)
+  drawCard(pdf, margin, y, contentWidth, data.operator_name ? 24 : 18);
   cardY = drawSectionTitle(pdf, 'EQUIPE MOBILIZADA', margin + 2, y + 3, contentWidth - 4);
   
   cardY = drawInfoRow(pdf, 'Efetivo:', calculateEfetivoMobilizado(data), margin + 4, cardY);
+  if (data.operator_name) {
+    cardY = drawInfoRow(pdf, 'Operador:', data.operator_name, margin + 4, cardY);
+  }
   
-  y += 24;
+  y += (data.operator_name ? 30 : 24);
   
   // Footer
   drawFooter(pdf, pageWidth, pageHeight);
@@ -626,7 +632,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   }
   
   // Save PDF
-  pdf.save(`Relatorio_${data.code}.pdf`);
+  pdf.save(`Relatorio_${data.code || 'Atendimento'}.pdf`);
 }
 
 async function loadImage(url: string): Promise<string> {
