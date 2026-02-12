@@ -260,6 +260,17 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
       if (ticketError) throw ticketError;
       if (!freshTicket) throw new Error('Ticket not found');
 
+      // Fetch operator name from profiles
+      let operatorName: string | null = null;
+      if (freshTicket.created_by_user_id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('user_id', freshTicket.created_by_user_id)
+          .maybeSingle();
+        operatorName = profile?.name || null;
+      }
+
       // Fetch fresh photos
       const { data: freshPhotos, error: photosError } = await supabase
         .from('ticket_photos')
@@ -270,7 +281,8 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
       if (photosError) throw photosError;
 
       const pdfData: TicketPDFData = {
-        code: freshTicket.code,
+        code: freshTicket.code || null,
+        operator_name: operatorName,
         status: freshTicket.status,
         city: freshTicket.city,
         state: freshTicket.state,

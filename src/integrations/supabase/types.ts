@@ -224,7 +224,7 @@ export type Database = {
         Row: {
           city: string
           client_id: string
-          code: string
+          code: string | null
           coordinates_lat: number | null
           coordinates_lng: number | null
           created_at: string
@@ -258,7 +258,7 @@ export type Database = {
         Insert: {
           city: string
           client_id: string
-          code: string
+          code?: string | null
           coordinates_lat?: number | null
           coordinates_lng?: number | null
           created_at?: string
@@ -292,7 +292,7 @@ export type Database = {
         Update: {
           city?: string
           client_id?: string
-          code?: string
+          code?: string | null
           coordinates_lat?: number | null
           coordinates_lng?: number | null
           created_at?: string
