@@ -16,9 +16,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Camera, Upload, X, Loader2 } from 'lucide-react';
 
-interface PhotoToUpload {
-  file: File;
-  preview: string;
+interface PhotoGroup {
+  files: { file: File; preview: string }[];
   caption: string;
 }
 
@@ -31,68 +30,116 @@ interface AddPhotosDialogProps {
 
 export function AddPhotosDialog({ ticketId, open, onOpenChange, onSuccess }: AddPhotosDialogProps) {
   const { user } = useAuth();
-  const [photos, setPhotos] = useState<PhotoToUpload[]>([]);
+  const [groups, setGroups] = useState<PhotoGroup[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+
+  const totalPhotos = groups.reduce((sum, g) => sum + g.files.length, 0);
 
   const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      const newPhotos: PhotoToUpload[] = Array.from(files).map(file => ({
-        file,
-        preview: URL.createObjectURL(file),
-        caption: '',
-      }));
-      setPhotos(prev => [...prev, ...newPhotos]);
+    if (!files || files.length === 0) return;
+
+    const newFiles = Array.from(files).map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+
+    // Distribute into groups of 4
+    const newGroups: PhotoGroup[] = [];
+    let remaining = [...newFiles];
+
+    // Try to fill the last existing group first
+    if (groups.length > 0) {
+      const lastGroup = groups[groups.length - 1];
+      if (lastGroup.files.length < 4) {
+        const spotsAvailable = 4 - lastGroup.files.length;
+        const toAdd = remaining.splice(0, spotsAvailable);
+        const updatedGroups = [...groups];
+        updatedGroups[updatedGroups.length - 1] = {
+          ...lastGroup,
+          files: [...lastGroup.files, ...toAdd],
+        };
+        setGroups(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            files: [...updated[updated.length - 1].files, ...toAdd],
+          };
+          // Add remaining as new groups
+          while (remaining.length > 0) {
+            updated.push({ files: remaining.splice(0, 4), caption: '' });
+          }
+          return updated;
+        });
+        e.target.value = '';
+        return;
+      }
     }
-    // Reset input
+
+    // All into new groups of 4
+    setGroups(prev => {
+      const updated = [...prev];
+      while (remaining.length > 0) {
+        updated.push({ files: remaining.splice(0, 4), caption: '' });
+      }
+      return updated;
+    });
+
     e.target.value = '';
   };
 
-  const removePhoto = (index: number) => {
-    URL.revokeObjectURL(photos[index].preview);
-    setPhotos(prev => prev.filter((_, i) => i !== index));
+  const removePhoto = (groupIndex: number, photoIndex: number) => {
+    setGroups(prev => {
+      const updated = [...prev];
+      URL.revokeObjectURL(updated[groupIndex].files[photoIndex].preview);
+      updated[groupIndex] = {
+        ...updated[groupIndex],
+        files: updated[groupIndex].files.filter((_, i) => i !== photoIndex),
+      };
+      // Remove empty groups
+      return updated.filter(g => g.files.length > 0);
+    });
   };
 
-  const updateCaption = (index: number, caption: string) => {
-    setPhotos(prev => prev.map((photo, i) => 
-      i === index ? { ...photo, caption } : photo
-    ));
+  const updateGroupCaption = (groupIndex: number, caption: string) => {
+    setGroups(prev => prev.map((g, i) => i === groupIndex ? { ...g, caption } : g));
   };
 
   const handleUpload = async () => {
-    if (!user || photos.length === 0) return;
+    if (!user || totalPhotos === 0) return;
 
     setIsUploading(true);
     try {
-      for (const photo of photos) {
-        const fileName = `${ticketId}/${Date.now()}-${photo.file.name}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('ticket-photos')
-          .upload(fileName, photo.file);
+      for (const group of groups) {
+        for (const photo of group.files) {
+          const fileName = `${ticketId}/${Date.now()}-${photo.file.name}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('ticket-photos')
+            .upload(fileName, photo.file);
 
-        if (uploadError) {
-          console.error('Erro ao fazer upload:', uploadError);
-          continue;
+          if (uploadError) {
+            console.error('Erro ao fazer upload:', uploadError);
+            continue;
+          }
+
+          const { data: urlData } = supabase.storage
+            .from('ticket-photos')
+            .getPublicUrl(fileName);
+
+          await supabase.from('ticket_photos').insert({
+            ticket_id: ticketId,
+            file_url: urlData.publicUrl,
+            caption: group.caption || null,
+            uploaded_by_user_id: user.id,
+          });
         }
-
-        const { data: urlData } = supabase.storage
-          .from('ticket-photos')
-          .getPublicUrl(fileName);
-
-        await supabase.from('ticket_photos').insert({
-          ticket_id: ticketId,
-          file_url: urlData.publicUrl,
-          caption: photo.caption || null,
-          uploaded_by_user_id: user.id,
-        });
       }
 
-      toast.success(`${photos.length} foto(s) adicionada(s) com sucesso!`);
+      toast.success(`${totalPhotos} foto(s) adicionada(s) com sucesso!`);
       
-      // Cleanup
-      photos.forEach(p => URL.revokeObjectURL(p.preview));
-      setPhotos([]);
+      groups.forEach(g => g.files.forEach(p => URL.revokeObjectURL(p.preview)));
+      setGroups([]);
       onSuccess();
       onOpenChange(false);
     } catch (error) {
@@ -105,8 +152,8 @@ export function AddPhotosDialog({ ticketId, open, onOpenChange, onSuccess }: Add
 
   const handleClose = (openState: boolean) => {
     if (!openState) {
-      photos.forEach(p => URL.revokeObjectURL(p.preview));
-      setPhotos([]);
+      groups.forEach(g => g.files.forEach(p => URL.revokeObjectURL(p.preview)));
+      setGroups([]);
     }
     onOpenChange(openState);
   };
@@ -117,7 +164,7 @@ export function AddPhotosDialog({ ticketId, open, onOpenChange, onSuccess }: Add
         <DialogHeader>
           <DialogTitle>Adicionar Fotos</DialogTitle>
           <DialogDescription>
-            Adicione novas fotos ao chamado. Você pode incluir legendas para cada foto.
+            As fotos são agrupadas em blocos de 4. Cada bloco tem uma descrição compartilhada.
           </DialogDescription>
         </DialogHeader>
 
@@ -149,45 +196,50 @@ export function AddPhotosDialog({ ticketId, open, onOpenChange, onSuccess }: Add
             </div>
           </div>
 
-          {photos.length > 0 && (
-            <div className="space-y-4">
-              {photos.map((photo, index) => (
-                <div key={index} className="flex gap-4 p-4 border border-border rounded-lg">
-                  <div className="relative flex-shrink-0">
+          {groups.map((group, groupIndex) => (
+            <div key={groupIndex} className="border border-border rounded-lg p-4 space-y-3">
+              <p className="text-xs font-medium text-muted-foreground">
+                Grupo {groupIndex + 1} — {group.files.length} foto{group.files.length !== 1 ? 's' : ''}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {group.files.map((photo, photoIndex) => (
+                  <div key={photoIndex} className="relative aspect-[4/3]">
                     <img
                       src={photo.preview}
-                      alt={`Foto ${index + 1}`}
-                      className="w-24 h-24 object-cover rounded-lg"
+                      alt={`Foto ${photoIndex + 1}`}
+                      className="w-full h-full object-cover rounded-lg"
                     />
                     <button
                       type="button"
-                      onClick={() => removePhoto(index)}
+                      onClick={() => removePhoto(groupIndex, photoIndex)}
                       className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-3 w-3" />
                     </button>
                   </div>
-                  <div className="flex-1">
-                    <Label htmlFor={`caption-${index}`}>Legenda (opcional)</Label>
-                    <Textarea
-                      id={`caption-${index}`}
-                      placeholder="Descreva esta foto..."
-                      value={photo.caption}
-                      onChange={(e) => updateCaption(index, e.target.value)}
-                      className="mt-1 resize-none"
-                      rows={2}
-                    />
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <div>
+                <Label htmlFor={`group-caption-${groupIndex}`} className="text-xs">
+                  Descrição do grupo (opcional)
+                </Label>
+                <Textarea
+                  id={`group-caption-${groupIndex}`}
+                  placeholder="Descreva este grupo de fotos..."
+                  value={group.caption}
+                  onChange={(e) => updateGroupCaption(groupIndex, e.target.value)}
+                  className="mt-1 resize-none"
+                  rows={2}
+                />
+              </div>
             </div>
-          )}
+          ))}
 
           <div className="flex gap-2 justify-end">
             <Button variant="outline" onClick={() => handleClose(false)} disabled={isUploading}>
               Cancelar
             </Button>
-            <Button onClick={handleUpload} disabled={photos.length === 0 || isUploading}>
+            <Button onClick={handleUpload} disabled={totalPhotos === 0 || isUploading}>
               {isUploading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -196,7 +248,7 @@ export function AddPhotosDialog({ ticketId, open, onOpenChange, onSuccess }: Add
               ) : (
                 <>
                   <Upload className="h-4 w-4 mr-2" />
-                  Adicionar {photos.length} Foto{photos.length !== 1 ? 's' : ''}
+                  Adicionar {totalPhotos} Foto{totalPhotos !== 1 ? 's' : ''}
                 </>
               )}
             </Button>
