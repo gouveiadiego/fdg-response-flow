@@ -66,7 +66,7 @@ interface TicketFull {
   support_agent_2_arrival: string | null;
   support_agent_2_departure: string | null;
   clients: { name: string; document: string; contact_phone: string | null };
-  main_agent: { name: string; is_armed: boolean | null };
+  main_agent: { name: string; is_armed: boolean | null; pix_key: string | null; bank_name: string | null; bank_agency: string | null; bank_account: string | null; bank_account_type: string | null; vehicle_plate: string | null };
   support_agent_1: { name: string; is_armed: boolean | null } | null;
   support_agent_2: { name: string; is_armed: boolean | null } | null;
   vehicles: { 
@@ -147,7 +147,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
         .select(`
           *,
           clients (name, document, contact_phone),
-          main_agent:agents!tickets_main_agent_id_fkey (name, is_armed),
+          main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type, vehicle_plate),
           support_agent_1:agents!tickets_support_agent_1_id_fkey (name, is_armed),
           support_agent_2:agents!tickets_support_agent_2_id_fkey (name, is_armed),
           vehicles (
@@ -237,7 +237,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
         .select(`
           *,
           clients (name, document, contact_phone),
-          main_agent:agents!tickets_main_agent_id_fkey (name, is_armed),
+          main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type, vehicle_plate),
           support_agent_1:agents!tickets_support_agent_1_id_fkey (name, is_armed),
           support_agent_2:agents!tickets_support_agent_2_id_fkey (name, is_armed),
           vehicles (
@@ -454,6 +454,24 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                     <p className="text-xs text-muted-foreground">
                       Principal {ticket.main_agent?.is_armed ? '(Armado)' : '(Desarmado)'} • {ticket.plans?.name}
                     </p>
+                    {ticket.main_agent?.vehicle_plate && (
+                      <p className="text-xs text-muted-foreground">Placa: {ticket.main_agent.vehicle_plate}</p>
+                    )}
+                    {(ticket.main_agent?.pix_key || ticket.main_agent?.bank_name) && (
+                      <div className="mt-1 pt-1 border-t border-border">
+                        {ticket.main_agent.pix_key && (
+                          <p className="text-xs text-muted-foreground">PIX: {ticket.main_agent.pix_key}</p>
+                        )}
+                        {ticket.main_agent.bank_name && (
+                          <p className="text-xs text-muted-foreground">
+                            {ticket.main_agent.bank_name}
+                            {ticket.main_agent.bank_agency && ` • Ag: ${ticket.main_agent.bank_agency}`}
+                            {ticket.main_agent.bank_account && ` • Conta: ${ticket.main_agent.bank_account}`}
+                            {ticket.main_agent.bank_account_type && ` (${ticket.main_agent.bank_account_type === 'corrente' ? 'CC' : 'CP'})`}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                   {ticket.support_agent_1 && (
                     <div className="pt-1 border-t border-border">
