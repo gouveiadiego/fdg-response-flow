@@ -14,13 +14,12 @@ const COMPANY_INFO = {
   website: 'www.fdgprontaresposta.com.br',
 };
 
-// Premium color palette - Black theme matching logo
+// Premium color palette - Clean theme matching logo
 const COLORS = {
   primary: { r: 18, g: 18, b: 18 },      // Pure black (matching logo background)
   secondary: { r: 40, g: 40, b: 40 },    // Dark gray
   accent: { r: 59, g: 130, b: 246 },     // Blue
-  gold: { r: 212, g: 175, b: 55 },       // Premium gold
-  silver: { r: 192, g: 192, b: 192 },    // Silver for icons
+  silver: { r: 180, g: 185, b: 195 },    // Silver/steel for accents
   light: { r: 248, g: 250, b: 252 },     // Light gray background
   white: { r: 255, g: 255, b: 255 },
   text: { r: 30, g: 41, b: 59 },
@@ -160,86 +159,68 @@ const setColor = (pdf: jsPDF, color: { r: number; g: number; b: number }) => {
   pdf.setTextColor(color.r, color.g, color.b);
 };
 
-// Draw premium header with logo - Black theme with icons
+// Draw premium header with logo - Clean theme
 const drawHeader = async (pdf: jsPDF, pageWidth: number, margin: number, logoImg: string | null): Promise<number> => {
-  // Premium header background - Pure black matching logo
+  // Header background - Pure black
   setColor(pdf, COLORS.primary);
   pdf.rect(0, 0, pageWidth, 48, 'F');
   
-  // Bottom accent line - Gold
-  setColor(pdf, COLORS.gold);
-  pdf.rect(0, 48, pageWidth, 1.5, 'F');
+  // Bottom accent line - Silver
+  setColor(pdf, COLORS.silver);
+  pdf.rect(0, 48, pageWidth, 1, 'F');
   
-  // Logo with background highlight
+  // Logo only (no company name text)
   if (logoImg) {
     try {
-      // Logo area
       pdf.addImage(logoImg, 'PNG', margin, 4, 40, 40);
     } catch (e) {
       console.error('Error adding logo:', e);
     }
   }
   
-  // Company name - Large and bold
+  // Tagline below logo area
   const textStartX = logoImg ? margin + 48 : margin;
-  setColor(pdf, COLORS.white);
-  pdf.setFontSize(20);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('FDG PRONTA RESPOSTA', textStartX, 18);
-  
-  // Tagline with gold color
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'normal');
-  setColor(pdf, COLORS.gold);
-  pdf.text('Segurança e Monitoramento de Cargas', textStartX, 26);
-  
-  // Contact info on the right - With icons (using symbols)
-  const rightX = pageWidth - margin;
-  const iconOffset = 3;
-  
+  setColor(pdf, COLORS.silver);
   pdf.setFontSize(8);
+  pdf.setFont('helvetica', 'italic');
+  pdf.text('Pronta Resposta padrao alto | Atuacao 24h com rede validada.', textStartX, 28);
   
-  // Phone Commercial - with icon
-  setColor(pdf, COLORS.gold);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('☎', rightX - pdf.getTextWidth(COMPANY_INFO.phoneCommercial + ' (Comercial)') - iconOffset, 12);
-  setColor(pdf, COLORS.white);
+  // Contact info on the right - Clean text labels
+  const rightX = pageWidth - margin;
+  pdf.setFontSize(7.5);
+  
+  // Phone Commercial
+  setColor(pdf, COLORS.silver);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(COMPANY_INFO.phoneCommercial + ' (Comercial)', rightX, 12, { align: 'right' });
-  
-  // Phone Monitoring - with icon
-  setColor(pdf, COLORS.gold);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('☎', rightX - pdf.getTextWidth(COMPANY_INFO.phoneMonitoring + ' (Monitoramento)') - iconOffset, 19);
+  pdf.text('Tel:', rightX - pdf.getTextWidth(COMPANY_INFO.phoneCommercial + ' (Comercial)') - 8, 10);
   setColor(pdf, COLORS.white);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text(COMPANY_INFO.phoneMonitoring + ' (Monitoramento)', rightX, 19, { align: 'right' });
+  pdf.text(COMPANY_INFO.phoneCommercial + ' (Comercial)', rightX, 10, { align: 'right' });
   
-  // Email - with icon
-  setColor(pdf, COLORS.gold);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('✉', rightX - pdf.getTextWidth(COMPANY_INFO.email) - iconOffset, 26);
+  // Phone Monitoring
+  setColor(pdf, COLORS.silver);
+  pdf.text('Tel:', rightX - pdf.getTextWidth(COMPANY_INFO.phoneMonitoring + ' (Monitoramento)') - 8, 16);
   setColor(pdf, COLORS.white);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text(COMPANY_INFO.email, rightX, 26, { align: 'right' });
+  pdf.text(COMPANY_INFO.phoneMonitoring + ' (Monitoramento)', rightX, 16, { align: 'right' });
   
-  // Website - with icon
-  setColor(pdf, COLORS.gold);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('🌐', rightX - pdf.getTextWidth(COMPANY_INFO.website) - iconOffset, 33);
+  // Email
+  setColor(pdf, COLORS.silver);
+  pdf.text('E-mail:', rightX - pdf.getTextWidth(COMPANY_INFO.email) - 12, 22);
   setColor(pdf, COLORS.white);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text(COMPANY_INFO.website, rightX, 33, { align: 'right' });
+  pdf.text(COMPANY_INFO.email, rightX, 22, { align: 'right' });
   
-  // Instagram - with icon
-  setColor(pdf, COLORS.gold);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('📷', rightX - pdf.getTextWidth(COMPANY_INFO.instagram) - iconOffset, 40);
+  // Website
+  setColor(pdf, COLORS.silver);
+  pdf.text('Site:', rightX - pdf.getTextWidth(COMPANY_INFO.website) - 9, 28);
   setColor(pdf, COLORS.white);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text(COMPANY_INFO.instagram, rightX, 40, { align: 'right' });
+  pdf.text(COMPANY_INFO.website, rightX, 28, { align: 'right' });
   
-  return 58;
+  // Instagram
+  setColor(pdf, COLORS.silver);
+  pdf.text('Insta:', rightX - pdf.getTextWidth(COMPANY_INFO.instagram) - 10, 34);
+  setColor(pdf, COLORS.white);
+  pdf.text(COMPANY_INFO.instagram, rightX, 34, { align: 'right' });
+  
+  return 56;
 };
 
 // Draw footer
@@ -251,8 +232,8 @@ const drawFooter = (pdf: jsPDF, pageWidth: number, pageHeight: number) => {
   pdf.rect(0, footerY, pageWidth, 20, 'F');
   
   // Accent line
-  setColor(pdf, COLORS.gold);
-  pdf.rect(0, footerY, pageWidth, 1, 'F');
+  setColor(pdf, COLORS.silver);
+  pdf.rect(0, footerY, pageWidth, 0.5, 'F');
   
   // Footer text
   setColor(pdf, COLORS.white);
@@ -272,8 +253,8 @@ const drawSectionTitle = (pdf: jsPDF, title: string, x: number, y: number, width
   setColor(pdf, COLORS.primary);
   drawRoundedRect(pdf, x, y, width, 8, 2);
   
-  // Gold accent line on left
-  setColor(pdf, COLORS.gold);
+  // Silver accent line on left
+  setColor(pdf, COLORS.silver);
   pdf.rect(x, y, 3, 8, 'F');
   
   setColor(pdf, COLORS.white);
