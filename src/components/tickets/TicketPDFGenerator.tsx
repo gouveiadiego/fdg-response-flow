@@ -159,38 +159,67 @@ const setColor = (pdf: jsPDF, color: { r: number; g: number; b: number }) => {
   pdf.setTextColor(color.r, color.g, color.b);
 };
 
-// Draw a phone icon (handset shape)
-const drawPhoneIcon = (pdf: jsPDF, cx: number, cy: number, size: number, color: { r: number; g: number; b: number }) => {
+// Draw phone icon (smartphone outline)
+const drawIconPhone = (pdf: jsPDF, x: number, y: number, s: number, color: { r: number; g: number; b: number }) => {
   pdf.setDrawColor(color.r, color.g, color.b);
-  pdf.setLineWidth(0.4);
-  // Simple phone: circle + receiver lines
-  pdf.circle(cx, cy, size, 'S');
-  // Receiver inside
-  const s = size * 0.5;
-  pdf.line(cx - s, cy - s * 0.6, cx - s * 0.3, cy - s);
-  pdf.line(cx - s * 0.3, cy - s, cx + s * 0.3, cy + s);
-  pdf.line(cx + s * 0.3, cy + s, cx + s, cy + s * 0.6);
-};
-
-// Draw a small circle dot icon
-const drawDotIcon = (pdf: jsPDF, cx: number, cy: number, r: number, color: { r: number; g: number; b: number }) => {
   pdf.setFillColor(color.r, color.g, color.b);
-  pdf.circle(cx, cy, r, 'F');
+  pdf.setLineWidth(0.3);
+  const w = s * 0.55;
+  const h = s;
+  const rx = x - w / 2;
+  const ry = y - h / 2;
+  pdf.roundedRect(rx, ry, w, h, 0.4, 0.4, 'S');
+  pdf.rect(rx + 0.3, ry + h * 0.15, w - 0.6, h * 0.6, 'S');
+  pdf.circle(x, ry + h * 0.88, 0.25, 'F');
 };
 
-// Draw premium header with logo - Ultra premium design
+// Draw envelope icon (email)
+const drawIconEmail = (pdf: jsPDF, x: number, y: number, s: number, color: { r: number; g: number; b: number }) => {
+  pdf.setDrawColor(color.r, color.g, color.b);
+  pdf.setLineWidth(0.3);
+  const w = s * 1.3;
+  const h = s * 0.9;
+  const rx = x - w / 2;
+  const ry = y - h / 2;
+  pdf.rect(rx, ry, w, h, 'S');
+  pdf.line(rx, ry, x, y + h * 0.1);
+  pdf.line(x, y + h * 0.1, rx + w, ry);
+};
+
+// Draw globe icon (website)
+const drawIconGlobe = (pdf: jsPDF, x: number, y: number, s: number, color: { r: number; g: number; b: number }) => {
+  pdf.setDrawColor(color.r, color.g, color.b);
+  pdf.setLineWidth(0.3);
+  const r = s * 0.55;
+  pdf.circle(x, y, r, 'S');
+  pdf.line(x - r, y, x + r, y);
+  pdf.ellipse(x, y, r * 0.4, r, 'S');
+};
+
+// Draw instagram icon (rounded square + lens + dot)
+const drawIconInstagram = (pdf: jsPDF, x: number, y: number, s: number, color: { r: number; g: number; b: number }) => {
+  pdf.setDrawColor(color.r, color.g, color.b);
+  pdf.setFillColor(color.r, color.g, color.b);
+  pdf.setLineWidth(0.3);
+  const sz = s * 1;
+  const rx = x - sz / 2;
+  const ry = y - sz / 2;
+  pdf.roundedRect(rx, ry, sz, sz, sz * 0.25, sz * 0.25, 'S');
+  pdf.circle(x, y, sz * 0.25, 'S');
+  pdf.circle(rx + sz * 0.78, ry + sz * 0.22, 0.25, 'F');
+};
+
+// Draw premium header
 const drawHeader = async (pdf: jsPDF, pageWidth: number, margin: number, logoImg: string | null): Promise<number> => {
   const headerH = 44;
   
-  // Header background - Gradient effect (dark layers)
+  // Header background
   pdf.setFillColor(12, 12, 12);
   pdf.rect(0, 0, pageWidth, headerH, 'F');
+  pdf.setFillColor(20, 20, 24);
+  pdf.rect(0, headerH * 0.65, pageWidth, headerH * 0.35, 'F');
   
-  // Subtle gradient overlay (slightly lighter strip)
-  pdf.setFillColor(22, 22, 26);
-  pdf.rect(0, headerH * 0.6, pageWidth, headerH * 0.4, 'F');
-  
-  // Bottom accent line - thin elegant silver
+  // Bottom accent
   setColor(pdf, COLORS.silver);
   pdf.rect(0, headerH, pageWidth, 0.4, 'F');
   
@@ -203,38 +232,39 @@ const drawHeader = async (pdf: jsPDF, pageWidth: number, margin: number, logoImg
     }
   }
   
-  // Tagline - elegant italic
+  // Tagline
   const tagX = logoImg ? margin + 46 : margin;
   setColor(pdf, COLORS.silver);
-  pdf.setFontSize(7.5);
+  pdf.setFontSize(7);
   pdf.setFont('helvetica', 'italic');
   pdf.text('Pronta Resposta padrao alto  |  Atuacao 24h com rede validada', tagX, 38);
   
-  // Contact info on the right with dot bullet icons
+  // Contact info with vector icons
   const rightX = pageWidth - margin;
-  const dotR = 1;
-  const lineSpacing = 6.5;
-  let contactY = 9;
+  const iconSize = 3;
+  const lineSpacing = 6.8;
+  let contactY = 8;
   
-  const drawContactLine = (text: string, y: number) => {
-    // Dot bullet
-    drawDotIcon(pdf, rightX - pdf.getTextWidth(text) - 5, y - 0.5, dotR, COLORS.silver);
-    // Text
+  type IconDrawFn = (pdf: jsPDF, x: number, y: number, s: number, c: { r: number; g: number; b: number }) => void;
+  
+  const drawContactWithIcon = (text: string, y: number, drawIcon: IconDrawFn) => {
     setColor(pdf, COLORS.white);
     pdf.setFontSize(7.5);
     pdf.setFont('helvetica', 'normal');
     pdf.text(text, rightX, y, { align: 'right' });
+    const textW = pdf.getTextWidth(text);
+    drawIcon(pdf, rightX - textW - 4.5, y - 0.8, iconSize, COLORS.silver);
   };
   
-  drawContactLine(COMPANY_INFO.phoneCommercial + '  Comercial', contactY);
+  drawContactWithIcon(COMPANY_INFO.phoneCommercial + '  Comercial', contactY, drawIconPhone);
   contactY += lineSpacing;
-  drawContactLine(COMPANY_INFO.phoneMonitoring + '  Monitoramento', contactY);
+  drawContactWithIcon(COMPANY_INFO.phoneMonitoring + '  Monitoramento', contactY, drawIconPhone);
   contactY += lineSpacing;
-  drawContactLine(COMPANY_INFO.email, contactY);
+  drawContactWithIcon(COMPANY_INFO.email, contactY, drawIconEmail);
   contactY += lineSpacing;
-  drawContactLine(COMPANY_INFO.website, contactY);
+  drawContactWithIcon(COMPANY_INFO.website, contactY, drawIconGlobe);
   contactY += lineSpacing;
-  drawContactLine(COMPANY_INFO.instagram, contactY);
+  drawContactWithIcon(COMPANY_INFO.instagram, contactY, drawIconInstagram);
   
   return headerH + 6;
 };
