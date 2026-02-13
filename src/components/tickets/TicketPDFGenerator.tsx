@@ -159,110 +159,130 @@ const setColor = (pdf: jsPDF, color: { r: number; g: number; b: number }) => {
   pdf.setTextColor(color.r, color.g, color.b);
 };
 
-// Draw premium header with logo - Clean theme
+// Draw a phone icon (handset shape)
+const drawPhoneIcon = (pdf: jsPDF, cx: number, cy: number, size: number, color: { r: number; g: number; b: number }) => {
+  pdf.setDrawColor(color.r, color.g, color.b);
+  pdf.setLineWidth(0.4);
+  // Simple phone: circle + receiver lines
+  pdf.circle(cx, cy, size, 'S');
+  // Receiver inside
+  const s = size * 0.5;
+  pdf.line(cx - s, cy - s * 0.6, cx - s * 0.3, cy - s);
+  pdf.line(cx - s * 0.3, cy - s, cx + s * 0.3, cy + s);
+  pdf.line(cx + s * 0.3, cy + s, cx + s, cy + s * 0.6);
+};
+
+// Draw a small circle dot icon
+const drawDotIcon = (pdf: jsPDF, cx: number, cy: number, r: number, color: { r: number; g: number; b: number }) => {
+  pdf.setFillColor(color.r, color.g, color.b);
+  pdf.circle(cx, cy, r, 'F');
+};
+
+// Draw premium header with logo - Ultra premium design
 const drawHeader = async (pdf: jsPDF, pageWidth: number, margin: number, logoImg: string | null): Promise<number> => {
-  // Header background - Pure black
-  setColor(pdf, COLORS.primary);
-  pdf.rect(0, 0, pageWidth, 48, 'F');
+  const headerH = 44;
   
-  // Bottom accent line - Silver
+  // Header background - Gradient effect (dark layers)
+  pdf.setFillColor(12, 12, 12);
+  pdf.rect(0, 0, pageWidth, headerH, 'F');
+  
+  // Subtle gradient overlay (slightly lighter strip)
+  pdf.setFillColor(22, 22, 26);
+  pdf.rect(0, headerH * 0.6, pageWidth, headerH * 0.4, 'F');
+  
+  // Bottom accent line - thin elegant silver
   setColor(pdf, COLORS.silver);
-  pdf.rect(0, 48, pageWidth, 1, 'F');
+  pdf.rect(0, headerH, pageWidth, 0.4, 'F');
   
-  // Logo only (no company name text)
+  // Logo
   if (logoImg) {
     try {
-      pdf.addImage(logoImg, 'PNG', margin, 4, 40, 40);
+      pdf.addImage(logoImg, 'PNG', margin + 2, 3, 38, 38);
     } catch (e) {
       console.error('Error adding logo:', e);
     }
   }
   
-  // Tagline below logo area
-  const textStartX = logoImg ? margin + 48 : margin;
+  // Tagline - elegant italic
+  const tagX = logoImg ? margin + 46 : margin;
   setColor(pdf, COLORS.silver);
-  pdf.setFontSize(8);
-  pdf.setFont('helvetica', 'italic');
-  pdf.text('Pronta Resposta padrao alto | Atuacao 24h com rede validada.', textStartX, 28);
-  
-  // Contact info on the right - Clean text labels
-  const rightX = pageWidth - margin;
   pdf.setFontSize(7.5);
+  pdf.setFont('helvetica', 'italic');
+  pdf.text('Pronta Resposta padrao alto  |  Atuacao 24h com rede validada', tagX, 38);
   
-  // Phone Commercial
-  setColor(pdf, COLORS.silver);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text('Tel:', rightX - pdf.getTextWidth(COMPANY_INFO.phoneCommercial + ' (Comercial)') - 8, 10);
-  setColor(pdf, COLORS.white);
-  pdf.text(COMPANY_INFO.phoneCommercial + ' (Comercial)', rightX, 10, { align: 'right' });
+  // Contact info on the right with dot bullet icons
+  const rightX = pageWidth - margin;
+  const dotR = 1;
+  const lineSpacing = 6.5;
+  let contactY = 9;
   
-  // Phone Monitoring
-  setColor(pdf, COLORS.silver);
-  pdf.text('Tel:', rightX - pdf.getTextWidth(COMPANY_INFO.phoneMonitoring + ' (Monitoramento)') - 8, 16);
-  setColor(pdf, COLORS.white);
-  pdf.text(COMPANY_INFO.phoneMonitoring + ' (Monitoramento)', rightX, 16, { align: 'right' });
+  const drawContactLine = (text: string, y: number) => {
+    // Dot bullet
+    drawDotIcon(pdf, rightX - pdf.getTextWidth(text) - 5, y - 0.5, dotR, COLORS.silver);
+    // Text
+    setColor(pdf, COLORS.white);
+    pdf.setFontSize(7.5);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(text, rightX, y, { align: 'right' });
+  };
   
-  // Email
-  setColor(pdf, COLORS.silver);
-  pdf.text('E-mail:', rightX - pdf.getTextWidth(COMPANY_INFO.email) - 12, 22);
-  setColor(pdf, COLORS.white);
-  pdf.text(COMPANY_INFO.email, rightX, 22, { align: 'right' });
+  drawContactLine(COMPANY_INFO.phoneCommercial + '  Comercial', contactY);
+  contactY += lineSpacing;
+  drawContactLine(COMPANY_INFO.phoneMonitoring + '  Monitoramento', contactY);
+  contactY += lineSpacing;
+  drawContactLine(COMPANY_INFO.email, contactY);
+  contactY += lineSpacing;
+  drawContactLine(COMPANY_INFO.website, contactY);
+  contactY += lineSpacing;
+  drawContactLine(COMPANY_INFO.instagram, contactY);
   
-  // Website
-  setColor(pdf, COLORS.silver);
-  pdf.text('Site:', rightX - pdf.getTextWidth(COMPANY_INFO.website) - 9, 28);
-  setColor(pdf, COLORS.white);
-  pdf.text(COMPANY_INFO.website, rightX, 28, { align: 'right' });
-  
-  // Instagram
-  setColor(pdf, COLORS.silver);
-  pdf.text('Insta:', rightX - pdf.getTextWidth(COMPANY_INFO.instagram) - 10, 34);
-  setColor(pdf, COLORS.white);
-  pdf.text(COMPANY_INFO.instagram, rightX, 34, { align: 'right' });
-  
-  return 56;
+  return headerH + 6;
 };
 
-// Draw footer
+// Draw footer - refined and elegant
 const drawFooter = (pdf: jsPDF, pageWidth: number, pageHeight: number) => {
-  const footerY = pageHeight - 20;
+  const footerH = 16;
+  const footerY = pageHeight - footerH;
   
   // Footer background
-  setColor(pdf, COLORS.primary);
-  pdf.rect(0, footerY, pageWidth, 20, 'F');
+  pdf.setFillColor(12, 12, 12);
+  pdf.rect(0, footerY, pageWidth, footerH, 'F');
   
-  // Accent line
+  // Top accent line - thin silver
   setColor(pdf, COLORS.silver);
-  pdf.rect(0, footerY, pageWidth, 0.5, 'F');
+  pdf.rect(0, footerY, pageWidth, 0.3, 'F');
   
-  // Footer text
-  setColor(pdf, COLORS.white);
-  pdf.setFontSize(7);
+  // Left info
+  pdf.setFontSize(6.5);
   pdf.setFont('helvetica', 'normal');
+  setColor(pdf, { r: 140, g: 140, b: 150 });
+  pdf.text(`CNPJ ${COMPANY_INFO.cnpj}  ·  ${COMPANY_INFO.address}`, 12, footerY + 7);
   
-  pdf.text(`CNPJ: ${COMPANY_INFO.cnpj}`, 15, footerY + 8);
-  pdf.text(COMPANY_INFO.address, 15, footerY + 13);
+  // Right info
+  pdf.text(COMPANY_INFO.website, pageWidth - 12, footerY + 7, { align: 'right' });
   
-  pdf.text('Documento gerado automaticamente pelo sistema FDG', pageWidth / 2, footerY + 10, { align: 'center' });
-  
-  pdf.text(`${COMPANY_INFO.website}`, pageWidth - 15, footerY + 10, { align: 'right' });
+  // Center
+  setColor(pdf, { r: 100, g: 100, b: 110 });
+  pdf.setFontSize(5.5);
+  pdf.text('Documento gerado automaticamente', pageWidth / 2, footerY + 12, { align: 'center' });
 };
 
-// Draw section title - Black background matching header
+// Draw section title - Refined dark bar with silver left accent
 const drawSectionTitle = (pdf: jsPDF, title: string, x: number, y: number, width: number): number => {
-  setColor(pdf, COLORS.primary);
-  drawRoundedRect(pdf, x, y, width, 8, 2);
+  // Dark background with rounded corners
+  pdf.setFillColor(28, 28, 32);
+  drawRoundedRect(pdf, x, y, width, 7.5, 1.5);
   
-  // Silver accent line on left
+  // Silver accent bar on left
   setColor(pdf, COLORS.silver);
-  pdf.rect(x, y, 3, 8, 'F');
+  pdf.rect(x, y + 0.5, 2.5, 6.5, 'F');
   
   setColor(pdf, COLORS.white);
-  pdf.setFontSize(9);
+  pdf.setFontSize(8);
   pdf.setFont('helvetica', 'bold');
-  pdf.text(title, x + 6, y + 5.5);
+  pdf.text(title, x + 6, y + 5.2);
   
-  return y + 12;
+  return y + 11;
 };
 
 // Draw info row with label and value - Fixed width handling
@@ -291,20 +311,22 @@ const drawInfoRow = (pdf: jsPDF, label: string, value: string, x: number, y: num
   return y + 5.5;
 };
 
-// Draw card-style box - Premium with subtle shadow
+// Draw card-style box - Premium with elegant shadow
 const drawCard = (pdf: jsPDF, x: number, y: number, w: number, h: number) => {
-  // Subtle shadow effect
-  pdf.setFillColor(180, 180, 180);
-  drawRoundedRect(pdf, x + 0.8, y + 0.8, w, h, 4);
+  // Multi-layer shadow for depth
+  pdf.setFillColor(210, 215, 220);
+  drawRoundedRect(pdf, x + 0.6, y + 0.6, w, h, 3);
+  pdf.setFillColor(195, 200, 210);
+  drawRoundedRect(pdf, x + 0.3, y + 0.3, w, h, 3);
   
-  // Card background - Pure white
+  // Card background
   setColor(pdf, COLORS.cardBg);
-  drawRoundedRect(pdf, x, y, w, h, 4);
+  drawRoundedRect(pdf, x, y, w, h, 3);
   
-  // Border - Subtle
-  pdf.setDrawColor(COLORS.cardBorder.r, COLORS.cardBorder.g, COLORS.cardBorder.b);
-  pdf.setLineWidth(0.3);
-  pdf.roundedRect(x, y, w, h, 4, 4, 'S');
+  // Border
+  pdf.setDrawColor(220, 225, 235);
+  pdf.setLineWidth(0.2);
+  pdf.roundedRect(x, y, w, h, 3, 3, 'S');
 };
 
 export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
@@ -324,32 +346,34 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   
   // ==================== PAGE 1: RELATÓRIO DE ATENDIMENTO ====================
   
-  // Background
-  setColor(pdf, COLORS.light);
+  // Background - subtle warm gray
+  pdf.setFillColor(245, 246, 250);
   pdf.rect(0, 0, pageWidth, pageHeight, 'F');
   
   // Header
   let y = await drawHeader(pdf, pageWidth, margin, logoImg);
   
-  // Document title card
-  drawCard(pdf, margin, y, contentWidth, 18);
+  // Document title - elegant dark bar
+  pdf.setFillColor(28, 28, 32);
+  drawRoundedRect(pdf, margin, y, contentWidth, 16, 3);
   
-  setColor(pdf, COLORS.primary);
-  pdf.setFontSize(14);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('RELATÓRIO DE ATENDIMENTO', pageWidth / 2, y + 8, { align: 'center' });
-  
-  // Service type badge
-  setColor(pdf, COLORS.accent);
-  const serviceLabel = serviceTypeLabels[data.service_type] || data.service_type.toUpperCase();
-  const badgeWidth = pdf.getTextWidth(serviceLabel) + 8;
-  drawRoundedRect(pdf, (pageWidth - badgeWidth) / 2, y + 10.5, badgeWidth, 6, 2);
   setColor(pdf, COLORS.white);
-  pdf.setFontSize(8);
+  pdf.setFontSize(13);
   pdf.setFont('helvetica', 'bold');
-  pdf.text(serviceLabel, pageWidth / 2, y + 14.5, { align: 'center' });
+  pdf.text('RELATORIO DE ATENDIMENTO', pageWidth / 2, y + 7.5, { align: 'center' });
   
-  y += 25;
+  // Service type badge - silver pill
+  const serviceLabel = serviceTypeLabels[data.service_type] || data.service_type.toUpperCase();
+  const badgeWidth = pdf.getTextWidth(serviceLabel) + 10;
+  setColor(pdf, COLORS.silver);
+  drawRoundedRect(pdf, (pageWidth - badgeWidth) / 2, y + 10, badgeWidth, 5, 2);
+  pdf.setFillColor(28, 28, 32);
+  pdf.setTextColor(28, 28, 32);
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text(serviceLabel, pageWidth / 2, y + 13.5, { align: 'center' });
+  
+  y += 22;
   
   // Main info cards row - Better spacing
   const cardWidth = (contentWidth - 8) / 2;
@@ -442,18 +466,19 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   pdf.addPage();
   
   // Background
-  setColor(pdf, COLORS.light);
+  pdf.setFillColor(245, 246, 250);
   pdf.rect(0, 0, pageWidth, pageHeight, 'F');
   
   // Header
   y = await drawHeader(pdf, pageWidth, margin, logoImg);
   
-  // Document title
-  drawCard(pdf, margin, y, contentWidth, 12);
-  setColor(pdf, COLORS.primary);
-  pdf.setFontSize(14);
+  // Document title - dark bar
+  pdf.setFillColor(28, 28, 32);
+  drawRoundedRect(pdf, margin, y, contentWidth, 12, 3);
+  setColor(pdf, COLORS.white);
+  pdf.setFontSize(13);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('DESCRIÇÃO DO EVENTO', pageWidth / 2, y + 8, { align: 'center' });
+  pdf.text('DESCRICAO DO EVENTO', pageWidth / 2, y + 8, { align: 'center' });
   
   y += 18;
   
@@ -485,8 +510,8 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
         drawFooter(pdf, pageWidth, pageHeight);
         pdf.addPage();
         
-        setColor(pdf, COLORS.light);
-        pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+         pdf.setFillColor(245, 246, 250);
+         pdf.rect(0, 0, pageWidth, pageHeight, 'F');
         
         y = await drawHeader(pdf, pageWidth, margin, logoImg);
         
@@ -523,24 +548,25 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       pdf.addPage();
       
       // Background
-      setColor(pdf, COLORS.light);
+      pdf.setFillColor(245, 246, 250);
       pdf.rect(0, 0, pageWidth, pageHeight, 'F');
       
       // Header
       y = await drawHeader(pdf, pageWidth, margin, logoImg);
       
-      // Title
-      drawCard(pdf, margin, y, contentWidth, 12);
-      setColor(pdf, COLORS.primary);
-      pdf.setFontSize(14);
+      // Title - dark bar
+      pdf.setFillColor(28, 28, 32);
+      drawRoundedRect(pdf, margin, y, contentWidth, 12, 3);
+      setColor(pdf, COLORS.white);
+      pdf.setFontSize(13);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('REGISTRO FOTOGRÁFICO', pageWidth / 2, y + 8, { align: 'center' });
+      pdf.text('REGISTRO FOTOGRAFICO', pageWidth / 2, y + 8, { align: 'center' });
       
       // Page counter
       setColor(pdf, COLORS.muted);
-      pdf.setFontSize(8);
+      pdf.setFontSize(7);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Página ${page + 1} de ${totalPages} — Fotos ${page * photosPerPage + 1} a ${Math.min((page + 1) * photosPerPage, data.photos.length)} de ${data.photos.length}`, pageWidth / 2, y + 16, { align: 'center' });
+      pdf.text(`Pagina ${page + 1} de ${totalPages}  ·  Fotos ${page * photosPerPage + 1} a ${Math.min((page + 1) * photosPerPage, data.photos.length)} de ${data.photos.length}`, pageWidth / 2, y + 16, { align: 'center' });
       
       y += 22;
       
@@ -584,13 +610,13 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
             pdf.text(captionLines[0], x + photoWidth / 2, photoY + photoHeight + 4, { align: 'center' });
           }
           
-          // Photo number badge
-          setColor(pdf, COLORS.accent);
-          pdf.circle(x + 7, photoY + 7, 4.5, 'F');
+          // Photo number badge - dark circle
+          pdf.setFillColor(28, 28, 32);
+          pdf.circle(x + 6.5, photoY + 6.5, 4, 'F');
           setColor(pdf, COLORS.white);
-          pdf.setFontSize(7);
+          pdf.setFontSize(6.5);
           pdf.setFont('helvetica', 'bold');
-          pdf.text((i + 1).toString(), x + 7, photoY + 8.5, { align: 'center' });
+          pdf.text((i + 1).toString(), x + 6.5, photoY + 8, { align: 'center' });
           
         } catch (error) {
           console.error('Erro ao carregar imagem:', error);
