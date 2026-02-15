@@ -14,18 +14,16 @@ const COMPANY_INFO = {
   website: 'www.fdgprontaresposta.com.br',
 };
 
-// Premium color palette - Clean theme matching logo
+// Minimalist color palette - Clean monochromatic theme
 const COLORS = {
-  primary: { r: 18, g: 18, b: 18 },      // Pure black (matching logo background)
-  secondary: { r: 40, g: 40, b: 40 },    // Dark gray
-  accent: { r: 59, g: 130, b: 246 },     // Blue
-  silver: { r: 180, g: 185, b: 195 },    // Silver/steel for accents
-  light: { r: 248, g: 250, b: 252 },     // Light gray background
-  white: { r: 255, g: 255, b: 255 },
-  text: { r: 30, g: 41, b: 59 },
-  muted: { r: 100, g: 116, b: 139 },
-  cardBg: { r: 255, g: 255, b: 255 },    // White cards
-  cardBorder: { r: 226, g: 232, b: 240 }, // Light border
+  black: { r: 0, g: 0, b: 0 },              // Main text
+  gray900: { r: 17, g: 24, b: 39 },         // Headings
+  gray600: { r: 75, g: 85, b: 99 },         // Labels
+  gray400: { r: 156, g: 163, b: 175 },      // Details/captions
+  gray200: { r: 229, g: 231, b: 235 },      // Separator lines
+  gray50: { r: 249, g: 250, b: 251 },       // Background (if needed)
+  white: { r: 255, g: 255, b: 255 },        // Page background
+  blue: { r: 59, g: 130, b: 246 },          // Accent (minimal use)
 };
 
 interface TicketPDFData {
@@ -85,10 +83,10 @@ interface TicketPDFData {
 }
 
 const serviceTypeLabels: Record<string, string> = {
-  alarme: 'ALARME',
-  averiguacao: 'AVERIGUAÇÃO',
-  preservacao: 'PRESERVAÇÃO',
-  acompanhamento_logistico: 'ACOMPANHAMENTO LOGÍSTICO',
+  alarme: 'Alarme',
+  averiguacao: 'Averiguação',
+  preservacao: 'Preservação',
+  acompanhamento_logistico: 'Acompanhamento Logístico',
 };
 
 const bodyTypeLabels: Record<string, string> = {
@@ -135,21 +133,16 @@ const calculateEfetivoMobilizado = (data: TicketPDFData): string => {
   }
 
   const parts: string[] = [];
-  
+
   if (armados > 0) {
     parts.push(`${armados.toString().padStart(2, '0')} agente${armados > 1 ? 's' : ''} armado${armados > 1 ? 's' : ''}`);
   }
-  
+
   if (desarmados > 0) {
     parts.push(`${desarmados.toString().padStart(2, '0')} agente${desarmados > 1 ? 's' : ''} desarmado${desarmados > 1 ? 's' : ''}`);
   }
 
   return parts.length > 0 ? parts.join(' + ') : '-';
-};
-
-// Helper to draw rounded rectangle
-const drawRoundedRect = (pdf: jsPDF, x: number, y: number, w: number, h: number, r: number, fill = true, stroke = false) => {
-  pdf.roundedRect(x, y, w, h, r, r, fill ? 'F' : stroke ? 'S' : 'FD');
 };
 
 // Helper to set color
@@ -159,173 +152,92 @@ const setColor = (pdf: jsPDF, color: { r: number; g: number; b: number }) => {
   pdf.setTextColor(color.r, color.g, color.b);
 };
 
-// Draw phone icon (smartphone outline)
-const drawIconPhone = (pdf: jsPDF, x: number, y: number, s: number, color: { r: number; g: number; b: number }) => {
-  pdf.setDrawColor(color.r, color.g, color.b);
-  pdf.setFillColor(color.r, color.g, color.b);
-  pdf.setLineWidth(0.3);
-  const w = s * 0.55;
-  const h = s;
-  const rx = x - w / 2;
-  const ry = y - h / 2;
-  pdf.roundedRect(rx, ry, w, h, 0.4, 0.4, 'S');
-  pdf.rect(rx + 0.3, ry + h * 0.15, w - 0.6, h * 0.6, 'S');
-  pdf.circle(x, ry + h * 0.88, 0.25, 'F');
-};
-
-// Draw envelope icon (email)
-const drawIconEmail = (pdf: jsPDF, x: number, y: number, s: number, color: { r: number; g: number; b: number }) => {
-  pdf.setDrawColor(color.r, color.g, color.b);
-  pdf.setLineWidth(0.3);
-  const w = s * 1.3;
-  const h = s * 0.9;
-  const rx = x - w / 2;
-  const ry = y - h / 2;
-  pdf.rect(rx, ry, w, h, 'S');
-  pdf.line(rx, ry, x, y + h * 0.1);
-  pdf.line(x, y + h * 0.1, rx + w, ry);
-};
-
-// Draw globe icon (website)
-const drawIconGlobe = (pdf: jsPDF, x: number, y: number, s: number, color: { r: number; g: number; b: number }) => {
-  pdf.setDrawColor(color.r, color.g, color.b);
-  pdf.setLineWidth(0.3);
-  const r = s * 0.55;
-  pdf.circle(x, y, r, 'S');
-  pdf.line(x - r, y, x + r, y);
-  pdf.ellipse(x, y, r * 0.4, r, 'S');
-};
-
-// Draw instagram icon (rounded square + lens + dot)
-const drawIconInstagram = (pdf: jsPDF, x: number, y: number, s: number, color: { r: number; g: number; b: number }) => {
-  pdf.setDrawColor(color.r, color.g, color.b);
-  pdf.setFillColor(color.r, color.g, color.b);
-  pdf.setLineWidth(0.3);
-  const sz = s * 1;
-  const rx = x - sz / 2;
-  const ry = y - sz / 2;
-  pdf.roundedRect(rx, ry, sz, sz, sz * 0.25, sz * 0.25, 'S');
-  pdf.circle(x, y, sz * 0.25, 'S');
-  pdf.circle(rx + sz * 0.78, ry + sz * 0.22, 0.25, 'F');
-};
-
-// Draw premium header
+// Draw minimalist header
 const drawHeader = async (pdf: jsPDF, pageWidth: number, margin: number, logoImg: string | null): Promise<number> => {
-  const headerH = 44;
-  
-  // Header background
-  pdf.setFillColor(12, 12, 12);
-  pdf.rect(0, 0, pageWidth, headerH, 'F');
-  pdf.setFillColor(20, 20, 24);
-  pdf.rect(0, headerH * 0.65, pageWidth, headerH * 0.35, 'F');
-  
-  // Bottom accent
-  setColor(pdf, COLORS.silver);
-  pdf.rect(0, headerH, pageWidth, 0.4, 'F');
-  
+  const headerH = 28;
+
   // Logo
   if (logoImg) {
     try {
-      pdf.addImage(logoImg, 'PNG', margin + 2, 3, 38, 38);
+      pdf.addImage(logoImg, 'PNG', margin, 6, 30, 30);
     } catch (e) {
       console.error('Error adding logo:', e);
     }
   }
-  
-  // Tagline
-  const tagX = logoImg ? margin + 46 : margin;
-  setColor(pdf, COLORS.silver);
-  pdf.setFontSize(7);
-  pdf.setFont('helvetica', 'italic');
-  pdf.text('Pronta Resposta padrao alto  |  Atuacao 24h com rede validada', tagX, 38);
-  
-  // Contact info with vector icons
+
+  // Contact info - single line, right aligned
   const rightX = pageWidth - margin;
-  const iconSize = 3;
-  const lineSpacing = 6.8;
-  let contactY = 8;
-  
-  type IconDrawFn = (pdf: jsPDF, x: number, y: number, s: number, c: { r: number; g: number; b: number }) => void;
-  
-  const drawContactWithIcon = (text: string, y: number, drawIcon: IconDrawFn) => {
-    setColor(pdf, COLORS.white);
-    pdf.setFontSize(7.5);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(text, rightX, y, { align: 'right' });
-    const textW = pdf.getTextWidth(text);
-    drawIcon(pdf, rightX - textW - 4.5, y - 0.8, iconSize, COLORS.silver);
-  };
-  
-  drawContactWithIcon(COMPANY_INFO.phoneCommercial + '  Comercial', contactY, drawIconPhone);
-  contactY += lineSpacing;
-  drawContactWithIcon(COMPANY_INFO.phoneMonitoring + '  Monitoramento', contactY, drawIconPhone);
-  contactY += lineSpacing;
-  drawContactWithIcon(COMPANY_INFO.email, contactY, drawIconEmail);
-  contactY += lineSpacing;
-  drawContactWithIcon(COMPANY_INFO.website, contactY, drawIconGlobe);
-  contactY += lineSpacing;
-  drawContactWithIcon(COMPANY_INFO.instagram, contactY, drawIconInstagram);
-  
-  return headerH + 6;
-};
-
-// Draw footer - refined and elegant
-const drawFooter = (pdf: jsPDF, pageWidth: number, pageHeight: number) => {
-  const footerH = 16;
-  const footerY = pageHeight - footerH;
-  
-  // Footer background
-  pdf.setFillColor(12, 12, 12);
-  pdf.rect(0, footerY, pageWidth, footerH, 'F');
-  
-  // Top accent line - thin silver
-  setColor(pdf, COLORS.silver);
-  pdf.rect(0, footerY, pageWidth, 0.3, 'F');
-  
-  // Left info
-  pdf.setFontSize(6.5);
+  setColor(pdf, COLORS.gray600);
+  pdf.setFontSize(7);
   pdf.setFont('helvetica', 'normal');
-  setColor(pdf, { r: 140, g: 140, b: 150 });
-  pdf.text(`CNPJ ${COMPANY_INFO.cnpj}  ·  ${COMPANY_INFO.address}`, 12, footerY + 7);
-  
-  // Right info
-  pdf.text(COMPANY_INFO.website, pageWidth - 12, footerY + 7, { align: 'right' });
-  
-  // Center
-  setColor(pdf, { r: 100, g: 100, b: 110 });
-  pdf.setFontSize(5.5);
-  pdf.text('Documento gerado automaticamente', pageWidth / 2, footerY + 12, { align: 'center' });
+  pdf.text(`${COMPANY_INFO.email}  •  ${COMPANY_INFO.phoneCommercial}  •  ${COMPANY_INFO.website}`, rightX, 12, { align: 'right' });
+
+  // Bottom separator line
+  setColor(pdf, COLORS.gray200);
+  pdf.setLineWidth(0.5);
+  pdf.line(margin, headerH, pageWidth - margin, headerH);
+
+  return headerH + 8;
 };
 
-// Draw section title - Refined dark bar with silver left accent
+// Draw minimalist footer
+const drawFooter = (pdf: jsPDF, pageWidth: number, pageHeight: number) => {
+  const footerY = pageHeight - 15;
+
+  // Top separator line
+  setColor(pdf, COLORS.gray200);
+  pdf.setLineWidth(0.5);
+  pdf.line(18, footerY, pageWidth - 18, footerY);
+
+  // Footer text - single centered line
+  setColor(pdf, COLORS.gray400);
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(
+    `${COMPANY_INFO.name}  •  CNPJ ${COMPANY_INFO.cnpj}  •  ${COMPANY_INFO.address}`,
+    pageWidth / 2,
+    footerY + 6,
+    { align: 'center' }
+  );
+};
+
+// Draw section title - minimalist
 const drawSectionTitle = (pdf: jsPDF, title: string, x: number, y: number, width: number): number => {
-  // Dark background with rounded corners
-  pdf.setFillColor(28, 28, 32);
-  drawRoundedRect(pdf, x, y, width, 7.5, 1.5);
-  
-  // Silver accent bar on left
-  setColor(pdf, COLORS.silver);
-  pdf.rect(x, y + 0.5, 2.5, 6.5, 'F');
-  
-  setColor(pdf, COLORS.white);
-  pdf.setFontSize(8);
+  // Top line
+  setColor(pdf, COLORS.gray200);
+  pdf.setLineWidth(0.5);
+  pdf.line(x, y, x + width, y);
+
+  // Title text
+  setColor(pdf, COLORS.gray900);
+  pdf.setFontSize(9);
   pdf.setFont('helvetica', 'bold');
-  pdf.text(title, x + 6, y + 5.2);
-  
-  return y + 11;
+  pdf.text(title.toUpperCase(), x, y + 6);
+
+  return y + 12;
 };
 
-// Draw info row with label and value - Fixed width handling
-const drawInfoRow = (pdf: jsPDF, label: string, value: string, x: number, y: number, labelWidth: number = 35, maxValueWidth: number = 50): number => {
-  setColor(pdf, COLORS.muted);
+// Draw info row with label and value
+const drawInfoRow = (
+  pdf: jsPDF,
+  label: string,
+  value: string,
+  x: number,
+  y: number,
+  labelWidth: number = 40,
+  maxValueWidth: number = 80
+): number => {
+  // Label
+  setColor(pdf, COLORS.gray600);
   pdf.setFontSize(8);
   pdf.setFont('helvetica', 'normal');
   pdf.text(label, x, y);
-  
-  setColor(pdf, COLORS.text);
-  pdf.setFontSize(8);
-  pdf.setFont('helvetica', 'bold');
-  
+
+  // Value
+  setColor(pdf, COLORS.black);
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'normal');
+
   // Truncate value if too long
   let displayValue = value || '-';
   const valueWidth = pdf.getTextWidth(displayValue);
@@ -335,37 +247,19 @@ const drawInfoRow = (pdf: jsPDF, label: string, value: string, x: number, y: num
     }
     displayValue += '...';
   }
-  
-  pdf.text(displayValue, x + labelWidth, y);
-  
-  return y + 5.5;
-};
 
-// Draw card-style box - Premium with elegant shadow
-const drawCard = (pdf: jsPDF, x: number, y: number, w: number, h: number) => {
-  // Multi-layer shadow for depth
-  pdf.setFillColor(210, 215, 220);
-  drawRoundedRect(pdf, x + 0.6, y + 0.6, w, h, 3);
-  pdf.setFillColor(195, 200, 210);
-  drawRoundedRect(pdf, x + 0.3, y + 0.3, w, h, 3);
-  
-  // Card background
-  setColor(pdf, COLORS.cardBg);
-  drawRoundedRect(pdf, x, y, w, h, 3);
-  
-  // Border
-  pdf.setDrawColor(220, 225, 235);
-  pdf.setLineWidth(0.2);
-  pdf.roundedRect(x, y, w, h, 3, 3, 'S');
+  pdf.text(displayValue, x + labelWidth, y);
+
+  return y + 7;
 };
 
 export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  const margin = 12;
+  const margin = 18; // Increased from 12 for more breathing room
   const contentWidth = pageWidth - 2 * margin;
-  
+
   // Load logo
   let logoImg: string | null = null;
   try {
@@ -373,301 +267,300 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   } catch (e) {
     console.error('Error loading logo:', e);
   }
-  
+
   // ==================== PAGE 1: RELATÓRIO DE ATENDIMENTO ====================
-  
-  // Background - subtle warm gray
-  pdf.setFillColor(245, 246, 250);
-  pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-  
+
   // Header
   let y = await drawHeader(pdf, pageWidth, margin, logoImg);
-  
-  // Document title - elegant dark bar
-  pdf.setFillColor(28, 28, 32);
-  drawRoundedRect(pdf, margin, y, contentWidth, 16, 3);
-  
-  setColor(pdf, COLORS.white);
-  pdf.setFontSize(13);
+
+  // Document title
+  setColor(pdf, COLORS.gray900);
+  pdf.setFontSize(16);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('RELATORIO DE ATENDIMENTO', pageWidth / 2, y + 7.5, { align: 'center' });
-  
-  // Service type badge - silver pill
-  const serviceLabel = serviceTypeLabels[data.service_type] || data.service_type.toUpperCase();
-  const badgeWidth = pdf.getTextWidth(serviceLabel) + 10;
-  setColor(pdf, COLORS.silver);
-  drawRoundedRect(pdf, (pageWidth - badgeWidth) / 2, y + 10, badgeWidth, 5, 2);
-  pdf.setFillColor(28, 28, 32);
-  pdf.setTextColor(28, 28, 32);
-  pdf.setFontSize(7);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text(serviceLabel, pageWidth / 2, y + 13.5, { align: 'center' });
-  
-  y += 22;
-  
-  // Main info cards row - Better spacing
-  const cardWidth = (contentWidth - 8) / 2;
-  const cardPadding = 4;
-  const labelWidth = 32;
-  const maxValueWidth = cardWidth - labelWidth - cardPadding * 2 - 8;
-  
-  // Card 1: Client Info
-  drawCard(pdf, margin, y, cardWidth, 36);
-  let cardY = drawSectionTitle(pdf, 'SOLICITANTE', margin + 2, y + 3, cardWidth - 4);
-  cardY = drawInfoRow(pdf, 'Cliente:', data.client.name, margin + cardPadding, cardY, labelWidth, maxValueWidth);
-  cardY = drawInfoRow(pdf, 'Contato:', data.client.contact_phone || '-', margin + cardPadding, cardY, labelWidth, maxValueWidth);
+  pdf.text('Relatório de Atendimento', pageWidth / 2, y, { align: 'center' });
+
+  // Service type subtitle
+  const serviceLabel = serviceTypeLabels[data.service_type] || data.service_type;
+  setColor(pdf, COLORS.gray600);
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(serviceLabel, pageWidth / 2, y + 7, { align: 'center' });
+
+  y += 20;
+
+  // Section: SOLICITANTE
+  const colWidth = (contentWidth - 12) / 2;
+  const labelWidth = 40;
+  const maxValueWidth = colWidth - labelWidth - 8;
+
+  let sectionY = drawSectionTitle(pdf, 'Solicitante', margin, y, colWidth);
+  sectionY = drawInfoRow(pdf, 'Cliente:', data.client.name, margin, sectionY, labelWidth, maxValueWidth);
+  sectionY = drawInfoRow(pdf, 'Contato:', data.client.contact_phone || '-', margin, sectionY, labelWidth, maxValueWidth);
   if (data.code) {
-    cardY = drawInfoRow(pdf, 'Processo:', data.code, margin + cardPadding, cardY, labelWidth, maxValueWidth);
+    sectionY = drawInfoRow(pdf, 'Processo:', data.code, margin, sectionY, labelWidth, maxValueWidth);
   }
-  cardY = drawInfoRow(pdf, 'Plano:', data.plan.name, margin + cardPadding, cardY, labelWidth, maxValueWidth);
-  
-  // Card 2: Location Info
-  const card2X = margin + cardWidth + 8;
-  drawCard(pdf, card2X, y, cardWidth, 36);
-  cardY = drawSectionTitle(pdf, 'LOCALIZAÇÃO', card2X + 2, y + 3, cardWidth - 4);
-  cardY = drawInfoRow(pdf, 'Cidade/UF:', `${data.city}/${data.state}`, card2X + cardPadding, cardY, labelWidth, maxValueWidth);
-  cardY = drawInfoRow(pdf, 'Coordenadas:', 
-    data.coordinates_lat && data.coordinates_lng 
-      ? `${data.coordinates_lat.toFixed(6)}, ${data.coordinates_lng.toFixed(6)}` 
-      : '-', 
-    card2X + cardPadding, cardY, 42, maxValueWidth);
-  
-  y += 42;
-  
-  // Card 3: Date/Time Info
-  drawCard(pdf, margin, y, cardWidth, 36);
-  cardY = drawSectionTitle(pdf, 'DATA E HORA', margin + 2, y + 3, cardWidth - 4);
-  
+  sectionY = drawInfoRow(pdf, 'Plano:', data.plan.name, margin, sectionY, labelWidth, maxValueWidth);
+
+  // Section: LOCALIZAÇÃO (right column)
+  const col2X = margin + colWidth + 12;
+  let col2Y = drawSectionTitle(pdf, 'Localização', col2X, y, colWidth);
+  col2Y = drawInfoRow(pdf, 'Cidade/UF:', `${data.city}/${data.state}`, col2X, col2Y, labelWidth, maxValueWidth);
+  col2Y = drawInfoRow(
+    pdf,
+    'Coordenadas:',
+    data.coordinates_lat && data.coordinates_lng
+      ? `${data.coordinates_lat.toFixed(6)}, ${data.coordinates_lng.toFixed(6)}`
+      : '-',
+    col2X,
+    col2Y,
+    labelWidth,
+    maxValueWidth
+  );
+
+  y = Math.max(sectionY, col2Y) + 12;
+
+  // Section: DATA E HORA
+  sectionY = drawSectionTitle(pdf, 'Data e Hora', margin, y, colWidth);
+
   if (data.start_datetime) {
     const startDate = new Date(data.start_datetime);
-    cardY = drawInfoRow(pdf, 'Início:', format(startDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }), margin + cardPadding, cardY, labelWidth, maxValueWidth);
+    sectionY = drawInfoRow(
+      pdf,
+      'Início:',
+      format(startDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }),
+      margin,
+      sectionY,
+      labelWidth,
+      maxValueWidth
+    );
   }
-  
+
   if (data.end_datetime) {
     const endDate = new Date(data.end_datetime);
-    cardY = drawInfoRow(pdf, 'Término:', format(endDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }), margin + cardPadding, cardY, labelWidth, maxValueWidth);
+    sectionY = drawInfoRow(
+      pdf,
+      'Término:',
+      format(endDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }),
+      margin,
+      sectionY,
+      labelWidth,
+      maxValueWidth
+    );
   }
-  
-  cardY = drawInfoRow(pdf, 'Duração:', formatDurationText(data.duration_minutes), margin + cardPadding, cardY, labelWidth, maxValueWidth);
-  cardY = drawInfoRow(pdf, 'KM Rodado:', 
-    data.km_start && data.km_end ? `${data.km_end - data.km_start} km` : '-', 
-    margin + cardPadding, cardY, labelWidth, maxValueWidth);
-  
-  // Card 4: Vehicle Info
-  drawCard(pdf, card2X, y, cardWidth, 36);
-  cardY = drawSectionTitle(pdf, 'VEÍCULO', card2X + 2, y + 3, cardWidth - 4);
-  cardY = drawInfoRow(pdf, 'Descrição:', data.vehicle.description, card2X + cardPadding, cardY, labelWidth, maxValueWidth);
-  
+
+  sectionY = drawInfoRow(pdf, 'Duração:', formatDurationText(data.duration_minutes), margin, sectionY, labelWidth, maxValueWidth);
+  sectionY = drawInfoRow(
+    pdf,
+    'KM Rodado:',
+    data.km_start && data.km_end ? `${data.km_end - data.km_start} km` : '-',
+    margin,
+    sectionY,
+    labelWidth,
+    maxValueWidth
+  );
+
+  // Section: VEÍCULO (right column)
+  col2Y = drawSectionTitle(pdf, 'Veículo', col2X, y, colWidth);
+  col2Y = drawInfoRow(pdf, 'Descrição:', data.vehicle.description, col2X, col2Y, labelWidth, maxValueWidth);
+
   if (data.vehicle.tractor_plate) {
-    cardY = drawInfoRow(pdf, 'Cavalo:', 
-      `${data.vehicle.tractor_plate}${data.vehicle.tractor_brand ? ' - ' + data.vehicle.tractor_brand : ''}${data.vehicle.tractor_model ? ' ' + data.vehicle.tractor_model : ''}`,
-      card2X + cardPadding, cardY, labelWidth, maxValueWidth);
+    col2Y = drawInfoRow(
+      pdf,
+      'Cavalo:',
+      `${data.vehicle.tractor_plate}${data.vehicle.tractor_brand ? ' - ' + data.vehicle.tractor_brand : ''}${data.vehicle.tractor_model ? ' ' + data.vehicle.tractor_model : ''
+      }`,
+      col2X,
+      col2Y,
+      labelWidth,
+      maxValueWidth
+    );
   }
-  
+
   if (data.vehicle.trailer1_plate) {
-    cardY = drawInfoRow(pdf, 'Carreta 1:', 
+    col2Y = drawInfoRow(
+      pdf,
+      'Carreta 1:',
       `${data.vehicle.trailer1_plate} (${bodyTypeLabels[data.vehicle.trailer1_body_type || ''] || data.vehicle.trailer1_body_type || '-'})`,
-      card2X + cardPadding, cardY, labelWidth, maxValueWidth);
+      col2X,
+      col2Y,
+      labelWidth,
+      maxValueWidth
+    );
   }
-  
+
   if (data.vehicle.trailer2_plate) {
-    cardY = drawInfoRow(pdf, 'Carreta 2:', 
+    col2Y = drawInfoRow(
+      pdf,
+      'Carreta 2:',
       `${data.vehicle.trailer2_plate} (${bodyTypeLabels[data.vehicle.trailer2_body_type || ''] || data.vehicle.trailer2_body_type || '-'})`,
-      card2X + cardPadding, cardY, labelWidth, maxValueWidth);
+      col2X,
+      col2Y,
+      labelWidth,
+      maxValueWidth
+    );
   }
-  
-  y += 42;
-  
-  // Card 5: Team & Operator Info (full width)
-  drawCard(pdf, margin, y, contentWidth, data.operator_name ? 24 : 18);
-  cardY = drawSectionTitle(pdf, 'EQUIPE MOBILIZADA', margin + 2, y + 3, contentWidth - 4);
-  
-  cardY = drawInfoRow(pdf, 'Efetivo:', calculateEfetivoMobilizado(data), margin + 4, cardY);
+
+  y = Math.max(sectionY, col2Y) + 12;
+
+  // Section: EQUIPE MOBILIZADA (full width)
+  sectionY = drawSectionTitle(pdf, 'Equipe Mobilizada', margin, y, contentWidth);
+  sectionY = drawInfoRow(pdf, 'Efetivo:', calculateEfetivoMobilizado(data), margin, sectionY);
   if (data.operator_name) {
-    cardY = drawInfoRow(pdf, 'Operador:', data.operator_name, margin + 4, cardY);
+    sectionY = drawInfoRow(pdf, 'Operador:', data.operator_name, margin, sectionY);
   }
-  
-  y += (data.operator_name ? 30 : 24);
-  
+
   // Footer
   drawFooter(pdf, pageWidth, pageHeight);
-  
+
   // ==================== PAGE 2: DESCRIÇÃO DO EVENTO ====================
   pdf.addPage();
-  
-  // Background
-  pdf.setFillColor(245, 246, 250);
-  pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-  
+
   // Header
   y = await drawHeader(pdf, pageWidth, margin, logoImg);
-  
-  // Document title - dark bar
-  pdf.setFillColor(28, 28, 32);
-  drawRoundedRect(pdf, margin, y, contentWidth, 12, 3);
-  setColor(pdf, COLORS.white);
-  pdf.setFontSize(13);
+
+  // Document title
+  setColor(pdf, COLORS.gray900);
+  pdf.setFontSize(16);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('DESCRICAO DO EVENTO', pageWidth / 2, y + 8, { align: 'center' });
-  
-  y += 18;
-  
-  // Subtitle with service type
-  setColor(pdf, COLORS.secondary);
+  pdf.text('Descrição do Evento', pageWidth / 2, y, { align: 'center' });
+
+  // Subtitle
+  setColor(pdf, COLORS.gray600);
   pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'italic');
-  pdf.text(`Relato de Atendimento – ${serviceTypeLabels[data.service_type] || data.service_type.toUpperCase()}`, pageWidth / 2, y, { align: 'center' });
-  
-  y += 10;
-  
-  // Detailed report card
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(`Relato de Atendimento – ${serviceLabel}`, pageWidth / 2, y + 7, { align: 'center' });
+
+  y += 20;
+
+  // Detailed report section
   if (data.detailed_report) {
-    const reportCardHeight = Math.min(pageHeight - y - 30, 180); // Max height before footer
-    drawCard(pdf, margin, y, contentWidth, reportCardHeight);
-    
-    cardY = drawSectionTitle(pdf, 'RELATÓRIO DETALHADO', margin + 2, y + 3, contentWidth - 4);
-    
-    setColor(pdf, COLORS.text);
+    sectionY = drawSectionTitle(pdf, 'Relatório Detalhado', margin, y, contentWidth);
+
+    setColor(pdf, COLORS.black);
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
-    
-    const lines = pdf.splitTextToSize(data.detailed_report, contentWidth - 10);
-    let textY = cardY + 2;
-    
+
+    const lines = pdf.splitTextToSize(data.detailed_report, contentWidth - 8);
+    let textY = sectionY + 2;
+
     for (const line of lines) {
-      if (textY > y + reportCardHeight - 10) {
+      if (textY > pageHeight - 35) {
         // Need new page
         drawFooter(pdf, pageWidth, pageHeight);
         pdf.addPage();
-        
-         pdf.setFillColor(245, 246, 250);
-         pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-        
+
         y = await drawHeader(pdf, pageWidth, margin, logoImg);
-        
-        drawCard(pdf, margin, y, contentWidth, pageHeight - y - 30);
-        textY = y + 8;
-        
-        setColor(pdf, COLORS.text);
+        textY = y + 6;
+
+        setColor(pdf, COLORS.black);
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
       }
-      
-      pdf.text(line, margin + 5, textY);
-      textY += 5;
+
+      pdf.text(line, margin + 4, textY);
+      textY += 6;
     }
   }
-  
+
   // Footer
   drawFooter(pdf, pageWidth, pageHeight);
-  
+
   // ==================== PAGE 3+: PHOTOS (2x2 grid, 4 per page) ====================
   if (data.photos && data.photos.length > 0) {
     const photosPerPage = 4;
     const totalPages = Math.ceil(data.photos.length / photosPerPage);
-    
-    // Fixed grid dimensions for uniform alignment
-    const gapX = 8; // horizontal gap between photos
-    const gapY = 10; // vertical gap between rows (photo + caption)
+
+    const gapX = 12;
+    const gapY = 12;
     const photoWidth = (contentWidth - gapX) / 2;
-    const photoHeight = photoWidth * 0.6; // 5:3 landscape ratio
-    const captionHeight = 7; // reserved space for caption below photo
+    const photoHeight = photoWidth * 0.65;
+    const captionHeight = 10;
     const cellHeight = photoHeight + captionHeight + gapY;
-    
+
     for (let page = 0; page < totalPages; page++) {
       pdf.addPage();
-      
-      // Background
-      pdf.setFillColor(245, 246, 250);
-      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-      
+
       // Header
       y = await drawHeader(pdf, pageWidth, margin, logoImg);
-      
-      // Title - dark bar
-      pdf.setFillColor(28, 28, 32);
-      drawRoundedRect(pdf, margin, y, contentWidth, 12, 3);
-      setColor(pdf, COLORS.white);
-      pdf.setFontSize(13);
+
+      // Title
+      setColor(pdf, COLORS.gray900);
+      pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('REGISTRO FOTOGRAFICO', pageWidth / 2, y + 8, { align: 'center' });
-      
+      pdf.text('Registro Fotográfico', pageWidth / 2, y, { align: 'center' });
+
       // Page counter
-      setColor(pdf, COLORS.muted);
-      pdf.setFontSize(7);
+      setColor(pdf, COLORS.gray400);
+      pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Pagina ${page + 1} de ${totalPages}  ·  Fotos ${page * photosPerPage + 1} a ${Math.min((page + 1) * photosPerPage, data.photos.length)} de ${data.photos.length}`, pageWidth / 2, y + 16, { align: 'center' });
-      
-      y += 22;
-      
+      pdf.text(
+        `Página ${page + 1} de ${totalPages}  •  Fotos ${page * photosPerPage + 1} a ${Math.min(
+          (page + 1) * photosPerPage,
+          data.photos.length
+        )} de ${data.photos.length}`,
+        pageWidth / 2,
+        y + 7,
+        { align: 'center' }
+      );
+
+      y += 18;
+
       const startIdx = page * photosPerPage;
       const endIdx = Math.min(startIdx + photosPerPage, data.photos.length);
-      
+
       for (let i = startIdx; i < endIdx; i++) {
         const photo = data.photos[i];
         const localIdx = i - startIdx;
         const col = localIdx % 2;
         const row = Math.floor(localIdx / 2);
-        
+
         const x = margin + col * (photoWidth + gapX);
         const photoY = y + row * cellHeight;
-        
+
         try {
-          // Photo frame with subtle shadow
-          pdf.setFillColor(200, 200, 200);
-          drawRoundedRect(pdf, x + 1, photoY + 1, photoWidth, photoHeight, 3);
-          
-          // White background
-          setColor(pdf, COLORS.white);
-          drawRoundedRect(pdf, x, photoY, photoWidth, photoHeight, 3);
-          
-          // Load and add image - uniform padding
+          // Load and add image
           const img = await loadImage(photo.file_url);
-          const imgPad = 2;
-          pdf.addImage(img, 'JPEG', x + imgPad, photoY + imgPad, photoWidth - imgPad * 2, photoHeight - imgPad * 2);
-          
+          pdf.addImage(img, 'JPEG', x, photoY, photoWidth, photoHeight);
+
           // Border
-          pdf.setDrawColor(COLORS.cardBorder.r, COLORS.cardBorder.g, COLORS.cardBorder.b);
+          setColor(pdf, COLORS.gray200);
           pdf.setLineWidth(0.5);
-          pdf.roundedRect(x, photoY, photoWidth, photoHeight, 3, 3, 'S');
-          
-          // Caption below photo - fixed position
+          pdf.rect(x, photoY, photoWidth, photoHeight, 'S');
+
+          // Caption below photo
           if (photo.caption) {
-            setColor(pdf, COLORS.muted);
-            pdf.setFontSize(7);
-            pdf.setFont('helvetica', 'italic');
+            setColor(pdf, COLORS.gray600);
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'normal');
             const captionLines = pdf.splitTextToSize(photo.caption, photoWidth - 4);
-            pdf.text(captionLines[0], x + photoWidth / 2, photoY + photoHeight + 4, { align: 'center' });
+            pdf.text(captionLines[0], x + photoWidth / 2, photoY + photoHeight + 6, { align: 'center' });
           }
-          
-          // Photo number badge - dark circle
-          pdf.setFillColor(28, 28, 32);
-          pdf.circle(x + 6.5, photoY + 6.5, 4, 'F');
-          setColor(pdf, COLORS.white);
-          pdf.setFontSize(6.5);
+
+          // Photo number (top left corner)
+          setColor(pdf, COLORS.gray600);
+          pdf.setFontSize(7);
           pdf.setFont('helvetica', 'bold');
-          pdf.text((i + 1).toString(), x + 6.5, photoY + 8, { align: 'center' });
-          
+          pdf.text(`#${i + 1}`, x + 3, photoY + 5);
         } catch (error) {
           console.error('Erro ao carregar imagem:', error);
-          
+
           // Placeholder
-          setColor(pdf, COLORS.light);
-          drawRoundedRect(pdf, x, photoY, photoWidth, photoHeight, 3);
-          pdf.setDrawColor(200, 200, 200);
-          pdf.roundedRect(x, photoY, photoWidth, photoHeight, 3, 3, 'S');
-          
-          setColor(pdf, COLORS.muted);
+          setColor(pdf, COLORS.gray50);
+          pdf.rect(x, photoY, photoWidth, photoHeight, 'F');
+          setColor(pdf, COLORS.gray200);
+          pdf.rect(x, photoY, photoWidth, photoHeight, 'S');
+
+          setColor(pdf, COLORS.gray400);
           pdf.setFontSize(9);
           pdf.text('Imagem não disponível', x + photoWidth / 2, photoY + photoHeight / 2, { align: 'center' });
         }
       }
-      
+
       // Footer
       drawFooter(pdf, pageWidth, pageHeight);
     }
   }
-  
+
   // Save PDF
   pdf.save(`Relatorio_${data.code || 'Atendimento'}.pdf`);
 }
