@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, UserCheck, Phone, Mail, Shield, ShieldOff, Trash2 } from 'lucide-react';
+import { Plus, Search, UserCheck, Phone, Mail, Shield, ShieldOff, Trash2, Car, Bike } from 'lucide-react';
 import { toast } from 'sonner';
 import { NewAgentDialog } from '@/components/agents/NewAgentDialog';
 import { EditAgentDialog } from '@/components/agents/EditAgentDialog';
@@ -19,6 +19,9 @@ interface Agent {
   email: string | null;
   status: 'ativo' | 'inativo';
   is_armed: boolean | null;
+  performance_level: 'ruim' | 'bom' | 'otimo';
+  vehicle_type: 'carro' | 'moto' | null;
+  vehicle_plate: string | null;
 }
 
 const Agents = () => {
@@ -42,7 +45,7 @@ const Agents = () => {
     try {
       const { data, error } = await supabase
         .from('agents')
-        .select('id, name, document, phone, email, status, is_armed')
+        .select('id, name, document, phone, email, status, is_armed, performance_level, vehicle_type, vehicle_plate')
         .order('name');
 
       if (error) throw error;
@@ -220,12 +223,39 @@ const Agents = () => {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <CardDescription className="font-mono text-xs">{agent.document}</CardDescription>
-                  <Badge variant={agent.status === 'ativo' ? 'default' : 'outline'}>
+                <div className="flex items-center gap-2 mb-1">
+                  {agent.performance_level === 'ruim' && (
+                    <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/20 font-bold uppercase tracking-wider">
+                      Ruim
+                    </Badge>
+                  )}
+                  {agent.performance_level === 'bom' && (
+                    <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-600 border-blue-200 font-bold uppercase tracking-wider">
+                      Bom
+                    </Badge>
+                  )}
+                  {agent.performance_level === 'otimo' && (
+                    <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-200 font-bold uppercase tracking-wider">
+                      Ótimo
+                    </Badge>
+                  )}
+                  <Badge variant={agent.status === 'ativo' ? 'default' : 'outline'} className="text-[10px]">
                     {agent.status === 'ativo' ? 'Ativo' : 'Inativo'}
                   </Badge>
                 </div>
+                <div className="flex items-center gap-2">
+                  <CardDescription className="font-mono text-xs">{agent.document}</CardDescription>
+                </div>
+                {agent.vehicle_plate && (
+                  <div className="flex items-center gap-2 mt-1 text-xs font-medium text-muted-foreground">
+                    {agent.vehicle_type === 'carro' ? (
+                      <Car className="h-3 w-3" />
+                    ) : agent.vehicle_type === 'moto' ? (
+                      <Bike className="h-3 w-3" />
+                    ) : null}
+                    <span className="uppercase">{agent.vehicle_plate}</span>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-2">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">

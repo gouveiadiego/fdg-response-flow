@@ -50,6 +50,8 @@ const agentSchema = z.object({
   bank_agency: z.string().max(20).optional(),
   bank_account: z.string().max(30).optional(),
   bank_account_type: z.enum(['corrente', 'poupanca']).optional(),
+  performance_level: z.enum(['ruim', 'bom', 'otimo']).default('bom'),
+  vehicle_type: z.enum(['carro', 'moto']).optional().or(z.literal('')),
 });
 
 type AgentFormData = z.infer<typeof agentSchema>;
@@ -83,6 +85,8 @@ export function EditAgentDialog({ agentId, open, onOpenChange, onSuccess }: Edit
       bank_agency: '',
       bank_account: '',
       bank_account_type: undefined,
+      performance_level: 'bom',
+      vehicle_type: '',
     },
   });
 
@@ -121,6 +125,8 @@ export function EditAgentDialog({ agentId, open, onOpenChange, onSuccess }: Edit
           bank_agency: (data as any).bank_agency || '',
           bank_account: (data as any).bank_account || '',
           bank_account_type: (data as any).bank_account_type || undefined,
+          performance_level: (data as any).performance_level || 'bom',
+          vehicle_type: (data as any).vehicle_type || '',
         });
       }
     } catch (error) {
@@ -135,7 +141,7 @@ export function EditAgentDialog({ agentId, open, onOpenChange, onSuccess }: Edit
       toast.error('Digite um CEP');
       return;
     }
-    
+
     const result = await lookupCep(cep);
     if (result) {
       form.setValue('address', result.address);
@@ -166,6 +172,8 @@ export function EditAgentDialog({ agentId, open, onOpenChange, onSuccess }: Edit
           bank_agency: data.bank_agency || null,
           bank_account: data.bank_account || null,
           bank_account_type: data.bank_account_type || null,
+          performance_level: data.performance_level,
+          vehicle_type: (data.vehicle_type as any) || null,
         })
         .eq('id', agentId);
 
@@ -311,6 +319,29 @@ export function EditAgentDialog({ agentId, open, onOpenChange, onSuccess }: Edit
 
                 <FormField
                   control={form.control}
+                  name="vehicle_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Veículo</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o tipo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">Selecione...</SelectItem>
+                          <SelectItem value="carro">Carro</SelectItem>
+                          <SelectItem value="moto">Moto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="status"
                   render={({ field }) => (
                     <FormItem>
@@ -353,10 +384,33 @@ export function EditAgentDialog({ agentId, open, onOpenChange, onSuccess }: Edit
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="performance_level"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Avaliação de Desempenho</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a avaliação" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="ruim" className="text-destructive font-medium">Ruim</SelectItem>
+                        <SelectItem value="bom" className="text-blue-500 font-medium">Bom</SelectItem>
+                        <SelectItem value="otimo" className="text-emerald-500 font-medium">Ótimo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               {/* Seção de Dados Bancários */}
               <div className="pt-4 border-t">
                 <h3 className="text-sm font-semibold mb-3">Dados Bancários</h3>
-                
+
                 <FormField
                   control={form.control}
                   name="pix_key"
