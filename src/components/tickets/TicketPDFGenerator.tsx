@@ -17,8 +17,8 @@ const COMPANY_INFO = {
 // Premium Brand Theme
 const THEME = {
   // Brand Colors
-  primary: { r: 8, g: 70, b: 170 },      // #0846AA (Brand Blue - Vibrant)
-  dark: { r: 28, g: 37, b: 45 },         // #1C252D (Dark Background)
+  primary: { r: 18, g: 18, b: 18 },      // #121212 (Near Black - Logo Style)
+  dark: { r: 10, g: 10, b: 10 },         // #0A0A0A (Pure Dark)
 
   // UI Colors
   text: { r: 30, g: 41, b: 59 },         // Slate 800
@@ -30,6 +30,8 @@ const THEME = {
 
   // Shadows
   shadow: { r: 203, g: 213, b: 225 },    // Slate 300
+  success: { r: 34, g: 197, b: 94 },     // Emerald 500
+  warning: { r: 245, g: 158, b: 11 },    // Amber 500
 };
 
 interface TicketPDFData {
@@ -151,124 +153,155 @@ const drawRoundedRect = (pdf: jsPDF, x: number, y: number, w: number, h: number,
 };
 
 const drawShadowRect = (pdf: jsPDF, x: number, y: number, w: number, h: number, r: number) => {
-  setColor(pdf, THEME.shadow);
+  pdf.setGState(new (pdf as any).GState({ opacity: 0.1 }));
+  setColor(pdf, { r: 0, g: 0, b: 0 }); // Black but semi-transparent for realism
   drawRoundedRect(pdf, x + 1, y + 1, w, h, r, 'F');
+  pdf.setGState(new (pdf as any).GState({ opacity: 1.0 }));
 };
 
 const drawIconPhone = (pdf: jsPDF, x: number, y: number, color: { r: number, g: number, b: number }) => {
   setColor(pdf, color);
-  pdf.setLineWidth(0.4);
+  pdf.setLineWidth(0.3);
 
-  // Phone body
-  pdf.roundedRect(x, y, 4, 6, 0.5, 0.5, 'S');
+  // Phone body - Smaller
+  pdf.roundedRect(x, y, 3, 4.5, 0.4, 0.4, 'S');
   // Screen line
-  pdf.line(x + 1, y + 0.8, x + 3, y + 0.8);
+  pdf.line(x + 0.8, y + 0.6, x + 2.2, y + 0.6);
   // Bottom button
-  pdf.circle(x + 2, y + 5.2, 0.3, 'F');
+  pdf.circle(x + 1.5, y + 3.9, 0.2, 'F');
 };
 
 const drawIconEmail = (pdf: jsPDF, x: number, y: number, color: { r: number, g: number, b: number }) => {
   setColor(pdf, color);
-  pdf.setLineWidth(0.4);
-  // Envelope body
-  pdf.rect(x, y + 1, 5, 3.5, 'S');
+  pdf.setLineWidth(0.3);
+  // Envelope body - Smaller
+  pdf.rect(x, y + 1, 4, 2.8, 'S');
   // Envelope flap
-  pdf.line(x, y + 1, x + 2.5, y + 3);
-  pdf.line(x + 5, y + 1, x + 2.5, y + 3);
+  pdf.line(x, y + 1, x + 2, y + 2.4);
+  pdf.line(x + 4, y + 1, x + 2, y + 2.4);
 };
 
 const drawIconGlobe = (pdf: jsPDF, x: number, y: number, color: { r: number, g: number, b: number }) => {
   setColor(pdf, color);
-  pdf.setLineWidth(0.4);
-  const r = 2.5;
+  pdf.setLineWidth(0.3);
+  const r = 2; // Smaller radius
   const cx = x + r;
   const cy = y + r;
 
   pdf.circle(cx, cy, r, 'S');
-  pdf.line(x, cy, x + 5, cy); // Equator
-  pdf.line(cx, y, cx, y + 5); // Meridian
-  // Ellipses approximation for 3D effect (simple curves)
-  pdf.lines([[1.5, -1.8], [-1.5, -1.8]], cx - 0.75, cy + 1.8, [1, 1]);
-  pdf.lines([[1.5, 1.8], [-1.5, 1.8]], cx - 0.75, cy - 1.8, [1, 1]);
+  pdf.line(x, cy, x + (r * 2), cy); // Equator
+  pdf.line(cx, y, cx, y + (r * 2)); // Meridian
 };
 
 // Main Drawing Functions
-const drawPremiumHeader = async (pdf: jsPDF, pageWidth: number, logoImg: string | null): Promise<number> => {
+const drawPremiumHeader = async (
+  pdf: jsPDF,
+  pageWidth: number,
+  logo: { dataUrl: string; width: number; height: number } | null,
+  bg: { dataUrl: string; width: number; height: number } | null
+): Promise<number> => {
   const headerH = 45; // Tall, impactful header
 
-  // Background
-  setColor(pdf, THEME.primary);
-  pdf.rect(0, 0, pageWidth, headerH, 'F');
+  // Background - Use local luxury image if available, else fallback to solid black
+  if (bg) {
+    try {
+      // Background should COVER the header area without stretching
+      const imgRatio = bg.width / bg.height;
+      const targetRatio = pageWidth / headerH;
 
-  // Subtle pattern/gradient effect (simulated with lines)
-  pdf.setDrawColor(255, 255, 255);
-  pdf.setLineWidth(0.1);
-  for (let i = 0; i < pageWidth; i += 10) {
-    pdf.setDrawColor(255, 255, 255);
-    pdf.setGState(new (pdf as any).GState({ opacity: 0.05 }));
-    pdf.line(i, 0, i - 20, headerH);
+      let drawW, drawH, offsetX = 0, offsetY = 0;
+      if (imgRatio > targetRatio) {
+        // Image is wider than needed
+        drawH = headerH;
+        drawW = headerH * imgRatio;
+        offsetX = (pageWidth - drawW) / 2;
+      } else {
+        // Image is taller than needed
+        drawW = pageWidth;
+        drawH = pageWidth / imgRatio;
+        offsetY = (headerH - drawH) / 2;
+      }
+
+      pdf.addImage(bg.dataUrl, 'PNG', offsetX, offsetY, drawW, drawH);
+    } catch (e) {
+      console.error('Error adding header background:', e);
+      setColor(pdf, THEME.primary);
+      pdf.rect(0, 0, pageWidth, headerH, 'F');
+    }
+  } else {
+    setColor(pdf, THEME.primary);
+    pdf.rect(0, 0, pageWidth, headerH, 'F');
   }
-  pdf.setGState(new (pdf as any).GState({ opacity: 1.0 })); // Reset opacity
 
   const margin = 15;
 
-  // Logo Area (White Box with Shadow for Logo)
-  if (logoImg) {
-    // Logo container
-    setColor(pdf, { r: 0, g: 0, b: 0 }); // Shadow color
-    pdf.setGState(new (pdf as any).GState({ opacity: 0.2 }));
-    drawRoundedRect(pdf, margin + 1, 6 + 1, 32, 32, 2, 'F');
-    pdf.setGState(new (pdf as any).GState({ opacity: 1.0 }));
-
-    setColor(pdf, THEME.white);
-    drawRoundedRect(pdf, margin, 6, 32, 32, 2, 'F');
-
+  // Logo Area - Integrated directly on black background
+  if (logo) {
     try {
-      pdf.addImage(logoImg, 'PNG', margin + 2, 8, 28, 28);
+      // Maintain aspect ratio for logo
+      const logoMaxW = 35;
+      const logoMaxH = 35;
+      const logoRatio = logo.width / logo.height;
+
+      let finalW, finalH;
+      if (logoRatio > 1) {
+        finalW = logoMaxW;
+        finalH = logoMaxW / logoRatio;
+      } else {
+        finalH = logoMaxH;
+        finalW = logoMaxH * logoRatio;
+      }
+
+      // Center logo vertically in the header (using some padding)
+      const logoY = (headerH - finalH) / 2;
+      pdf.addImage(logo.dataUrl, 'PNG', margin, logoY, finalW, finalH);
     } catch (e) {
       console.error('Error adding logo:', e);
     }
   }
 
-  // Title & Subtitle
-  const textStartX = margin + 45;
+  // Title & Subtitle - Aligned with logo presence
+  const textStartX = margin + 40;
   setColor(pdf, THEME.white);
 
   pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(24);
-  pdf.text('RELATÓRIO DE ATENDIMENTO', textStartX, 20);
+  pdf.setFontSize(22);
+  pdf.text('RELATÓRIO DE ATENDIMENTO', textStartX, 18);
 
-  // Decorative Divider
-  setColor(pdf, { r: 255, g: 255, b: 255 });
-  pdf.setLineWidth(0.5);
-  pdf.line(textStartX, 24, pageWidth - margin, 24);
+  // Motto / Phrase - New
+  pdf.setFont('helvetica', 'italic');
+  pdf.setFontSize(8.5);
+  pdf.setGState(new (pdf as any).GState({ opacity: 0.8 }));
+  pdf.text('Pronta Resposta padrão alto | Atuação 24h com rede validada.', textStartX, 23);
+  pdf.setGState(new (pdf as any).GState({ opacity: 1.0 }));
 
-  // Contact Info (Right aligned, integrated into header)
-  // We'll put this in a separate band below the main title or inside the header
-  const iconY = 32;
-  const iconSize = 6;
-  const gap = 60;
+
+  // Contact Info - Refined and grouped
+  const iconY = 34;
+  const gap = 38;
 
   pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(8);
+  pdf.setFontSize(7);
 
   let currentX = textStartX;
 
   // Phone
-  drawIconPhone(pdf, currentX, iconY - 4, THEME.white);
-  pdf.text(COMPANY_INFO.phoneCommercial, currentX + 6, iconY);
+  drawIconPhone(pdf, currentX, iconY - 3.5, THEME.white);
+  pdf.text(COMPANY_INFO.phoneCommercial, currentX + 5, iconY);
 
   // Email
-  currentX += gap; // simple distinct spacing
-  drawIconEmail(pdf, currentX, iconY - 4, THEME.white);
-  pdf.text('contato@fdgprontaresposta.com.br', currentX + 7, iconY);
+  currentX += (gap - 2);
+  drawIconEmail(pdf, currentX, iconY - 3.5, THEME.white);
+  pdf.text('contato@fdgprontaresposta.com.br', currentX + 6, iconY);
 
   // Website
-  currentX += gap + 10;
-  drawIconGlobe(pdf, currentX, iconY - 4, THEME.white);
-  pdf.text('www.fdgprontaresposta.com.br', currentX + 7, iconY);
+  currentX += (gap + 15);
+  if (currentX + 30 < pageWidth) {
+    drawIconGlobe(pdf, currentX, iconY - 3.5, THEME.white);
+    pdf.text('www.fdgprontaresposta.com.br', currentX + 6, iconY);
+  }
 
-  return headerH + 10; // Return Y position for next content
+  return headerH + 10;
 };
 
 const drawFooter = (pdf: jsPDF, pageWidth: number, pageHeight: number) => {
@@ -363,16 +396,22 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   setColor(pdf, THEME.background);
   pdf.rect(0, 0, pageWidth, pageHeight, 'F');
 
-  // Load logo
-  let logoImg: string | null = null;
+  // Load assets
+  let logoImg: { dataUrl: string; width: number; height: number } | null = null;
+  let headerBgImg: { dataUrl: string; width: number; height: number } | null = null;
   try {
-    logoImg = await loadImage('/logo-fdg.png');
+    logoImg = await loadImage('/logo-fdg-premium.png');
+    headerBgImg = await loadImage('/header-luxury-bg.png');
   } catch (e) {
-    console.error('Error loading logo:', e);
+    console.error('Error loading PDF assets:', e);
+    // Fallback to simpler logo if premium fails
+    try {
+      logoImg = await loadImage('/logo-fdg.png');
+    } catch (fe) { }
   }
 
   // ==================== PAGE 1 ====================
-  let y = await drawPremiumHeader(pdf, pageWidth, logoImg);
+  let y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg);
 
   // Summary Banner (Floating Card) with Status
   const summaryH = 25;
@@ -385,12 +424,15 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
 
   // Service Type Large
   setColor(pdf, THEME.primary);
+  // Service Type Large - Use label or fallback to raw
+  const serviceLabel = serviceTypeLabels[data.service_type.toLowerCase()] || data.service_type;
+  setColor(pdf, THEME.primary);
   pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
-  pdf.text(data.service_type.toUpperCase(), margin + 8, summaryY + 10);
+  pdf.text(serviceLabel.toUpperCase(), margin + 8, summaryY + 10);
 
   // Status Badge
-  const statusColor = data.status === 'concluido' ? THEME.success : (data.status === 'em_andamento' ? THEME.primary : THEME.warning);
+  const statusColor = data.status === 'finalizado' ? THEME.success : (data.status === 'em_andamento' ? THEME.primary : THEME.warning);
   setColor(pdf, statusColor);
   drawRoundedRect(pdf, pageWidth - margin - 40, summaryY + 5, 30, 8, 2, 'F');
   setColor(pdf, THEME.white);
@@ -408,12 +450,20 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
     pdf.setFontSize(7);
     pdf.text(label, xPos, infoY);
     setColor(pdf, THEME.text);
-    pdf.setFontSize(9);
+    pdf.setFontSize(8.5); // Slightly smaller to fit operator name
     pdf.setFont('helvetica', 'bold');
-    pdf.text(val, xPos, infoY + 4);
+
+    // Check if value is too long
+    const valText = val || '-';
+    if (pdf.getTextWidth(valText) > colW - 5) {
+      pdf.setFontSize(7);
+    }
+    pdf.text(valText, xPos, infoY + 4);
+    pdf.setFontSize(9); // Reset
   };
 
-  drawMiniStat('PROTOCOLO', data.code || 'N/A', margin + 8);
+  const protocolText = data.operator_name || 'N/A';
+  drawMiniStat('OPERADOR', protocolText, margin + 8);
   drawMiniStat('DATA', data.start_datetime ? format(new Date(data.start_datetime), 'dd/MM/yyyy') : '-', margin + 8 + colW);
   drawMiniStat('CIDADE', `${data.city}/${data.state}`, margin + 8 + colW * 2);
   drawMiniStat('PLANO', data.plan.name, margin + 8 + colW * 3);
@@ -477,7 +527,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   setColor(pdf, THEME.background); // refill background
   pdf.rect(0, 0, pageWidth, pageHeight, 'F');
 
-  y = await drawPremiumHeader(pdf, pageWidth, logoImg);
+  y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg);
 
   // Relato Card
   if (data.detailed_report) {
@@ -522,7 +572,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
         setColor(pdf, THEME.background);
         pdf.rect(0, 0, pageWidth, pageHeight, 'F');
 
-        y = await drawPremiumHeader(pdf, pageWidth, logoImg);
+        y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg);
         textY = y + 10;
 
         // Continuation background
@@ -540,81 +590,124 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
 
   // ==================== PAGE 3+: PHOTOS ====================
   if (data.photos && data.photos.length > 0) {
-    const photosPerPage = 4;
-    const totalPages = Math.ceil(data.photos.length / photosPerPage);
+    // Group photos: by caption, max 4 per group
+    const groupedPhotos: Array<{ photos: any[], caption: string | null }> = [];
+    let currentGroup: any[] = [];
+    let lastCaption: string | null = null;
 
-    for (let page = 0; page < totalPages; page++) {
+    data.photos.forEach((photo, idx) => {
+      const sameCaption = photo.caption === lastCaption;
+      const groupNotFull = currentGroup.length < 4;
+
+      if (sameCaption && groupNotFull) {
+        currentGroup.push(photo);
+      } else {
+        if (currentGroup.length > 0) {
+          groupedPhotos.push({ photos: currentGroup, caption: lastCaption });
+        }
+        currentGroup = [photo];
+        lastCaption = photo.caption;
+      }
+    });
+    if (currentGroup.length > 0) {
+      groupedPhotos.push({ photos: currentGroup, caption: lastCaption });
+    }
+
+    for (const group of groupedPhotos) {
       pdf.addPage();
       setColor(pdf, THEME.background);
       pdf.rect(0, 0, pageWidth, pageHeight, 'F');
 
-      y = await drawPremiumHeader(pdf, pageWidth, logoImg);
+      y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg);
 
-      // Section Title
+      // Section Title - CENTRALIZED
       setColor(pdf, THEME.dark);
-      pdf.setFontSize(14);
+      pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('REGISTRO FOTOGRÁFICO', margin, y + 10);
+      pdf.text('REGISTRO FOTOGRÁFICO', pageWidth / 2, y + 10, { align: 'center' });
 
-      // Divider
+      // Divider - CENTRALIZED
       setColor(pdf, THEME.primary);
-      pdf.rect(margin, y + 14, 20, 1, 'F');
+      const dividerW = 30;
+      pdf.rect((pageWidth - dividerW) / 2, y + 14, dividerW, 1.2, 'F');
 
-      y += 25;
+      y += 30;
 
-      const startIdx = page * photosPerPage;
-      const endIdx = Math.min(startIdx + photosPerPage, data.photos.length);
-
-      // Grid Config
-      const gap = 10;
+      // Group Grid Config (2x2 grid)
+      const gap = 8;
       const photoW = (contentWidth - gap) / 2;
-      const photoH = photoW * 0.65;
-      const cardH = photoH + 15; // + space for caption
+      const photoH = photoW * 0.75; // Standard rectangle area for the card
 
-      for (let i = startIdx; i < endIdx; i++) {
-        const photo = data.photos[i];
-        const localIdx = i - startIdx;
-        const col = localIdx % 2;
-        const row = Math.floor(localIdx / 2);
+      for (let i = 0; i < group.photos.length; i++) {
+        const photo = group.photos[i];
+        const col = i % 2;
+        const row = Math.floor(i / 2);
 
         const xStr = margin + col * (photoW + gap);
-        const yStr = y + row * (cardH + gap);
+        const yStr = y + row * (photoH + gap);
 
-        // Polaroid/Card Effect
-        drawShadowRect(pdf, xStr, yStr, photoW, cardH, 2);
+        // Card Effect
+        drawShadowRect(pdf, xStr, yStr, photoW, photoH, 2);
         setColor(pdf, THEME.white);
-        drawRoundedRect(pdf, xStr, yStr, photoW, cardH, 2, 'F');
+        drawRoundedRect(pdf, xStr, yStr, photoW, photoH, 2, 'F');
 
         try {
-          // Photo
-          const padding = 2;
           const imgP = await loadImage(photo.file_url);
-          pdf.addImage(imgP, 'JPEG', xStr + padding, yStr + padding, photoW - (padding * 2), photoH);
+          const padding = 2;
+          const availableW = photoW - (padding * 2);
+          const availableH = photoH - (padding * 2);
 
-          // Border around image
-          setColor(pdf, THEME.border);
-          pdf.setLineWidth(0.2);
-          pdf.rect(xStr + padding, yStr + padding, photoW - (padding * 2), photoH, 'S');
+          // Calculate Proportions to avoid stretching
+          const imgRatio = imgP.width / imgP.height;
+          const targetRatio = availableW / availableH;
 
-          // Caption
-          if (photo.caption) {
-            setColor(pdf, THEME.text);
-            pdf.setFontSize(8);
-            pdf.setFont('helvetica', 'bold');
-            const capLines = pdf.splitTextToSize(photo.caption, photoW - 10);
-            pdf.text(capLines[0], xStr + (photoW / 2), yStr + photoH + 8, { align: 'center' });
+          let finalW, finalH;
+          if (imgRatio > targetRatio) {
+            // Wider than target (Horizontal landscape)
+            finalW = availableW;
+            finalH = availableW / imgRatio;
           } else {
-            setColor(pdf, THEME.secondaryText);
-            pdf.setFontSize(7);
-            pdf.text(`Foto #${i + 1}`, xStr + (photoW / 2), yStr + photoH + 8, { align: 'center' });
+            // Taller than target
+            finalH = availableH;
+            finalW = availableH * imgRatio;
           }
+
+          // Center image inside the card area
+          const imgX = xStr + padding + (availableW - finalW) / 2;
+          const imgY = yStr + padding + (availableH - finalH) / 2;
+
+          pdf.addImage(imgP.dataUrl, 'JPEG', imgX, imgY, finalW, finalH);
         } catch (e) {
-          // Placeholder
-          setColor(pdf, THEME.background);
-          pdf.rect(xStr + 2, yStr + 2, photoW - 4, photoH, 'F');
+          setColor(pdf, THEME.border);
+          pdf.rect(xStr + 2, yStr + 2, photoW - 4, photoH - 4, 'F');
           setColor(pdf, THEME.secondaryText);
+          pdf.setFontSize(7);
           pdf.text('Imagem indisponível', xStr + (photoW / 2), yStr + (photoH / 2), { align: 'center' });
         }
+      }
+
+      // Shared Caption below the block - ENHANCED & CENTRALIZED
+      const gridTotalH = Math.ceil(group.photos.length / 2) * (photoH + gap);
+      const captionY = y + gridTotalH + 8;
+
+      if (group.caption) {
+        const capW = contentWidth;
+        const capLines = pdf.splitTextToSize(group.caption, capW - 30);
+        const capH = (capLines.length * 5) + 12;
+
+        drawShadowRect(pdf, margin, captionY, capW, capH, 1.5);
+        setColor(pdf, THEME.white);
+        drawRoundedRect(pdf, margin, captionY, capW, capH, 1.5, 'F');
+
+        setColor(pdf, THEME.text);
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(capLines, margin + (capW / 2), captionY + 8, { align: 'center' });
+      } else {
+        setColor(pdf, THEME.secondaryText);
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'italic');
+        pdf.text('Sem descrição para este lote de fotos.', pageWidth / 2, captionY + 8, { align: 'center' });
       }
 
       drawFooter(pdf, pageWidth, pageHeight);
@@ -625,7 +718,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   pdf.save(`Relatorio_${data.code || 'FDG'}.pdf`);
 }
 
-async function loadImage(url: string): Promise<string> {
+async function loadImage(url: string): Promise<{ dataUrl: string; width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -636,7 +729,11 @@ async function loadImage(url: string): Promise<string> {
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL('image/jpeg', 0.90));
+        resolve({
+          dataUrl: canvas.toDataURL('image/png'),
+          width: img.width,
+          height: img.height
+        });
       } else {
         reject(new Error('Failed to get canvas context'));
       }

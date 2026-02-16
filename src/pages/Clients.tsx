@@ -4,10 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Search, Building2, MapPin } from 'lucide-react';
+import { Plus, Search, Building2, MapPin, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { NewClientDialog } from '@/components/clients/NewClientDialog';
 import { EditClientDialog } from '@/components/clients/EditClientDialog';
+import { DeleteAlertDialog } from '@/components/DeleteAlertDialog';
 
 interface Client {
   id: string;
@@ -26,6 +27,11 @@ const Clients = () => {
   const [newClientOpen, setNewClientOpen] = useState(false);
   const [editClientOpen, setEditClientOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetchClients();
@@ -51,6 +57,67 @@ const Clients = () => {
   const handleEdit = (clientId: string) => {
     setSelectedClientId(clientId);
     setEditClientOpen(true);
+  };
+
+  const handleDeleteClick = (clientId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setClientToDelete(clientId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!clientToDelete) return;
+
+    setDeleteLoading(true);
+    try {
+      // Check for vehicles
+      const { count: vehiclesCount, error: vehiclesError } = await supabase
+        .from('vehicles')
+        .select('id', { count: 'exact', head: true })
+        .eq('client_id', clientToDelete);
+
+      if (vehiclesError) throw vehiclesError;
+
+      if (vehiclesCount && vehiclesCount > 0) {
+        toast.error(`Não é possível excluir: Cliente possui ${vehiclesCount} veículo(s) cadastrado(s). Exclua os veículos primeiro.`);
+        return;
+      }
+
+      // Check for tickets
+      const { count: ticketsCount, error: ticketsError } = await supabase
+        .from('tickets')
+        .select('id', { count: 'exact', head: true })
+        .eq('client_id', clientToDelete);
+
+      if (ticketsError) throw ticketsError;
+
+      if (ticketsCount && ticketsCount > 0) {
+        toast.error(`Não é possível excluir: Cliente possui ${ticketsCount} chamado(s) registrado(s). Exclua os chamados primeiro.`);
+        return;
+      }
+
+      const { error, count } = await supabase
+        .from('clients')
+        .delete({ count: 'exact' })
+        .eq('id', clientToDelete);
+
+      if (error) throw error;
+
+      if (count === 0) {
+        toast.error('Erro: Cliente não encontrado ou permissão negada.');
+      } else {
+        toast.success('Cliente excluído com sucesso');
+        setClients(clients.filter(c => c.id !== clientToDelete));
+        fetchClients();
+      }
+    } catch (error: any) {
+      console.error('Erro ao excluir cliente:', error);
+      toast.error('Erro ao excluir cliente. Tente novamente.');
+    } finally {
+      setDeleteLoading(false);
+      setDeleteDialogOpen(false);
+      setClientToDelete(null);
+    }
   };
 
   const handleViewVehicles = (clientId: string) => {
@@ -131,21 +198,29 @@ const Clients = () => {
                   <p className="text-sm text-muted-foreground truncate">{client.contact_phone}</p>
                 )}
                 <div className="flex gap-2 pt-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="flex-1"
                     onClick={() => handleViewVehicles(client.id)}
                   >
                     Ver Veículos
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="flex-1"
                     onClick={() => handleEdit(client.id)}
                   >
                     Editar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive w-10 px-0"
+                    onClick={(e) => handleDeleteClick(client.id, e)}
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </CardContent>
@@ -154,8 +229,8 @@ const Clients = () => {
         </div>
       )}
 
-      <NewClientDialog 
-        open={newClientOpen} 
+      <NewClientDialog
+        open={newClientOpen}
         onOpenChange={setNewClientOpen}
         onSuccess={fetchClients}
       />
@@ -165,6 +240,15 @@ const Clients = () => {
         onOpenChange={setEditClientOpen}
         clientId={selectedClientId}
         onSuccess={fetchClients}
+      />
+
+      <DeleteAlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
+        title="Excluir Cliente"
+        description="Tem certeza que deseja excluir este cliente? Isso pode falhar se houver registros vinculados."
+        loading={deleteLoading}
       />
     </div>
   );

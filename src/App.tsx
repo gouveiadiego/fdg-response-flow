@@ -13,6 +13,8 @@ import Clients from "./pages/Clients";
 import Agents from "./pages/Agents";
 import Vehicles from "./pages/Vehicles";
 import Plans from "./pages/Plans";
+import Operators from "./pages/Operators";
+import Performance from "./pages/Performance";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,11 +31,13 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/performance" element={<Performance />} />
               <Route path="/tickets" element={<Tickets />} />
               <Route path="/clients" element={<Clients />} />
               <Route path="/vehicles" element={<Vehicles />} />
               <Route path="/agents" element={<Agents />} />
               <Route path="/plans" element={<Plans />} />
+              <Route path="/operators" element={<Operators />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

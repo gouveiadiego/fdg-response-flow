@@ -12,10 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Search, Truck, Building2 } from 'lucide-react';
+import { Plus, Search, Truck, Building2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { NewVehicleDialog } from '@/components/vehicles/NewVehicleDialog';
 import { EditVehicleDialog } from '@/components/vehicles/EditVehicleDialog';
+import { DeleteAlertDialog } from '@/components/DeleteAlertDialog';
 
 interface Vehicle {
   id: string;
@@ -65,6 +66,11 @@ const Vehicles = () => {
   const [newVehicleOpen, setNewVehicleOpen] = useState(false);
   const [editVehicleOpen, setEditVehicleOpen] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [vehicleToDelete, setVehicleToDelete] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetchClients();
@@ -118,14 +124,67 @@ const Vehicles = () => {
     setEditVehicleOpen(true);
   };
 
+  const handleDeleteClick = (vehicleId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setVehicleToDelete(vehicleId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!vehicleToDelete) return;
+
+    setDeleteLoading(true);
+    try {
+      // Check for tickets
+      const { count: ticketsCount, error: ticketsError } = await supabase
+        .from('tickets')
+        .select('id', { count: 'exact', head: true })
+        .eq('vehicle_id', vehicleToDelete);
+
+      if (ticketsError) throw ticketsError;
+
+      if (ticketsCount && ticketsCount > 0) {
+        toast.error(`Não é possível excluir: Veículo possui ${ticketsCount} chamado(s) registrado(s). Exclua os chamados primeiro.`);
+        return;
+      }
+
+      const { error, count } = await supabase
+        .from('vehicles')
+        .delete({ count: 'exact' })
+        .eq('id', vehicleToDelete);
+
+      if (error) throw error;
+
+      if (count === 0) {
+        toast.error('Erro: Veículo não encontrado ou permissão negada.');
+      } else {
+        toast.success('Veículo excluído com sucesso');
+        setVehicles(vehicles.filter(v => v.id !== vehicleToDelete));
+        fetchVehicles();
+      }
+    } catch (error: any) {
+      console.error('Erro ao excluir veículo:', error);
+      if (error.code === '23503') {
+        toast.error('Não é possível excluir este veículo pois existem registros vinculados.');
+      } else {
+        toast.error('Erro ao excluir veículo.');
+      }
+    } finally {
+      setDeleteLoading(false);
+      setDeleteDialogOpen(false);
+      setVehicleToDelete(null);
+    }
+  };
+
   const filteredVehicles = vehicles.filter((vehicle) => {
-    const matchesSearch = 
-      vehicle.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.plate_main.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.tractor_plate?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch =
+      (vehicle.description || '').toLowerCase().includes(searchLower) ||
+      (vehicle.plate_main || '').toLowerCase().includes(searchLower) ||
+      (vehicle.tractor_plate || '').toLowerCase().includes(searchLower);
+
     const matchesClient = selectedClientId === 'all' || vehicle.client_id === selectedClientId;
-    
+
     return matchesSearch && matchesClient;
   });
 
@@ -185,8 +244,8 @@ const Vehicles = () => {
             <Truck className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg font-medium text-foreground mb-2">Nenhum veículo encontrado</p>
             <p className="text-sm text-muted-foreground mb-4">
-              {searchTerm || selectedClientId !== 'all' 
-                ? 'Tente buscar com outros termos ou filtros' 
+              {searchTerm || selectedClientId !== 'all'
+                ? 'Tente buscar com outros termos ou filtros'
                 : 'Comece cadastrando um novo veículo'}
             </p>
             {!searchTerm && selectedClientId === 'all' && (
@@ -221,7 +280,7 @@ const Vehicles = () => {
                     </p>
                   )}
                 </div>
-                
+
                 <div className="flex flex-wrap gap-1">
                   {vehicle.trailer1_plate && (
                     <Badge variant="outline" className="text-xs">
@@ -244,13 +303,21 @@ const Vehicles = () => {
                 </div>
 
                 <div className="flex gap-2 pt-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="flex-1"
                     onClick={() => handleEdit(vehicle.id)}
                   >
                     Editar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive w-10 px-0"
+                    onClick={(e) => handleDeleteClick(vehicle.id, e)}
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </CardContent>
@@ -259,8 +326,8 @@ const Vehicles = () => {
         </div>
       )}
 
-      <NewVehicleDialog 
-        open={newVehicleOpen} 
+      <NewVehicleDialog
+        open={newVehicleOpen}
         onOpenChange={setNewVehicleOpen}
         onSuccess={fetchVehicles}
         preselectedClientId={selectedClientId !== 'all' ? selectedClientId : undefined}
@@ -271,6 +338,15 @@ const Vehicles = () => {
         onOpenChange={setEditVehicleOpen}
         vehicleId={selectedVehicleId}
         onSuccess={fetchVehicles}
+      />
+
+      <DeleteAlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
+        title="Excluir Veículo"
+        description="Tem certeza que deseja excluir este veículo? Esta ação não pode ser desfeita."
+        loading={deleteLoading}
       />
     </div>
   );

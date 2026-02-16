@@ -11,13 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Search, FileText, Calendar, MapPin, Filter } from 'lucide-react';
+import { Plus, Search, FileText, Calendar, MapPin, Filter, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { NewTicketDialog } from '@/components/tickets/NewTicketDialog';
 import { EditTicketDialog } from '@/components/tickets/EditTicketDialog';
 import { TicketDetails } from '@/components/tickets/TicketDetails';
+import { DeleteAlertDialog } from '@/components/DeleteAlertDialog';
 
 interface Ticket {
   id: string;
@@ -68,6 +69,11 @@ const Tickets = () => {
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [ticketToDelete, setTicketToDelete] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   useEffect(() => {
     fetchTickets();
   }, []);
@@ -94,23 +100,26 @@ const Tickets = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      console.log('Tickets loaded:', data);
       setTickets((data as unknown as Ticket[]) || []);
     } catch (error) {
       console.error('Erro ao buscar chamados:', error);
       toast.error('Erro ao carregar chamados');
+      setTickets([]); // Ensure it's empty array on error
     } finally {
       setLoading(false);
     }
   };
 
   const filteredTickets = tickets.filter((ticket) => {
-    const matchesSearch = 
-      ticket.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.clients?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.main_agent?.name?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch =
+      (ticket.code || '').toLowerCase().includes(searchLower) ||
+      (ticket.clients?.name || '').toLowerCase().includes(searchLower) ||
+      (ticket.main_agent?.name || '').toLowerCase().includes(searchLower);
+
     const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
-    
+
     // Date filter
     let matchesDate = true;
     if (dateFrom) {
@@ -125,7 +134,7 @@ const Tickets = () => {
       toDate.setHours(23, 59, 59, 999);
       matchesDate = matchesDate && ticketDate <= toDate;
     }
-    
+
     return matchesSearch && matchesStatus && matchesDate;
   });
 
@@ -137,6 +146,45 @@ const Tickets = () => {
   const handleEdit = (ticketId: string) => {
     setSelectedTicketId(ticketId);
     setEditTicketOpen(true);
+  };
+
+  const handleDeleteClick = (ticketId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTicketToDelete(ticketId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!ticketToDelete) return;
+
+    setDeleteLoading(true);
+    try {
+      const { error, count } = await supabase
+        .from('tickets')
+        .delete({ count: 'exact' })
+        .eq('id', ticketToDelete);
+
+      if (error) throw error;
+
+      if (count === 0) {
+        toast.error('Erro: Chamado não encontrado ou permissão negada.');
+      } else {
+        toast.success('Chamado excluído com sucesso');
+        setTickets(tickets.filter(t => t.id !== ticketToDelete));
+        fetchTickets();
+      }
+    } catch (error: any) {
+      console.error('Erro ao excluir chamado:', error);
+      if (error.code === '23503') {
+        toast.error('Não é possível excluir este chamado pois existem registros vinculados a ele.');
+      } else {
+        toast.error('Erro ao excluir chamado. Tente novamente.');
+      }
+    } finally {
+      setDeleteLoading(false);
+      setDeleteDialogOpen(false);
+      setTicketToDelete(null);
+    }
   };
 
   const clearDateFilters = () => {
@@ -230,7 +278,7 @@ const Tickets = () => {
             <p className="text-lg font-medium text-foreground mb-2">Nenhum chamado encontrado</p>
             <p className="text-sm text-muted-foreground mb-4">
               {searchTerm || statusFilter !== 'all' || dateFrom || dateTo
-                ? 'Tente buscar com outros termos ou filtros' 
+                ? 'Tente buscar com outros termos ou filtros'
                 : 'Comece criando um novo chamado'}
             </p>
             {!searchTerm && statusFilter === 'all' && !dateFrom && !dateTo && (
@@ -244,9 +292,9 @@ const Tickets = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredTickets.map((ticket) => (
-            <Card 
-              key={ticket.id} 
-              className="hover:shadow-lg transition-shadow cursor-pointer"
+            <Card
+              key={ticket.id}
+              className="hover:shadow-lg transition-shadow cursor-pointer relative group"
               onClick={() => handleViewDetails(ticket.id)}
             >
               <CardHeader className="pb-2">
@@ -280,21 +328,29 @@ const Tickets = () => {
                   </span>
                 </div>
                 <div className="flex gap-2 pt-2" onClick={(e) => e.stopPropagation()}>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="flex-1"
                     onClick={() => handleViewDetails(ticket.id)}
                   >
                     Ver Detalhes
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="flex-1"
                     onClick={() => handleEdit(ticket.id)}
                   >
                     Editar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive w-10 px-0"
+                    onClick={(e) => handleDeleteClick(ticket.id, e)}
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </CardContent>
@@ -311,8 +367,8 @@ const Tickets = () => {
         <Plus className="h-6 w-6" />
       </Button>
 
-      <NewTicketDialog 
-        open={newTicketOpen} 
+      <NewTicketDialog
+        open={newTicketOpen}
         onOpenChange={setNewTicketOpen}
         onSuccess={fetchTickets}
       />
@@ -330,6 +386,15 @@ const Tickets = () => {
         onOpenChange={setDetailsOpen}
         onEdit={handleEdit}
         onStatusChange={fetchTickets}
+      />
+
+      <DeleteAlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
+        title="Excluir Chamado"
+        description="Tem certeza que deseja excluir este chamado? Esta ação não pode ser desfeita."
+        loading={deleteLoading}
       />
     </div>
   );

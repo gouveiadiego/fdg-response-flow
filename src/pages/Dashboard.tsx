@@ -1,14 +1,33 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { FileText, Users, UserCheck, TrendingUp } from 'lucide-react';
+import {
+  FileText, Users, UserCheck, TrendingUp,
+  Calendar, Clock, Filter, AlertCircle, CheckCircle2, XCircle
+} from 'lucide-react';
+import {
+  TrendChart,
+  StatusDistributionChart,
+  TopClientsChart
+} from '@/components/dashboard/AnalyticsCharts';
+import { DatePickerWithRange } from '@/components/dashboard/DateRangePicker';
+import { format, subDays, startOfMonth, startOfYear, isWithinInterval, endOfDay, startOfDay } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from '@/components/ui/select';
+import { DateRange } from "react-day-picker";
 
 interface Stats {
   totalTickets: number;
   openTickets: number;
   totalClients: number;
   totalAgents: number;
+  completedTickets: number;
+  cancelledTickets: number;
 }
+
+type FilterRange = '7days' | 'month' | 'year' | 'all' | 'custom';
 
 const Dashboard = () => {
   const [stats, setStats] = useState<Stats>({
@@ -16,129 +35,255 @@ const Dashboard = () => {
     openTickets: 0,
     totalClients: 0,
     totalAgents: 0,
+    completedTickets: 0,
+    cancelledTickets: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState<FilterRange>('month');
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfDay(new Date()),
+  });
+  const [trendData, setTrendData] = useState<any[]>([]);
+  const [statusData, setStatusData] = useState<any[]>([]);
+  const [topClientsData, setTopClientsData] = useState<any[]>([]);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const { data: tickets, error: ticketsError } = await supabase
+        .from('tickets')
+        .select('*, clients(name)');
+
+      const [clientsResult, agentsResult] = await Promise.all([
+        supabase.from('clients').select('*', { count: 'exact', head: true }),
+        supabase.from('agents').select('*', { count: 'exact', head: true }).eq('status', 'ativo'),
+      ]);
+
+      if (ticketsError) throw ticketsError;
+
+      // Filter by range or custom date
+      const now = new Date();
+      let filteredTickets = tickets || [];
+
+      let start: Date;
+      let end: Date = endOfDay(now);
+
+      if (range === 'custom' && date?.from) {
+        start = startOfDay(date.from);
+        if (date.to) end = endOfDay(date.to);
+
+        filteredTickets = (tickets || []).filter(t => {
+          const ticketDate = new Date(t.created_at);
+          return isWithinInterval(ticketDate, { start, end });
+        });
+      } else if (range !== 'all') {
+        start = range === '7days' ? subDays(now, 7) :
+          range === 'month' ? startOfMonth(now) :
+            startOfYear(now);
+
+        filteredTickets = (tickets || []).filter(t => {
+          const ticketDate = new Date(t.created_at);
+          return isWithinInterval(ticketDate, { start, end });
+        });
+      }
+
+      // Process Stats
+      const statsObj: Stats = {
+        totalTickets: filteredTickets.length,
+        openTickets: filteredTickets.filter(t => t.status === 'aberto').length,
+        completedTickets: filteredTickets.filter(t => t.status === 'finalizado').length,
+        cancelledTickets: filteredTickets.filter(t => t.status === 'cancelado').length,
+        totalClients: clientsResult.count || 0,
+        totalAgents: agentsResult.count || 0,
+      };
+      setStats(statsObj);
+
+      // Process Trend Data (Last 7-10 entries of grouping)
+      const dailyData: Record<string, number> = {};
+      filteredTickets.forEach(t => {
+        const day = format(new Date(t.created_at), 'dd/MM');
+        dailyData[day] = (dailyData[day] || 0) + 1;
+      });
+      setTrendData(Object.entries(dailyData).map(([name, value]) => ({ name, value })));
+
+      // Process Status Distribution
+      setStatusData([
+        { name: 'Finalizados', value: statsObj.completedTickets },
+        { name: 'Em Aberto', value: statsObj.openTickets },
+        { name: 'Cancelados', value: statsObj.cancelledTickets },
+      ]);
+
+      // Process Top Clients
+      const clientMap: Record<string, number> = {};
+      filteredTickets.forEach(t => {
+        const name = (t.clients as any)?.name || 'Outros';
+        clientMap[name] = (clientMap[name] || 0) + 1;
+      });
+      setTopClientsData(
+        Object.entries(clientMap)
+          .map(([name, value]) => ({ name, value }))
+          .sort((a, b) => b.value - a.value)
+          .slice(0, 5)
+      );
+
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const [ticketsResult, openTicketsResult, clientsResult, agentsResult] = await Promise.all([
-          supabase.from('tickets').select('*', { count: 'exact', head: true }),
-          supabase.from('tickets').select('*', { count: 'exact', head: true }).eq('status', 'aberto'),
-          supabase.from('clients').select('*', { count: 'exact', head: true }),
-          supabase.from('agents').select('*', { count: 'exact', head: true }).eq('status', 'ativo'),
-        ]);
-
-        setStats({
-          totalTickets: ticketsResult.count || 0,
-          openTickets: openTicketsResult.count || 0,
-          totalClients: clientsResult.count || 0,
-          totalAgents: agentsResult.count || 0,
-        });
-      } catch (error) {
-        console.error('Erro ao buscar estatísticas:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, []);
+    fetchDashboardData();
+  }, [range, date]);
 
   const statCards = [
     {
       title: 'Total de Chamados',
       value: stats.totalTickets,
       icon: FileText,
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
     },
     {
-      title: 'Chamados Abertos',
+      title: 'Em Aberto',
       value: stats.openTickets,
-      icon: TrendingUp,
-      color: 'text-warning',
-      bgColor: 'bg-warning/10',
+      icon: Clock,
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-50',
     },
     {
-      title: 'Clientes Ativos',
-      value: stats.totalClients,
-      icon: Users,
-      color: 'text-info',
-      bgColor: 'bg-info/10',
+      title: 'Finalizados',
+      value: stats.completedTickets,
+      icon: CheckCircle2,
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50',
     },
     {
-      title: 'Agentes Ativos',
-      value: stats.totalAgents,
-      icon: UserCheck,
-      color: 'text-success',
-      bgColor: 'bg-success/10',
+      title: 'Cancelados',
+      value: stats.cancelledTickets,
+      icon: XCircle,
+      color: 'text-rose-600',
+      bgColor: 'bg-rose-50',
     },
   ];
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
-          <p className="text-muted-foreground">Carregando estatísticas...</p>
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <img src="/logo-fdg-premium.png" alt="Logo FDG" className="h-16 w-auto drop-shadow-lg animate-in zoom-in-75 duration-700" />
+          <div>
+            <h1 className="text-4xl font-extrabold tracking-tight text-foreground">
+              Analytics FDG
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Gestão inteligente e visualização de performance
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 bg-card p-1 px-2 rounded-xl shadow-sm border">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select value={range} onValueChange={(v: FilterRange) => setRange(v)}>
+              <SelectTrigger className="w-[140px] border-none focus:ring-0 shadow-none bg-transparent h-8 p-0">
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7days">Últimos 7 dias</SelectItem>
+                <SelectItem value="month">Este Mês</SelectItem>
+                <SelectItem value="year">Este Ano</SelectItem>
+                <SelectItem value="all">Todo o Período</SelectItem>
+                <SelectItem value="custom">Personalizado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {range === 'custom' && (
+            <DatePickerWithRange
+              date={date}
+              setDate={setDate}
+              className="animate-in slide-in-from-right-2 duration-300"
+            />
+          )}
         </div>
       </div>
-    );
-  }
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard</h1>
-        <p className="text-muted-foreground">Visão geral do sistema de gestão de chamados</p>
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map(i => (
+            <Card key={i} className="animate-pulse border-none bg-muted/50 h-32" />
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {statCards.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <Card key={stat.title} className="group border-none shadow-sm hover:shadow-xl transition-all duration-300 bg-card overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {stat.title}
+                    </CardTitle>
+                    <div className={`p-2 rounded-xl transition-colors group-hover:scale-110 duration-300 ${stat.bgColor}`}>
+                      <Icon className={`h-4 w-4 ${stat.color}`} />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-black">{stat.value}</div>
+                    <div className="flex items-center gap-1 mt-2 text-[10px] text-muted-foreground">
+                      <TrendingUp className="h-3 w-3 text-emerald-500" />
+                      <span>Atualizado em tempo real</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={stat.title} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {stat.title}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <TrendChart data={trendData} title="Volume de Atendimentos" />
+            <StatusDistributionChart data={statusData} title="Performance" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <TopClientsChart data={topClientsData} title="Top Clientes" />
+
+            <Card className="lg:col-span-2 shadow-md border-none bg-gradient-to-br from-primary/5 to-primary/10 overflow-hidden">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-primary" />
+                  Status da Rede FDG
                 </CardTitle>
-                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                  <Icon className={`h-4 w-4 ${stat.color}`} />
-                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{stat.value}</div>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <Users className="h-5 w-5 text-blue-500" />
+                    <div>
+                      <p className="font-semibold">{stats.totalClients}</p>
+                      <p className="text-xs text-muted-foreground">Clientes na base</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <UserCheck className="h-5 w-5 text-emerald-500" />
+                    <div>
+                      <p className="font-semibold">{stats.totalAgents}</p>
+                      <p className="text-xs text-muted-foreground">Agentes de prontidão</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground italic">
+                  "Otimizando a resposta rápida com dados em tempo real."
+                </p>
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Bem-vindo ao Sistema FDG Pronta Resposta</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            Utilize o menu lateral para navegar entre as funcionalidades do sistema:
-          </p>
-          <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-            <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              <strong>Chamados:</strong> Gerencie todos os atendimentos e ocorrências
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              <strong>Clientes:</strong> Cadastre e gerencie informações dos clientes
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-              <strong>Agentes:</strong> Controle a equipe de agentes disponíveis
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 };

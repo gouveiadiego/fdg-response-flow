@@ -62,6 +62,7 @@ const ticketSchema = z.object({
   other_costs: z.number().optional(),
   summary: z.string().max(500).optional(),
   detailed_report: z.string().optional(),
+  operator_id: z.string().optional(),
 });
 
 type TicketFormData = z.infer<typeof ticketSchema>;
@@ -91,9 +92,13 @@ interface Agent {
   is_armed: boolean | null;
 }
 
-interface PhotoToUpload {
-  file: File;
-  preview: string;
+interface Operator {
+  id: string;
+  name: string;
+}
+
+interface PhotoGroup {
+  files: { file: File; preview: string }[];
   caption: string;
 }
 
@@ -117,9 +122,12 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
   const [clients, setClients] = useState<Client[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
+
+
   const [plans, setPlans] = useState<Plan[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [photos, setPhotos] = useState<PhotoToUpload[]>([]);
+  const [operators, setOperators] = useState<Operator[]>([]);
+  const [photoGroups, setPhotoGroups] = useState<PhotoGroup[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<TicketFormData>({
@@ -148,7 +156,9 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
       food_cost: 0,
       other_costs: 0,
       summary: '',
+
       detailed_report: '',
+      operator_id: '',
     },
   });
 
@@ -163,7 +173,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
   const kmStart = form.watch('km_start') || 0;
   const kmEnd = form.watch('km_end') || 0;
   const kmRodado = kmEnd >= kmStart && kmStart > 0 ? kmEnd - kmStart : null;
-  
+
   const selectedVehicle = filteredVehicles.find(v => v.id === selectedVehicleId);
 
   useEffect(() => {
@@ -176,13 +186,13 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
     if (selectedClientId) {
       const clientVehicles = vehicles.filter(v => v.client_id === selectedClientId);
       setFilteredVehicles(clientVehicles);
-      
+
       const selectedClient = clients.find(c => c.id === selectedClientId);
       if (selectedClient) {
         form.setValue('city', selectedClient.city);
         form.setValue('state', selectedClient.state);
       }
-      
+
       const currentVehicle = form.getValues('vehicle_id');
       if (currentVehicle && !clientVehicles.some(v => v.id === currentVehicle)) {
         form.setValue('vehicle_id', '');
@@ -194,17 +204,21 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
 
   const fetchData = async () => {
     try {
-      const [clientsRes, vehiclesRes, plansRes, agentsRes] = await Promise.all([
+      // @ts-ignore - operators table might be missing in types
+      const [clientsRes, vehiclesRes, plansRes, agentsRes, operatorsRes] = await Promise.all([
         supabase.from('clients').select('id, name, city, state').order('name'),
         supabase.from('vehicles').select('id, description, plate_main, client_id'),
         supabase.from('plans').select('id, name').order('name'),
         supabase.from('agents').select('id, name, is_armed').eq('status', 'ativo').order('name'),
+        supabase.from('operators').select('id, name').eq('active', true).order('name'),
       ]);
 
       if (clientsRes.data) setClients(clientsRes.data);
       if (vehiclesRes.data) setVehicles(vehiclesRes.data);
       if (plansRes.data) setPlans(plansRes.data);
       if (agentsRes.data) setAgents(agentsRes.data);
+      // @ts-ignore
+      if (operatorsRes.data) setOperators(operatorsRes.data);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       toast.error('Erro ao carregar dados do formulário');
@@ -233,7 +247,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
   const handleReverseGeocode = async () => {
     const lat = form.getValues('coordinates_lat');
     const lng = form.getValues('coordinates_lng');
-    
+
     if (!lat || !lng) {
       toast.error('Informe as coordenadas primeiro');
       return;
@@ -249,51 +263,56 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
 
   const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      const newPhotos: PhotoToUpload[] = Array.from(files).map(file => ({
-        file,
-        preview: URL.createObjectURL(file),
-        caption: '',
-      }));
-      setPhotos(prev => [...prev, ...newPhotos]);
-    }
+    if (!files || files.length === 0) return;
+
+    const newFiles = Array.from(files).map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+
+    setPhotoGroups(prev => {
+      const updated = [...prev];
+      let remaining = [...newFiles];
+
+      // Try to fill the last group if it has < 4 photos
+      if (updated.length > 0) {
+        const lastGroup = updated[updated.length - 1];
+        if (lastGroup.files.length < 4) {
+          const spotsAvailable = 4 - lastGroup.files.length;
+          const toAdd = remaining.splice(0, spotsAvailable);
+          updated[updated.length - 1] = {
+            ...lastGroup,
+            files: [...lastGroup.files, ...toAdd],
+          };
+        }
+      }
+
+      // Add remaining as new groups
+      while (remaining.length > 0) {
+        updated.push({ files: remaining.splice(0, 4), caption: '' });
+      }
+      return updated;
+    });
+
     e.target.value = '';
   };
 
-  const removePhoto = (index: number) => {
-    URL.revokeObjectURL(photos[index].preview);
-    setPhotos(prev => prev.filter((_, i) => i !== index));
+  const removePhoto = (groupIndex: number, photoIndex: number) => {
+    setPhotoGroups(prev => {
+      const updated = [...prev];
+      URL.revokeObjectURL(updated[groupIndex].files[photoIndex].preview);
+      updated[groupIndex] = {
+        ...updated[groupIndex],
+        files: updated[groupIndex].files.filter((_, i) => i !== photoIndex),
+      };
+      return updated.filter(g => g.files.length > 0);
+    });
   };
 
-  const updateCaption = (index: number, caption: string) => {
-    setPhotos(prev => prev.map((photo, i) => 
-      i === index ? { ...photo, caption } : photo
-    ));
+  const updateGroupCaption = (groupIndex: number, caption: string) => {
+    setPhotoGroups(prev => prev.map((g, i) => i === groupIndex ? { ...g, caption } : g));
   };
 
-  const uploadPhotos = async (ticketId: string) => {
-    const uploadedPhotos: Array<{ url: string; caption: string }> = [];
-    
-    for (const photo of photos) {
-      const fileName = `${ticketId}/${Date.now()}-${photo.file.name}`;
-      const { error } = await supabase.storage
-        .from('ticket-photos')
-        .upload(fileName, photo.file);
-      
-      if (error) {
-        console.error('Erro ao fazer upload:', error);
-        continue;
-      }
-      
-      const { data: urlData } = supabase.storage
-        .from('ticket-photos')
-        .getPublicUrl(fileName);
-      
-      uploadedPhotos.push({ url: urlData.publicUrl, caption: photo.caption });
-    }
-    
-    return uploadedPhotos;
-  };
 
   const validateBusinessRules = (data: TicketFormData): boolean => {
     if (data.km_start && data.km_end && data.km_end < data.km_start) {
@@ -352,29 +371,44 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
           detailed_report: data.detailed_report,
           created_by_user_id: user.id,
           code: null,
+          operator_id: data.operator_id && data.operator_id !== 'none' ? data.operator_id : null,
         })
         .select()
         .single();
 
       if (ticketError) throw ticketError;
 
-      if (photos.length > 0 && ticket) {
-        const uploadedPhotos = await uploadPhotos(ticket.id);
-        
-        for (const photo of uploadedPhotos) {
-          await supabase.from('ticket_photos').insert({
-            ticket_id: ticket.id,
-            file_url: photo.url,
-            caption: photo.caption || null,
-            uploaded_by_user_id: user.id,
-          });
+      if (photoGroups.length > 0 && ticket) {
+        for (const group of photoGroups) {
+          for (const photo of group.files) {
+            const fileName = `${ticket.id}/${Date.now()}-${photo.file.name}`;
+            const { error: uploadError } = await supabase.storage
+              .from('ticket-photos')
+              .upload(fileName, photo.file);
+
+            if (uploadError) {
+              console.error('Erro ao fazer upload:', uploadError);
+              continue;
+            }
+
+            const { data: urlData } = supabase.storage
+              .from('ticket-photos')
+              .getPublicUrl(fileName);
+
+            await supabase.from('ticket_photos').insert({
+              ticket_id: ticket.id,
+              file_url: urlData.publicUrl,
+              caption: group.caption || null,
+              uploaded_by_user_id: user.id,
+            });
+          }
         }
       }
 
       toast.success('Chamado criado com sucesso!');
       form.reset();
-      photos.forEach(p => URL.revokeObjectURL(p.preview));
-      setPhotos([]);
+      photoGroups.forEach(g => g.files.forEach(p => URL.revokeObjectURL(p.preview)));
+      setPhotoGroups([]);
       setActiveTab('cliente');
       onSuccess();
       onOpenChange(false);
@@ -448,8 +482,8 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Veículo *</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
+                        <Select
+                          onValueChange={field.onChange}
                           value={field.value}
                           disabled={!selectedClientId}
                         >
@@ -588,8 +622,8 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                         render={({ field }) => (
                           <FormItem>
                             <FormControl>
-                              <Input 
-                                type="number" 
+                              <Input
+                                type="number"
                                 step="any"
                                 placeholder="Latitude"
                                 {...field}
@@ -606,8 +640,8 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                         render={({ field }) => (
                           <FormItem>
                             <FormControl>
-                              <Input 
-                                type="number" 
+                              <Input
+                                type="number"
                                 step="any"
                                 placeholder="Longitude"
                                 {...field}
@@ -622,10 +656,10 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                     <Button type="button" variant="outline" size="icon" onClick={getLocation} title="Localização atual">
                       <MapPin className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="icon" 
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
                       onClick={handleReverseGeocode}
                       disabled={!coordLat || !coordLng || isGeocoding}
                       title="Buscar cidade/estado"
@@ -643,6 +677,35 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
               </TabsContent>
 
               <TabsContent value="agente" className="space-y-6 mt-4">
+                {/* Operador Responsável */}
+                <div className="bg-muted/30 p-4 rounded-lg border border-muted">
+                  <FormField
+                    control={form.control}
+                    name="operator_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Operador Responsável (Quem abriu o chamado)</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o operador" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">Selecione...</SelectItem>
+                            {operators.map((operator) => (
+                              <SelectItem key={operator.id} value={operator.id}>
+                                {operator.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 {/* Agente Principal e Veículo */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
@@ -672,7 +735,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
 
                   <div>
                     <Label>Veículo Selecionado</Label>
-                    <Input 
+                    <Input
                       value={selectedVehicle ? `${selectedVehicle.description} - ${selectedVehicle.plate_main}` : 'Selecione um veículo na aba Cliente'}
                       disabled
                       className="mt-2 bg-muted"
@@ -683,7 +746,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                 {/* Seção Apoios */}
                 <div className="space-y-3">
                   <h4 className="font-semibold text-sm border-b pb-2">Apoios</h4>
-                  
+
                   {/* Apoio 1 */}
                   <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
                     <Label className="font-medium">Apoio 1</Label>
@@ -806,7 +869,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                         <FormItem>
                           <FormLabel>KM Inicial</FormLabel>
                           <FormControl>
-                            <Input 
+                            <Input
                               type="number"
                               placeholder="Ex: 150000"
                               {...field}
@@ -825,7 +888,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                         <FormItem>
                           <FormLabel>KM Final</FormLabel>
                           <FormControl>
-                            <Input 
+                            <Input
                               type="number"
                               placeholder="Ex: 150250"
                               {...field}
@@ -839,7 +902,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
 
                     <div>
                       <Label>KM Rodado</Label>
-                      <Input 
+                      <Input
                         value={kmRodado !== null ? `${kmRodado} km` : '-'}
                         disabled
                         className="mt-2 bg-muted font-semibold"
@@ -859,7 +922,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                         <FormItem>
                           <FormLabel>Pedágio (R$)</FormLabel>
                           <FormControl>
-                            <Input 
+                            <Input
                               type="number"
                               step="0.01"
                               placeholder="0.00"
@@ -879,7 +942,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                         <FormItem>
                           <FormLabel>Alimentação (R$)</FormLabel>
                           <FormControl>
-                            <Input 
+                            <Input
                               type="number"
                               step="0.01"
                               placeholder="0.00"
@@ -899,7 +962,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                         <FormItem>
                           <FormLabel>Outros (R$)</FormLabel>
                           <FormControl>
-                            <Input 
+                            <Input
                               type="number"
                               step="0.01"
                               placeholder="0.00"
@@ -914,7 +977,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
 
                     <div>
                       <Label>Total</Label>
-                      <Input 
+                      <Input
                         value={`R$ ${totalCost.toFixed(2)}`}
                         disabled
                         className="mt-2 bg-muted font-semibold"
@@ -931,7 +994,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                     <FormItem>
                       <FormLabel>Resumo (opcional)</FormLabel>
                       <FormControl>
-                        <Input 
+                        <Input
                           placeholder="Breve resumo do atendimento..."
                           maxLength={500}
                           {...field}
@@ -948,7 +1011,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                     <FormItem>
                       <FormLabel>Descrição do Evento</FormLabel>
                       <FormControl>
-                        <Textarea 
+                        <Textarea
                           placeholder="Descreva os detalhes do atendimento..."
                           className="min-h-[100px]"
                           {...field}
@@ -996,31 +1059,42 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
                   </div>
                 </div>
 
-                {photos.length > 0 && (
+                {photoGroups.length > 0 && (
                   <div className="space-y-4">
-                    {photos.map((photo, index) => (
-                      <div key={index} className="flex gap-4 p-4 border border-border rounded-lg">
-                        <div className="relative flex-shrink-0">
-                          <img
-                            src={photo.preview}
-                            alt={`Foto ${index + 1}`}
-                            className="w-20 h-20 object-cover rounded-lg"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removePhoto(index)}
-                            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
+                    {photoGroups.map((group, groupIndex) => (
+                      <div key={groupIndex} className="border border-border rounded-lg p-4 space-y-3">
+                        <p className="text-xs font-medium text-muted-foreground uppercase">
+                          Grupo {groupIndex + 1} — {group.files.length} foto{group.files.length !== 1 ? 's' : ''}
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {group.files.map((photo, photoIndex) => (
+                            <div key={photoIndex} className="relative aspect-[4/3]">
+                              <img
+                                src={photo.preview}
+                                alt={`Foto ${photoIndex + 1}`}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removePhoto(groupIndex, photoIndex)}
+                                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
                         </div>
-                        <div className="flex-1">
-                          <Label className="text-xs">Legenda (opcional)</Label>
-                          <Input
-                            placeholder="Descreva esta foto..."
-                            value={photo.caption}
-                            onChange={(e) => updateCaption(index, e.target.value)}
-                            className="mt-1"
+                        <div>
+                          <Label htmlFor={`group-caption-${groupIndex}`} className="text-xs">
+                            Descrição do grupo (opcional)
+                          </Label>
+                          <Textarea
+                            id={`group-caption-${groupIndex}`}
+                            placeholder="Descreva este grupo de fotos..."
+                            value={group.caption}
+                            onChange={(e) => updateGroupCaption(groupIndex, e.target.value)}
+                            className="mt-1 resize-none"
+                            rows={2}
                           />
                         </div>
                       </div>

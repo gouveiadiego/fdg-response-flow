@@ -69,8 +69,8 @@ interface TicketFull {
   main_agent: { name: string; is_armed: boolean | null; pix_key: string | null; bank_name: string | null; bank_agency: string | null; bank_account: string | null; bank_account_type: string | null; vehicle_plate: string | null };
   support_agent_1: { name: string; is_armed: boolean | null } | null;
   support_agent_2: { name: string; is_armed: boolean | null } | null;
-  vehicles: { 
-    description: string; 
+  vehicles: {
+    description: string;
     tractor_plate: string | null;
     tractor_brand: string | null;
     tractor_model: string | null;
@@ -82,6 +82,7 @@ interface TicketFull {
     trailer3_body_type: string | null;
   };
   plans: { name: string };
+  operators: { name: string } | null;
 }
 
 interface TicketPhoto {
@@ -139,7 +140,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
 
   const fetchTicketDetails = async () => {
     if (!ticketId) return;
-    
+
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -179,13 +180,13 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
 
   const fetchTicketPhotos = async () => {
     if (!ticketId) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('ticket_photos')
         .select('*')
         .eq('ticket_id', ticketId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
       setPhotos(data || []);
@@ -196,25 +197,25 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
 
   const updateStatus = async (newStatus: 'em_andamento' | 'finalizado') => {
     if (!ticketId) return;
-    
+
     setUpdatingStatus(true);
     try {
-      const updateData: { 
-        status: 'aberto' | 'em_andamento' | 'finalizado' | 'cancelado'; 
-        end_datetime?: string 
+      const updateData: {
+        status: 'aberto' | 'em_andamento' | 'finalizado' | 'cancelado';
+        end_datetime?: string
       } = { status: newStatus };
-      
+
       if (newStatus === 'finalizado') {
         updateData.end_datetime = new Date().toISOString();
       }
-      
+
       const { error } = await supabase
         .from('tickets')
         .update(updateData)
         .eq('id', ticketId);
 
       if (error) throw error;
-      
+
       toast.success(`Status alterado para ${statusLabels[newStatus]}`);
       fetchTicketDetails();
       onStatusChange();
@@ -252,7 +253,8 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
             trailer3_plate,
             trailer3_body_type
           ),
-          plans (name)
+          plans (name),
+          operators (name)
         `)
         .eq('id', ticketId)
         .maybeSingle();
@@ -276,13 +278,13 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
         .from('ticket_photos')
         .select('*')
         .eq('ticket_id', ticketId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (photosError) throw photosError;
 
       const pdfData: TicketPDFData = {
         code: freshTicket.code || null,
-        operator_name: operatorName,
+        operator_name: (freshTicket as any).operators?.name || operatorName,
         status: freshTicket.status,
         city: freshTicket.city,
         state: freshTicket.state,
@@ -386,6 +388,11 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                 {statusLabels[ticket.status]}
               </Badge>
             </div>
+            {ticket.operators && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Operador: <span className="font-semibold text-foreground">{ticket.operators.name}</span>
+              </p>
+            )}
           </DialogHeader>
 
           <div className="space-y-6">
@@ -533,7 +540,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                   <div>
                     <p className="text-sm text-muted-foreground">Fim</p>
                     <p className="font-semibold">
-                      {ticket.end_datetime 
+                      {ticket.end_datetime
                         ? format(new Date(ticket.end_datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
                         : '-'}
                     </p>
@@ -576,7 +583,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                   <div>
                     <p className="text-sm text-muted-foreground">KM Rodados</p>
                     <p className="font-semibold">
-                      {ticket.km_start && ticket.km_end 
+                      {ticket.km_start && ticket.km_end
                         ? `${Number(ticket.km_end) - Number(ticket.km_start)} km`
                         : '-'}
                     </p>
@@ -586,9 +593,9 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                     <p className="font-semibold">{serviceTypeLabels[ticket.service_type]}</p>
                   </div>
                 </div>
-                
+
                 <Separator className="my-4" />
-                
+
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Pedágio</p>
@@ -704,27 +711,27 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                 <Edit className="h-4 w-4 mr-2" />
                 Editar
               </Button>
-              
-              <Button 
-                variant="outline" 
+
+              <Button
+                variant="outline"
                 onClick={handleGeneratePDF}
                 disabled={generatingPDF}
               >
                 <FileDown className="h-4 w-4 mr-2" />
                 {generatingPDF ? 'Gerando...' : 'Gerar PDF'}
               </Button>
-              
+
               {ticket.status === 'aberto' && (
-                <Button 
+                <Button
                   onClick={() => updateStatus('em_andamento')}
                   disabled={updatingStatus}
                 >
                   Iniciar Atendimento
                 </Button>
               )}
-              
+
               {ticket.status === 'em_andamento' && (
-                <Button 
+                <Button
                   onClick={() => updateStatus('finalizado')}
                   disabled={updatingStatus}
                   className="bg-success hover:bg-success/90"

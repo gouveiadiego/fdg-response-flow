@@ -3,10 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Search, ClipboardList } from 'lucide-react';
+import { Plus, Search, ClipboardList, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { NewPlanDialog } from '@/components/plans/NewPlanDialog';
 import { EditPlanDialog } from '@/components/plans/EditPlanDialog';
+import { DeleteAlertDialog } from '@/components/DeleteAlertDialog';
 
 interface Plan {
   id: string;
@@ -22,6 +23,11 @@ const Plans = () => {
   const [newPlanOpen, setNewPlanOpen] = useState(false);
   const [editPlanOpen, setEditPlanOpen] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetchPlans();
@@ -47,6 +53,45 @@ const Plans = () => {
   const handleEdit = (planId: string) => {
     setSelectedPlanId(planId);
     setEditPlanOpen(true);
+  };
+
+  const handleDeleteClick = (planId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPlanToDelete(planId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!planToDelete) return;
+
+    setDeleteLoading(true);
+    try {
+      const { error, count } = await supabase
+        .from('plans')
+        .delete({ count: 'exact' })
+        .eq('id', planToDelete);
+
+      if (error) throw error;
+
+      if (count === 0) {
+        toast.error('Erro: Plano não encontrado ou permissão negada.');
+      } else {
+        toast.success('Plano excluído com sucesso');
+        setPlans(plans.filter(p => p.id !== planToDelete));
+        fetchPlans();
+      }
+    } catch (error: any) {
+      console.error('Erro ao excluir plano:', error);
+      if (error.code === '23503') {
+        toast.error('Não é possível excluir este plano pois está em uso.');
+      } else {
+        toast.error('Erro ao excluir plano.');
+      }
+    } finally {
+      setDeleteLoading(false);
+      setDeleteDialogOpen(false);
+      setPlanToDelete(null);
+    }
   };
 
   const filteredPlans = plans.filter((plan) =>
@@ -121,13 +166,21 @@ const Plans = () => {
                   <p className="text-sm text-muted-foreground line-clamp-2">{plan.description}</p>
                 )}
                 <div className="flex gap-2 pt-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="flex-1"
                     onClick={() => handleEdit(plan.id)}
                   >
                     Editar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive w-10 px-0"
+                    onClick={(e) => handleDeleteClick(plan.id, e)}
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </CardContent>
@@ -136,8 +189,8 @@ const Plans = () => {
         </div>
       )}
 
-      <NewPlanDialog 
-        open={newPlanOpen} 
+      <NewPlanDialog
+        open={newPlanOpen}
         onOpenChange={setNewPlanOpen}
         onSuccess={fetchPlans}
       />
@@ -147,6 +200,15 @@ const Plans = () => {
         onOpenChange={setEditPlanOpen}
         planId={selectedPlanId}
         onSuccess={fetchPlans}
+      />
+
+      <DeleteAlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
+        title="Excluir Plano"
+        description="Tem certeza que deseja excluir este plano? Esta ação não pode ser desfeita."
+        loading={deleteLoading}
       />
     </div>
   );

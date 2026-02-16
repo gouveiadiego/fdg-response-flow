@@ -1,4 +1,4 @@
-import { Home, Users, UserCheck, FileText, LogOut, Truck, ClipboardList } from 'lucide-react';
+import { Home, Users, UserCheck, FileText, LogOut, Truck, ClipboardList, TrendingUp } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,10 +18,12 @@ import {
 
 const menuItems = [
   { title: 'Dashboard', url: '/dashboard', icon: Home },
+  { title: 'Desempenho', url: '/performance', icon: TrendingUp },
   { title: 'Chamados', url: '/tickets', icon: FileText },
   { title: 'Clientes', url: '/clients', icon: Users },
   { title: 'Veículos', url: '/vehicles', icon: Truck },
   { title: 'Agentes', url: '/agents', icon: UserCheck },
+  { title: 'Operadores', url: '/operators', icon: Users },
   { title: 'Planos', url: '/plans', icon: ClipboardList },
 ];
 
@@ -40,14 +42,15 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
       <SidebarContent>
-        <div className="flex items-center gap-2 p-4 border-b border-border">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <span className="font-bold text-sm">FDG</span>
-          </div>
+        <div className="flex items-center gap-3 p-4 border-b border-border">
+          <img src="/logo-fdg-premium.png" alt="Logo" className="h-8 w-auto" />
           {open && (
             <div className="flex flex-col">
-              <span className="text-sm font-semibold">FDG</span>
-              <span className="text-xs text-muted-foreground">Pronta Resposta</span>
+              <span className="text-sm font-bold tracking-tight">FDG</span>
+              <span className="text-[10px] leading-none text-muted-foreground flex items-center gap-1">
+                <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
+                Pronta Resposta
+              </span>
             </div>
           )}
         </div>
@@ -59,8 +62,8 @@ export function AppSidebar() {
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink 
-                      to={item.url} 
+                    <NavLink
+                      to={item.url}
                       className="flex items-center gap-3"
                       onClick={handleNavClick}
                     >

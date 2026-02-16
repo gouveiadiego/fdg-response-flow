@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, UserCheck, Phone, Mail, Shield, ShieldOff } from 'lucide-react';
+import { Plus, Search, UserCheck, Phone, Mail, Shield, ShieldOff, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { NewAgentDialog } from '@/components/agents/NewAgentDialog';
 import { EditAgentDialog } from '@/components/agents/EditAgentDialog';
 import { RoleGuard } from '@/components/RoleGuard';
+import { DeleteAlertDialog } from '@/components/DeleteAlertDialog';
 
 interface Agent {
   id: string;
@@ -27,6 +28,11 @@ const Agents = () => {
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [agentToDelete, setAgentToDelete] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetchAgents();
@@ -52,6 +58,84 @@ const Agents = () => {
   const handleEdit = (agentId: string) => {
     setSelectedAgentId(agentId);
     setEditDialogOpen(true);
+  };
+
+  const handleDeleteClick = (agentId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setAgentToDelete(agentId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!agentToDelete) return;
+
+    setDeleteLoading(true);
+    try {
+      // Check for tickets as main agent
+      const { count: mainAgentCount, error: mainAgentError } = await supabase
+        .from('tickets')
+        .select('id', { count: 'exact', head: true })
+        .eq('main_agent_id', agentToDelete);
+
+      if (mainAgentError) throw mainAgentError;
+
+      if (mainAgentCount && mainAgentCount > 0) {
+        toast.error(`Não é possível excluir: Agente é o principal em ${mainAgentCount} chamado(s).`);
+        return;
+      }
+
+      // Check for tickets as support agent 1
+      const { count: support1Count, error: support1Error } = await supabase
+        .from('tickets')
+        .select('id', { count: 'exact', head: true })
+        .eq('support_agent_1_id', agentToDelete);
+
+      if (support1Error) throw support1Error;
+
+      if (support1Count && support1Count > 0) {
+        toast.error(`Não é possível excluir: Agente está como suporte 1 em ${support1Count} chamado(s).`);
+        return;
+      }
+
+      // Check for tickets as support agent 2
+      const { count: support2Count, error: support2Error } = await supabase
+        .from('tickets')
+        .select('id', { count: 'exact', head: true })
+        .eq('support_agent_2_id', agentToDelete);
+
+      if (support2Error) throw support2Error;
+
+      if (support2Count && support2Count > 0) {
+        toast.error(`Não é possível excluir: Agente está como suporte 2 em ${support2Count} chamado(s).`);
+        return;
+      }
+
+      const { error, count } = await supabase
+        .from('agents')
+        .delete({ count: 'exact' })
+        .eq('id', agentToDelete);
+
+      if (error) throw error;
+
+      if (count === 0) {
+        toast.error('Erro: Agente não encontrado ou permissão negada.');
+      } else {
+        toast.success('Agente excluído com sucesso');
+        setAgents(agents.filter(a => a.id !== agentToDelete));
+        fetchAgents();
+      }
+    } catch (error: any) {
+      console.error('Erro ao excluir agente:', error);
+      if (error.code === '23503') {
+        toast.error('Não é possível excluir este agente pois existem chamados vinculados a ele.');
+      } else {
+        toast.error('Erro ao excluir agente.');
+      }
+    } finally {
+      setDeleteLoading(false);
+      setDeleteDialogOpen(false);
+      setAgentToDelete(null);
+    }
   };
 
   const filteredAgents = agents.filter((agent) =>
@@ -156,13 +240,21 @@ const Agents = () => {
                 )}
                 <RoleGuard allowedRoles={['admin', 'operador']}>
                   <div className="flex gap-2 pt-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       className="flex-1"
                       onClick={() => handleEdit(agent.id)}
                     >
                       Editar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive w-10 px-0"
+                      onClick={(e) => handleDeleteClick(agent.id, e)}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </RoleGuard>
@@ -183,6 +275,15 @@ const Agents = () => {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         onSuccess={fetchAgents}
+      />
+
+      <DeleteAlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleConfirmDelete}
+        title="Excluir Agente"
+        description="Tem certeza que deseja excluir este agente? Esta ação não pode ser desfeita."
+        loading={deleteLoading}
       />
     </div>
   );
