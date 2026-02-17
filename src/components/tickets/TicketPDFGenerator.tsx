@@ -586,7 +586,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
 
   // ==================== DETALHAMENTO POR AGENTE ====================
   // Only show this section if there's any KM or cost data
-  const hasMainData = (data.km_start && data.km_end) || data.toll_cost || data.food_cost || data.other_costs;
+  const hasMainData = (data.km_start && data.km_end) || data.toll_cost || data.food_cost || data.other_costs || data.main_agent_arrival || data.main_agent_departure;
   const hasS1Data = data.support_agent_1 && ((data.support_agent_1_km_start && data.support_agent_1_km_end) || data.support_agent_1_toll_cost || data.support_agent_1_food_cost || data.support_agent_1_other_costs);
   const hasS2Data = data.support_agent_2 && ((data.support_agent_2_km_start && data.support_agent_2_km_end) || data.support_agent_2_toll_cost || data.support_agent_2_food_cost || data.support_agent_2_other_costs);
 
@@ -602,7 +602,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
 
     y += 10;
 
-    const agentCardH = 38;
+    const agentCardH = 48;
     const agentCardW = contentWidth;
 
     // Helper function to draw agent card
@@ -615,7 +615,9 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       foodCost: number | null,
       otherCosts: number | null,
       yPos: number,
-      title: string
+      title: string,
+      arrival: string | null = null,
+      departure: string | null = null
     ): number => {
       drawCard(pdf, margin, yPos, agentCardW, agentCardH, title);
 
@@ -671,7 +673,47 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       pdf.setFont('helvetica', 'bold');
       pdf.text(kmRodado > 0 ? `${kmRodado} km` : '-', xPos, cardY + 4);
 
-      // Row 3: Costs
+      // Row 3: Arrival / Departure / Duration
+      cardY += 10;
+      xPos = margin + 6;
+
+      setColor(pdf, THEME.secondaryText);
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('CHEGADA', xPos, cardY);
+      setColor(pdf, THEME.text);
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(arrival ? format(new Date(arrival), 'HH:mm') : '-', xPos, cardY + 4);
+
+      xPos += fieldW;
+      setColor(pdf, THEME.secondaryText);
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('SAÍDA', xPos, cardY);
+      setColor(pdf, THEME.text);
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(departure ? format(new Date(departure), 'HH:mm') : '-', xPos, cardY + 4);
+
+      xPos += fieldW;
+      setColor(pdf, THEME.secondaryText);
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('TEMPO', xPos, cardY);
+      setColor(pdf, THEME.primary);
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'bold');
+      if (arrival && departure) {
+        const diff = new Date(departure).getTime() - new Date(arrival).getTime();
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        pdf.text(`${hours}h ${minutes}m`, xPos, cardY + 4);
+      } else {
+        pdf.text('-', xPos, cardY + 4);
+      }
+
+      // Row 4: Costs
       cardY += 10;
       xPos = margin + 6;
 
@@ -729,7 +771,9 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
         data.food_cost,
         data.other_costs,
         y,
-        'AGENTE PRINCIPAL'
+        'AGENTE PRINCIPAL',
+        data.main_agent_arrival,
+        data.main_agent_departure
       );
     }
 
@@ -743,7 +787,9 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
         data.support_agent_1_food_cost,
         data.support_agent_1_other_costs,
         y,
-        'APOIO SECUNDÁRIO (1)'
+        'APOIO SECUNDÁRIO (1)',
+        data.support_agent_1_arrival,
+        data.support_agent_1_departure
       );
     }
 
@@ -757,7 +803,9 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
         data.support_agent_2_food_cost,
         data.support_agent_2_other_costs,
         y,
-        'APOIO TERCIÁRIO (2)'
+        'APOIO TERCIÁRIO (2)',
+        data.support_agent_2_arrival,
+        data.support_agent_2_departure
       );
     }
 
