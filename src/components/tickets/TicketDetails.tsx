@@ -627,7 +627,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                   </div>
 
                   {/* Support Agent 1 */}
-                  {ticket.support_agent_1 && (ticket.support_agent_1_km_start || ticket.support_agent_1_km_end) && (
+                  {ticket.support_agent_1 && (
                     <div className="bg-card border rounded-md p-3 shadow-sm">
                       <div className="flex items-center justify-between mb-3 border-b pb-2 border-dashed">
                         <div className="flex items-center gap-2">
@@ -693,7 +693,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                   )}
 
                   {/* Support Agent 2 */}
-                  {ticket.support_agent_2 && (ticket.support_agent_2_km_start || ticket.support_agent_2_km_end) && (
+                  {ticket.support_agent_2 && (
                     <div className="bg-card border rounded-md p-3 shadow-sm">
                       <div className="flex items-center justify-between mb-3 border-b pb-2 border-dashed">
                         <div className="flex items-center gap-2">
