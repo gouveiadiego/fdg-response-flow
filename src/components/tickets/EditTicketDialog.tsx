@@ -542,8 +542,8 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           service_type: data.service_type,
           city: data.city,
           state: data.state,
-          start_datetime: data.start_datetime,
-          end_datetime: data.end_datetime || null,
+          start_datetime: data.main_agent_arrival || data.start_datetime,
+          end_datetime: data.main_agent_departure || data.end_datetime || null,
           coordinates_lat: data.coordinates_lat || null,
           coordinates_lng: data.coordinates_lng || null,
           km_start: data.km_start || null,
@@ -752,34 +752,6 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="start_datetime"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Data/Hora Início *</FormLabel>
-                            <FormControl>
-                              <Input type="datetime-local" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="end_datetime"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Data/Hora Fim</FormLabel>
-                            <FormControl>
-                              <Input type="datetime-local" {...field} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
 
                     <div className="space-y-2">
                       <Label>Coordenadas</Label>
