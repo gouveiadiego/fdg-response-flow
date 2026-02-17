@@ -549,40 +549,6 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
               </Card>
             </div>
 
-            {/* Dates and Duration */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  Datas e Duração
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Início</p>
-                    <p className="font-semibold">
-                      {format(new Date(ticket.start_datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Fim</p>
-                    <p className="font-semibold">
-                      {ticket.end_datetime
-                        ? format(new Date(ticket.end_datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
-                        : '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Duração</p>
-                    <p className="font-semibold flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {formatDuration(ticket.duration_minutes)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Operation Details - Per Agent (KM & Time) */}
             <Card className="border-none shadow-none bg-transparent p-0">
