@@ -597,60 +597,56 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
 
     y += 10;
 
-    const agentCardH = 65; // Increased height for more details
     const agentCardW = contentWidth;
 
     // Helper function to draw agent card
     const drawAgentDetailCard = (
-      agentName: string,
       isArmed: boolean | null,
       kmStart: number | null,
       kmEnd: number | null,
       yPos: number,
       title: string,
+      showLocation: boolean,
       arrival: string | null = null,
       departure: string | null = null
     ): number => {
-      drawCard(pdf, margin, yPos, agentCardW, agentCardH, title);
+      const height = showLocation ? 65 : 55;
+      drawCard(pdf, margin, yPos, agentCardW, height, title);
 
       let cardY = yPos + 16;
 
-      // Row 1: Agent info
-      setColor(pdf, THEME.text);
-      pdf.setFontSize(9);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(agentName, margin + 6, cardY);
-      const agentNameWidth = pdf.getTextWidth(agentName);
-
+      // Row 1: Status Only (Name removed)
       if (isArmed !== null) {
         const armedText = isArmed ? 'ARMADO' : 'DESARMADO';
         const armedColor = isArmed ? THEME.warning : THEME.secondaryText;
         setColor(pdf, armedColor);
-        pdf.setFontSize(7);
-        pdf.text(armedText, margin + 6 + agentNameWidth + 10, cardY);
+        pdf.setFontSize(9); // Larger font for status since name is gone
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(armedText, margin + 6, cardY);
       }
 
       cardY += 10;
 
-      // Col Widths
-      const col1W = (agentCardW / 2) - 5;
-      const col2W = (agentCardW / 2) - 5;
-      const col2X = margin + 6 + col1W + 10;
+      // Row 2: Location (City/State & Coords) - Conditional
+      if (showLocation) {
+        const col1W = (agentCardW / 2) - 5;
+        const col2W = (agentCardW / 2) - 5;
+        const col2X = margin + 6 + col1W + 10;
 
-      // Row 2: Location (City/State & Coords)
-      setColor(pdf, THEME.secondaryText);
-      pdf.setFontSize(6.5);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('CIDADE / UF', margin + 6, cardY);
-      pdf.text('COORDENADAS', col2X, cardY);
+        setColor(pdf, THEME.secondaryText);
+        pdf.setFontSize(6.5);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('CIDADE / UF', margin + 6, cardY);
+        pdf.text('COORDENADAS', col2X, cardY);
 
-      setColor(pdf, THEME.text);
-      pdf.setFontSize(8.5);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`${data.city} / ${data.state}`, margin + 6, cardY + 4);
-      pdf.text(data.coordinates_lat ? `${data.coordinates_lat}, ${data.coordinates_lng}` : '-', col2X, cardY + 4);
+        setColor(pdf, THEME.text);
+        pdf.setFontSize(8.5);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`${data.city} / ${data.state}`, margin + 6, cardY + 4);
+        pdf.text(data.coordinates_lat ? `${data.coordinates_lat}, ${data.coordinates_lng}` : '-', col2X, cardY + 4);
 
-      cardY += 10;
+        cardY += 10;
+      }
 
       // Row 3: Timeline (Start | End | Duration)
       const timeFieldW = (agentCardW / 3) - 10;
@@ -728,53 +724,59 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       pdf.setFont('helvetica', 'bold');
       pdf.text(kmRodado > 0 ? `${kmRodado} km` : '-', xPos, cardY + 4);
 
-      return yPos + agentCardH + 6;
+      return yPos + height + 6;
     };
 
     // Draw agent cards
     if (hasMainData) {
-      if (await checkPageBreak(agentCardH + 10)) {
+      // Main Agent: Show Location = true
+      const height = 65;
+      if (await checkPageBreak(height + 10)) {
         // y updated in checkPageBreak
       }
       y = drawAgentDetailCard(
-        data.agent.name,
         data.agent.is_armed,
         data.km_start,
         data.km_end,
         y,
         'AGENTE PRINCIPAL',
+        true, // showLocation
         data.main_agent_arrival,
         data.main_agent_departure
       );
     }
 
+    const supportHeight = 55;
+
     if (hasS1Data && data.support_agent_1) {
-      if (await checkPageBreak(agentCardH + 10)) {
+      // S1: Show Location = false
+      if (await checkPageBreak(supportHeight + 10)) {
         // y updated
       }
       y = drawAgentDetailCard(
-        data.support_agent_1.name,
         data.support_agent_1.is_armed,
         data.support_agent_1_km_start,
         data.support_agent_1_km_end,
         y,
-        'APOIO SECUNDÁRIO (1)',
+        'APOIO 01',
+        false, // showLocation
         data.support_agent_1_arrival,
         data.support_agent_1_departure
       );
     }
 
     if (hasS2Data && data.support_agent_2) {
-      if (await checkPageBreak(agentCardH + 10)) {
+      // S2: Show Location = false
+      if (await checkPageBreak(supportHeight + 10)) {
         // y updated
       }
       y = drawAgentDetailCard(
-        data.support_agent_2.name,
         data.support_agent_2.is_armed,
         data.support_agent_2_km_start,
         data.support_agent_2_km_end,
         y,
-        'APOIO TERCIÁRIO (2)',
+        'APOIO 02',
+        false, // showLocation
         data.support_agent_2_arrival,
         data.support_agent_2_departure
       );
