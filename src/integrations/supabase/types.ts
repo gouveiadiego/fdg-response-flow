@@ -261,10 +261,20 @@ export type Database = {
           summary: string | null
           support_agent_1_arrival: string | null
           support_agent_1_departure: string | null
+          support_agent_1_food_cost: number | null
           support_agent_1_id: string | null
+          support_agent_1_km_end: number | null
+          support_agent_1_km_start: number | null
+          support_agent_1_other_costs: number | null
+          support_agent_1_toll_cost: number | null
           support_agent_2_arrival: string | null
           support_agent_2_departure: string | null
+          support_agent_2_food_cost: number | null
           support_agent_2_id: string | null
+          support_agent_2_km_end: number | null
+          support_agent_2_km_start: number | null
+          support_agent_2_other_costs: number | null
+          support_agent_2_toll_cost: number | null
           toll_cost: number | null
           total_cost: number | null
           updated_at: string
@@ -297,10 +307,20 @@ export type Database = {
           summary?: string | null
           support_agent_1_arrival?: string | null
           support_agent_1_departure?: string | null
+          support_agent_1_food_cost?: number | null
           support_agent_1_id?: string | null
+          support_agent_1_km_end?: number | null
+          support_agent_1_km_start?: number | null
+          support_agent_1_other_costs?: number | null
+          support_agent_1_toll_cost?: number | null
           support_agent_2_arrival?: string | null
           support_agent_2_departure?: string | null
+          support_agent_2_food_cost?: number | null
           support_agent_2_id?: string | null
+          support_agent_2_km_end?: number | null
+          support_agent_2_km_start?: number | null
+          support_agent_2_other_costs?: number | null
+          support_agent_2_toll_cost?: number | null
           toll_cost?: number | null
           total_cost?: number | null
           updated_at?: string
@@ -333,10 +353,20 @@ export type Database = {
           summary?: string | null
           support_agent_1_arrival?: string | null
           support_agent_1_departure?: string | null
+          support_agent_1_food_cost?: number | null
           support_agent_1_id?: string | null
+          support_agent_1_km_end?: number | null
+          support_agent_1_km_start?: number | null
+          support_agent_1_other_costs?: number | null
+          support_agent_1_toll_cost?: number | null
           support_agent_2_arrival?: string | null
           support_agent_2_departure?: string | null
+          support_agent_2_food_cost?: number | null
           support_agent_2_id?: string | null
+          support_agent_2_km_end?: number | null
+          support_agent_2_km_start?: number | null
+          support_agent_2_other_costs?: number | null
+          support_agent_2_toll_cost?: number | null
           toll_cost?: number | null
           total_cost?: number | null
           updated_at?: string
