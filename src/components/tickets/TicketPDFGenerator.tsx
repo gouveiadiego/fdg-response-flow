@@ -642,13 +642,14 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'bold');
       pdf.text(agentName, margin + 6, cardY);
+      const agentNameWidth = pdf.getTextWidth(agentName);
 
       if (isArmed !== null) {
         const armedText = isArmed ? 'ARMADO' : 'DESARMADO';
         const armedColor = isArmed ? THEME.warning : THEME.secondaryText;
         setColor(pdf, armedColor);
         pdf.setFontSize(7);
-        pdf.text(armedText, margin + 6 + pdf.getTextWidth(agentName) + 10, cardY);
+        pdf.text(armedText, margin + 6 + agentNameWidth + 10, cardY);
       }
 
       cardY += 8;
