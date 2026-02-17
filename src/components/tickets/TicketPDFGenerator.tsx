@@ -505,9 +505,6 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
 
   const protocolText = data.operator_name || 'N/A';
   drawMiniStat('OPERADOR', protocolText, margin + 8);
-  drawMiniStat('DATA', data.start_datetime ? format(new Date(data.start_datetime), 'dd/MM/yyyy') : '-', margin + 8 + colW);
-  drawMiniStat('CIDADE', `${data.city}/${data.state}`, margin + 8 + colW * 2);
-  drawMiniStat('PLANO', data.plan.name, margin + 8 + colW * 3);
 
   y += summaryH + 10;
 
