@@ -519,7 +519,6 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   let cy = y + 16;
   cy = drawField(pdf, 'Cliente', data.client.name, colOneX + 6, cy, colWidth - 10);
   cy = drawField(pdf, 'Telefone', data.client.contact_phone || '-', colOneX + 6, cy, colWidth - 10);
-  cy = drawField(pdf, 'Solicitante (Op)', data.operator_name || '-', colOneX + 6, cy, colWidth - 10);
 
   // Card: VEÍCULO / ALVO
   drawCard(pdf, colTwoX, y, colWidth, cardH, 'VEÍCULO / ALVO');
