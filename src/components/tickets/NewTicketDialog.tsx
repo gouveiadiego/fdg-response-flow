@@ -61,9 +61,19 @@ const ticketSchema = z.object({
   support_agent_1_id: z.string().optional(),
   support_agent_1_arrival: z.string().optional(),
   support_agent_1_departure: z.string().optional(),
+  support_agent_1_km_start: z.number().optional(),
+  support_agent_1_km_end: z.number().optional(),
+  support_agent_1_toll_cost: z.number().optional(),
+  support_agent_1_food_cost: z.number().optional(),
+  support_agent_1_other_costs: z.number().optional(),
   support_agent_2_id: z.string().optional(),
   support_agent_2_arrival: z.string().optional(),
   support_agent_2_departure: z.string().optional(),
+  support_agent_2_km_start: z.number().optional(),
+  support_agent_2_km_end: z.number().optional(),
+  support_agent_2_toll_cost: z.number().optional(),
+  support_agent_2_food_cost: z.number().optional(),
+  support_agent_2_other_costs: z.number().optional(),
   city: z.string().min(1, 'Informe a cidade'),
   state: z.string().min(2, 'Informe o estado').max(2),
   start_datetime: z.string().min(1, 'Informe a data/hora inicial'),
@@ -159,9 +169,19 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
       support_agent_1_id: '',
       support_agent_1_arrival: '',
       support_agent_1_departure: '',
+      support_agent_1_km_start: undefined,
+      support_agent_1_km_end: undefined,
+      support_agent_1_toll_cost: 0,
+      support_agent_1_food_cost: 0,
+      support_agent_1_other_costs: 0,
       support_agent_2_id: '',
       support_agent_2_arrival: '',
       support_agent_2_departure: '',
+      support_agent_2_km_start: undefined,
+      support_agent_2_km_end: undefined,
+      support_agent_2_toll_cost: 0,
+      support_agent_2_food_cost: 0,
+      support_agent_2_other_costs: 0,
       city: '',
       state: '',
       start_datetime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
@@ -182,15 +202,40 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
 
   const selectedClientId = form.watch('client_id');
   const selectedVehicleId = form.watch('vehicle_id');
+
+  // Main Agent Calculations
   const tollCost = form.watch('toll_cost') || 0;
   const foodCost = form.watch('food_cost') || 0;
   const otherCosts = form.watch('other_costs') || 0;
   const totalCost = tollCost + foodCost + otherCosts;
-  const coordLat = form.watch('coordinates_lat');
-  const coordLng = form.watch('coordinates_lng');
   const kmStart = form.watch('km_start') || 0;
   const kmEnd = form.watch('km_end') || 0;
-  const kmRodado = kmEnd >= kmStart && kmStart > 0 ? kmEnd - kmStart : null;
+  const kmRodado = kmEnd >= kmStart && kmStart > 0 ? kmEnd - kmStart : 0;
+
+  // Support 1 Calculations
+  const s1Toll = form.watch('support_agent_1_toll_cost') || 0;
+  const s1Food = form.watch('support_agent_1_food_cost') || 0;
+  const s1Other = form.watch('support_agent_1_other_costs') || 0;
+  const s1TotalCost = s1Toll + s1Food + s1Other;
+  const s1KmStart = form.watch('support_agent_1_km_start') || 0;
+  const s1KmEnd = form.watch('support_agent_1_km_end') || 0;
+  const s1KmRodado = s1KmEnd >= s1KmStart && s1KmStart > 0 ? s1KmEnd - s1KmStart : 0;
+
+  // Support 2 Calculations
+  const s2Toll = form.watch('support_agent_2_toll_cost') || 0;
+  const s2Food = form.watch('support_agent_2_food_cost') || 0;
+  const s2Other = form.watch('support_agent_2_other_costs') || 0;
+  const s2TotalCost = s2Toll + s2Food + s2Other;
+  const s2KmStart = form.watch('support_agent_2_km_start') || 0;
+  const s2KmEnd = form.watch('support_agent_2_km_end') || 0;
+  const s2KmRodado = s2KmEnd >= s2KmStart && s2KmStart > 0 ? s2KmEnd - s2KmStart : 0;
+
+  // Global Totals
+  const totalKmGeral = kmRodado + s1KmRodado + s2KmRodado;
+  const totalCustoGeral = totalCost + s1TotalCost + s2TotalCost;
+
+  const coordLat = form.watch('coordinates_lat');
+  const coordLng = form.watch('coordinates_lng');
 
   const selectedVehicle = filteredVehicles.find(v => v.id === selectedVehicleId);
 
@@ -702,96 +747,206 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                     />
                   </div>
 
-                  {/* Agente Principal e Veículo */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="main_agent_id"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <div className="flex items-center justify-between">
-                            <FormLabel>Agente Principal *</FormLabel>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-2 text-xs text-primary flex items-center gap-1"
-                              onClick={() => setIsMapDialogOpen(true)}
-                            >
-                              <MapPin className="h-3 w-3" />
-                              Buscar no Mapa
-                            </Button>
-                          </div>
-                          <Popover open={openAgent} onOpenChange={setOpenAgent}>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  role="combobox"
-                                  aria-expanded={openAgent}
-                                  className={cn(
-                                    "w-full justify-between font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  {field.value
-                                    ? agents.find((agent) => agent.id === field.value)?.name
-                                    : "Selecione o agente"}
-                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                              <Command>
-                                <CommandInput placeholder="Pesquisar agente..." />
-                                <CommandList>
-                                  <CommandEmpty>Agente não encontrado.</CommandEmpty>
-                                  <CommandGroup>
-                                    {agents.map((agent) => (
-                                      <CommandItem
-                                        key={agent.id}
-                                        value={agent.name}
-                                        onSelect={() => {
-                                          form.setValue("main_agent_id", agent.id);
-                                          setOpenAgent(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            agent.id === field.value ? "opacity-100" : "opacity-0"
-                                          )}
-                                        />
-                                        {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
-                                      </CommandItem>
-                                    ))}
-                                  </CommandGroup>
-                                </CommandList>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  {/* Agente Principal */}
+                  <div className="space-y-4 p-4 border rounded-lg bg-primary/5 border-primary/20">
+                    <div className="flex items-center justify-between border-b pb-2 mb-2">
+                      <h4 className="font-bold text-sm text-primary">Agente Principal</h4>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-primary flex items-center gap-1 hover:bg-primary/10"
+                        onClick={() => setIsMapDialogOpen(true)}
+                      >
+                        <MapPin className="h-3 w-3" />
+                        Buscar no Mapa
+                      </Button>
+                    </div>
 
-                    <div>
-                      <Label>Veículo Selecionado</Label>
-                      <Input
-                        value={selectedVehicle ? `${selectedVehicle.description} - ${selectedVehicle.plate_main}` : 'Selecione um veículo na aba Cliente'}
-                        disabled
-                        className="mt-2 bg-muted"
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="main_agent_id"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel className="text-xs">Identificação do Agente *</FormLabel>
+                            <Popover open={openAgent} onOpenChange={setOpenAgent}>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={openAgent}
+                                    className={cn(
+                                      "w-full justify-between font-normal h-9 text-xs",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value
+                                      ? agents.find((agent) => agent.id === field.value)?.name
+                                      : "Selecione o agente"}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                <Command>
+                                  <CommandInput placeholder="Pesquisar agente..." />
+                                  <CommandList>
+                                    <CommandEmpty>Agente não encontrado.</CommandEmpty>
+                                    <CommandGroup>
+                                      {agents.map((agent) => (
+                                        <CommandItem
+                                          key={agent.id}
+                                          value={agent.name}
+                                          onSelect={() => {
+                                            form.setValue("main_agent_id", agent.id);
+                                            setOpenAgent(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              agent.id === field.value ? "opacity-100" : "opacity-0"
+                                            )}
+                                          />
+                                          {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
+
+                      <div>
+                        <Label className="text-xs">Veículo Selecionado</Label>
+                        <Input
+                          value={selectedVehicle ? `${selectedVehicle.description} - ${selectedVehicle.plate_main}` : 'Selecione no Cliente'}
+                          disabled
+                          className="mt-1 h-9 text-xs bg-muted/50"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                      <FormField
+                        control={form.control}
+                        name="km_start"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">KM Inicial</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                className="h-8 text-xs"
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="km_end"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">KM Final</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                className="h-8 text-xs"
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <div className="space-y-2">
+                        <Label className="text-xs">KM Rodado</Label>
+                        <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold text-primary">
+                          {kmRodado} km
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <FormField
+                        control={form.control}
+                        name="toll_cost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Pedágio (R$)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                className="h-8 text-xs"
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="food_cost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Alimentação (R$)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                className="h-8 text-xs"
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="other_costs"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Outros (R$)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                className="h-8 text-xs"
+                                {...field}
+                                onChange={(e) => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <div className="space-y-2">
+                        <Label className="text-xs">Total Agente</Label>
+                        <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold">
+                          {totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
                   {/* Seção Apoios */}
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-sm border-b pb-2">Apoios</h4>
+                  <div className="space-y-4">
+                    <h4 className="font-bold text-sm border-b pb-2 text-muted-foreground">AGENTE(S) DE APOIO</h4>
 
                     {/* Apoio 1 */}
-                    <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
-                      <Label className="font-medium">Apoio 1</Label>
+                    <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+                      <h5 className="font-bold text-xs text-muted-foreground uppercase tracking-wider">Apoio Secundário (1)</h5>
+
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <FormField
                           control={form.control}
@@ -872,7 +1027,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                             <FormItem>
                               <FormLabel className="text-xs">Chegada</FormLabel>
                               <FormControl>
-                                <Input type="datetime-local" {...field} />
+                                <Input type="datetime-local" className="h-9 text-xs" {...field} />
                               </FormControl>
                             </FormItem>
                           )}
@@ -884,17 +1039,121 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                             <FormItem>
                               <FormLabel className="text-xs">Saída</FormLabel>
                               <FormControl>
-                                <Input type="datetime-local" {...field} />
+                                <Input type="datetime-local" className="h-9 text-xs" {...field} />
                               </FormControl>
                             </FormItem>
                           )}
                         />
                       </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="support_agent_1_km_start"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">KM Inicial</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  className="h-8 text-xs"
+                                  {...field}
+                                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="support_agent_1_km_end"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">KM Final</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  className="h-8 text-xs"
+                                  {...field}
+                                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <div className="space-y-2">
+                          <Label className="text-xs">KM Rodado</Label>
+                          <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold">
+                            {s1KmRodado} km
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-t pt-3 mt-3">
+                        <FormField
+                          control={form.control}
+                          name="support_agent_1_toll_cost"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Pedágio (R$)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  className="h-8 text-xs"
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="support_agent_1_food_cost"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Alimentação (R$)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  className="h-8 text-xs"
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="support_agent_1_other_costs"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Outros (R$)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  className="h-8 text-xs"
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <div className="space-y-2">
+                          <Label className="text-xs">Total Apoio 1</Label>
+                          <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold">
+                            {s1TotalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Apoio 2 */}
-                    <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
-                      <Label className="font-medium">Apoio 2</Label>
+                    <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+                      <h5 className="font-bold text-xs text-muted-foreground uppercase tracking-wider">Apoio Terceiro (2)</h5>
+
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <FormField
                           control={form.control}
@@ -975,7 +1234,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                             <FormItem>
                               <FormLabel className="text-xs">Chegada</FormLabel>
                               <FormControl>
-                                <Input type="datetime-local" {...field} />
+                                <Input type="datetime-local" className="h-9 text-xs" {...field} />
                               </FormControl>
                             </FormItem>
                           )}
@@ -987,185 +1246,181 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                             <FormItem>
                               <FormLabel className="text-xs">Saída</FormLabel>
                               <FormControl>
-                                <Input type="datetime-local" {...field} />
+                                <Input type="datetime-local" className="h-9 text-xs" {...field} />
                               </FormControl>
                             </FormItem>
                           )}
                         />
                       </div>
-                    </div>
-                  </div>
 
-                  {/* Seção Quilometragem */}
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-sm border-b pb-2">Quilometragem</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="km_start"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>KM Inicial</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="Ex: 150000"
-                                {...field}
-                                value={field.value ?? ''}
-                                onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="km_end"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>KM Final</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="Ex: 150250"
-                                {...field}
-                                value={field.value ?? ''}
-                                onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <div>
-                        <Label>KM Rodado</Label>
-                        <Input
-                          value={kmRodado !== null ? `${kmRodado} km` : '-'}
-                          disabled
-                          className="mt-2 bg-muted font-semibold"
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="support_agent_2_km_start"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">KM Inicial</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  className="h-8 text-xs"
+                                  {...field}
+                                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
                         />
+                        <FormField
+                          control={form.control}
+                          name="support_agent_2_km_end"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">KM Final</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  className="h-8 text-xs"
+                                  {...field}
+                                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <div className="space-y-2">
+                          <Label className="text-xs">KM Rodado</Label>
+                          <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold">
+                            {s2KmRodado} km
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-t pt-3 mt-3">
+                        <FormField
+                          control={form.control}
+                          name="support_agent_2_toll_cost"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Pedágio (R$)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  className="h-8 text-xs"
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="support_agent_2_food_cost"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Alimentação (R$)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  className="h-8 text-xs"
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="support_agent_2_other_costs"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Outros (R$)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  className="h-8 text-xs"
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <div className="space-y-2">
+                          <Label className="text-xs">Total Apoio 2</Label>
+                          <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold">
+                            {s2TotalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Seção Despesas */}
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-sm border-b pb-2">Despesas</h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="toll_cost"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Pedágio (R$)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                placeholder="0.00"
-                                {...field}
-                                value={field.value ?? ''}
-                                onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="food_cost"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Alimentação (R$)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                placeholder="0.00"
-                                {...field}
-                                value={field.value ?? ''}
-                                onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="other_costs"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Outros (R$)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                placeholder="0.00"
-                                {...field}
-                                value={field.value ?? ''}
-                                onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <div>
-                        <Label>Total</Label>
-                        <Input
-                          value={`R$ ${totalCost.toFixed(2)}`}
-                          disabled
-                          className="mt-2 bg-muted font-semibold"
-                        />
+                  {/* Resumo Geral da Operação */}
+                  <div className="bg-secondary/10 p-4 rounded-lg border border-secondary/30 space-y-3">
+                    <h4 className="font-bold text-sm text-secondary uppercase tracking-wider">Resumo Geral da Operação</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="p-3 bg-white rounded-md border shadow-sm">
+                        <Label className="text-xs text-muted-foreground">KM TOTAL RODADO (EQUIPE)</Label>
+                        <div className="text-2xl font-black text-primary">
+                          {totalKmGeral} <span className="text-sm">km</span>
+                        </div>
+                      </div>
+                      <div className="p-3 bg-white rounded-md border shadow-sm">
+                        <Label className="text-xs text-muted-foreground">CUSTO TOTAL DA OPERAÇÃO</Label>
+                        <div className="text-2xl font-black text-success">
+                          {totalCustoGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Resumo e Descrição */}
-                  <FormField
-                    control={form.control}
-                    name="summary"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Resumo (opcional)</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Breve resumo do atendimento..."
-                            maxLength={500}
-                            {...field}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                  <div className="space-y-4 pt-4 border-t">
+                    <FormField
+                      control={form.control}
+                      name="summary"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Resumo (opcional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Breve resumo do atendimento..."
+                              maxLength={500}
+                              {...field}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
 
-                  <FormField
-                    control={form.control}
-                    name="detailed_report"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Descrição do Evento</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Descreva os detalhes do atendimento..."
-                            className="min-h-[100px]"
-                            {...field}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                    <FormField
+                      control={form.control}
+                      name="detailed_report"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Descrição do Evento</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Descreva os detalhes do atendimento..."
+                              className="min-h-[100px]"
+                              {...field}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
 
-                  <div className="flex justify-between">
-                    <Button type="button" variant="outline" onClick={goToPrevTab}>
-                      Anterior
-                    </Button>
-                    <Button type="button" onClick={goToNextTab}>
-                      Próximo
-                    </Button>
+                    <div className="flex justify-between">
+                      <Button type="button" variant="outline" onClick={goToPrevTab}>
+                        Anterior
+                      </Button>
+                      <Button type="button" onClick={goToNextTab}>
+                        Próximo
+                      </Button>
+                    </div>
                   </div>
                 </TabsContent>
 

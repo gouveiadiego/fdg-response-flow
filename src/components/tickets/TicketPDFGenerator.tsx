@@ -65,10 +65,24 @@ interface TicketPDFData {
     name: string;
     is_armed: boolean | null;
   } | null;
+  support_agent_1_arrival: string | null;
+  support_agent_1_departure: string | null;
+  support_agent_1_km_start: number | null;
+  support_agent_1_km_end: number | null;
+  support_agent_1_toll_cost: number | null;
+  support_agent_1_food_cost: number | null;
+  support_agent_1_other_costs: number | null;
   support_agent_2?: {
     name: string;
     is_armed: boolean | null;
   } | null;
+  support_agent_2_arrival: string | null;
+  support_agent_2_departure: string | null;
+  support_agent_2_km_start: number | null;
+  support_agent_2_km_end: number | null;
+  support_agent_2_toll_cost: number | null;
+  support_agent_2_food_cost: number | null;
+  support_agent_2_other_costs: number | null;
   vehicle: {
     description: string;
     tractor_plate: string | null;
@@ -145,6 +159,31 @@ const calculateEfetivoMobilizado = (data: TicketPDFData): string => {
   if (desarmados > 0) parts.push(`${desarmados} Desarmado${desarmados > 1 ? 's' : ''}`);
 
   return parts.length > 0 ? parts.join(' + ') : '-';
+};
+
+const calculateAgentKm = (kmStart: number | null, kmEnd: number | null): number => {
+  if (kmStart && kmEnd && kmEnd >= kmStart) {
+    return kmEnd - kmStart;
+  }
+  return 0;
+};
+
+const calculateAgentCosts = (toll: number | null, food: number | null, other: number | null): number => {
+  return (toll || 0) + (food || 0) + (other || 0);
+};
+
+const calculateTotalTeamKm = (data: TicketPDFData): number => {
+  const mainKm = calculateAgentKm(data.km_start, data.km_end);
+  const s1Km = calculateAgentKm(data.support_agent_1_km_start, data.support_agent_1_km_end);
+  const s2Km = calculateAgentKm(data.support_agent_2_km_start, data.support_agent_2_km_end);
+  return mainKm + s1Km + s2Km;
+};
+
+const calculateTotalOperationCost = (data: TicketPDFData): number => {
+  const mainCost = calculateAgentCosts(data.toll_cost, data.food_cost, data.other_costs);
+  const s1Cost = calculateAgentCosts(data.support_agent_1_toll_cost, data.support_agent_1_food_cost, data.support_agent_1_other_costs);
+  const s2Cost = calculateAgentCosts(data.support_agent_2_toll_cost, data.support_agent_2_food_cost, data.support_agent_2_other_costs);
+  return mainCost + s1Cost + s2Cost;
 };
 
 // Graphics & Icons
@@ -533,12 +572,227 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
 
   // Col 2 inside Op Card
   const col2InnerX = margin + 6 + innerColW + 10;
-  drawField(pdf, 'KM Rodado', data.km_start && data.km_end ? `${data.km_end - data.km_start} km` : '-', col2InnerX, cy + 12, innerColW);
+  const totalTeamKm = calculateTotalTeamKm(data);
+  drawField(pdf, 'KM Total da Equipe', totalTeamKm > 0 ? `${totalTeamKm} km` : '-', col2InnerX, cy + 12, innerColW);
   drawField(pdf, 'Duração Total', formatDurationText(data.duration_minutes), col2InnerX, cy + 24, innerColW);
 
   // Col 3 inside Op Card (Coordinates)
   const col3InnerX = margin + 6 + (innerColW * 2) + 10;
   drawField(pdf, 'Coordenadas', data.coordinates_lat ? `${data.coordinates_lat}, ${data.coordinates_lng}` : '-', col3InnerX, cy + 12, innerColW);
+
+  y += opH + 10;
+
+  // ==================== DETALHAMENTO POR AGENTE ====================
+  // Only show this section if there's any KM or cost data
+  const hasMainData = (data.km_start && data.km_end) || data.toll_cost || data.food_cost || data.other_costs;
+  const hasS1Data = data.support_agent_1 && ((data.support_agent_1_km_start && data.support_agent_1_km_end) || data.support_agent_1_toll_cost || data.support_agent_1_food_cost || data.support_agent_1_other_costs);
+  const hasS2Data = data.support_agent_2 && ((data.support_agent_2_km_start && data.support_agent_2_km_end) || data.support_agent_2_toll_cost || data.support_agent_2_food_cost || data.support_agent_2_other_costs);
+
+  if (hasMainData || hasS1Data || hasS2Data) {
+    // Section Title
+    setColor(pdf, THEME.primary);
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('DETALHAMENTO POR AGENTE', margin, y);
+
+    setColor(pdf, THEME.primary);
+    pdf.rect(margin, y + 2, 25, 0.8, 'F');
+
+    y += 10;
+
+    const agentCardH = 38;
+    const agentCardW = contentWidth;
+
+    // Helper function to draw agent card
+    const drawAgentDetailCard = (
+      agentName: string,
+      isArmed: boolean | null,
+      kmStart: number | null,
+      kmEnd: number | null,
+      tollCost: number | null,
+      foodCost: number | null,
+      otherCosts: number | null,
+      yPos: number,
+      title: string
+    ): number => {
+      drawCard(pdf, margin, yPos, agentCardW, agentCardH, title);
+
+      let cardY = yPos + 16;
+      const fieldW = (agentCardW / 6) - 5;
+
+      // Row 1: Agent info
+      setColor(pdf, THEME.text);
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(agentName, margin + 6, cardY);
+
+      if (isArmed !== null) {
+        const armedText = isArmed ? 'ARMADO' : 'DESARMADO';
+        const armedColor = isArmed ? THEME.warning : THEME.secondaryText;
+        setColor(pdf, armedColor);
+        pdf.setFontSize(7);
+        pdf.text(armedText, margin + 6 + pdf.getTextWidth(agentName) + 3, cardY);
+      }
+
+      cardY += 8;
+
+      // Row 2: KM Data
+      const kmRodado = calculateAgentKm(kmStart, kmEnd);
+      let xPos = margin + 6;
+
+      setColor(pdf, THEME.secondaryText);
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('KM INICIAL', xPos, cardY);
+      setColor(pdf, THEME.text);
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(kmStart ? kmStart.toString() : '-', xPos, cardY + 4);
+
+      xPos += fieldW;
+      setColor(pdf, THEME.secondaryText);
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('KM FINAL', xPos, cardY);
+      setColor(pdf, THEME.text);
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(kmEnd ? kmEnd.toString() : '-', xPos, cardY + 4);
+
+      xPos += fieldW;
+      setColor(pdf, THEME.secondaryText);
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('KM RODADO', xPos, cardY);
+      setColor(pdf, THEME.primary);
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(kmRodado > 0 ? `${kmRodado} km` : '-', xPos, cardY + 4);
+
+      // Row 3: Costs
+      cardY += 10;
+      xPos = margin + 6;
+
+      setColor(pdf, THEME.secondaryText);
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('PEDÁGIO', xPos, cardY);
+      setColor(pdf, THEME.text);
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(tollCost ? `R$ ${tollCost.toFixed(2)}` : '-', xPos, cardY + 4);
+
+      xPos += fieldW;
+      setColor(pdf, THEME.secondaryText);
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('ALIMENTAÇÃO', xPos, cardY);
+      setColor(pdf, THEME.text);
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(foodCost ? `R$ ${foodCost.toFixed(2)}` : '-', xPos, cardY + 4);
+
+      xPos += fieldW;
+      setColor(pdf, THEME.secondaryText);
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('OUTROS', xPos, cardY);
+      setColor(pdf, THEME.text);
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(otherCosts ? `R$ ${otherCosts.toFixed(2)}` : '-', xPos, cardY + 4);
+
+      xPos += fieldW;
+      const totalCost = calculateAgentCosts(tollCost, foodCost, otherCosts);
+      setColor(pdf, THEME.secondaryText);
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('TOTAL AGENTE', xPos, cardY);
+      setColor(pdf, THEME.success);
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(totalCost > 0 ? `R$ ${totalCost.toFixed(2)}` : '-', xPos, cardY + 4);
+
+      return yPos + agentCardH + 6;
+    };
+
+    // Draw agent cards
+    if (hasMainData) {
+      y = drawAgentDetailCard(
+        data.agent.name,
+        data.agent.is_armed,
+        data.km_start,
+        data.km_end,
+        data.toll_cost,
+        data.food_cost,
+        data.other_costs,
+        y,
+        'AGENTE PRINCIPAL'
+      );
+    }
+
+    if (hasS1Data && data.support_agent_1) {
+      y = drawAgentDetailCard(
+        data.support_agent_1.name,
+        data.support_agent_1.is_armed,
+        data.support_agent_1_km_start,
+        data.support_agent_1_km_end,
+        data.support_agent_1_toll_cost,
+        data.support_agent_1_food_cost,
+        data.support_agent_1_other_costs,
+        y,
+        'APOIO SECUNDÁRIO (1)'
+      );
+    }
+
+    if (hasS2Data && data.support_agent_2) {
+      y = drawAgentDetailCard(
+        data.support_agent_2.name,
+        data.support_agent_2.is_armed,
+        data.support_agent_2_km_start,
+        data.support_agent_2_km_end,
+        data.support_agent_2_toll_cost,
+        data.support_agent_2_food_cost,
+        data.support_agent_2_other_costs,
+        y,
+        'APOIO TERCIÁRIO (2)'
+      );
+    }
+
+    // Operation Summary
+    const summaryCardH = 22;
+    drawShadowRect(pdf, margin, y, contentWidth, summaryCardH, 2);
+    setColor(pdf, { r: 240, g: 253, b: 244 }); // Light green background
+    drawRoundedRect(pdf, margin, y, contentWidth, summaryCardH, 2, 'F');
+
+    setColor(pdf, THEME.primary);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('RESUMO GERAL DA OPERAÇÃO', margin + 6, y + 8);
+
+    const totalOperationCost = calculateTotalOperationCost(data);
+    const summaryY = y + 15;
+    const summaryColW = contentWidth / 2;
+
+    setColor(pdf, THEME.secondaryText);
+    pdf.setFontSize(7);
+    pdf.text('KM TOTAL RODADO (EQUIPE)', margin + 6, summaryY);
+    setColor(pdf, THEME.primary);
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(`${totalTeamKm} km`, margin + 6, summaryY + 5);
+
+    setColor(pdf, THEME.secondaryText);
+    pdf.setFontSize(7);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('CUSTO TOTAL DA OPERAÇÃO', margin + 6 + summaryColW, summaryY);
+    setColor(pdf, THEME.success);
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(`R$ ${totalOperationCost.toFixed(2)}`, margin + 6 + summaryColW, summaryY + 5);
+
+    y += summaryCardH + 10;
+  }
 
   drawFooter(pdf, pageWidth, pageHeight);
 
