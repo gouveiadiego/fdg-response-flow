@@ -422,27 +422,27 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-1">
-                  <p className="font-semibold">{ticket.vehicles?.description}</p>
+                  <p className="font-semibold text-primary">Cavalo Mecânico</p>
                   {ticket.vehicles?.tractor_plate && (
-                    <p className="text-sm text-muted-foreground">
-                      Cavalo: {ticket.vehicles.tractor_plate}
+                    <p className="text-sm">
+                      Placa: <span className="font-bold">{ticket.vehicles.tractor_plate}</span>
                       {ticket.vehicles.tractor_brand && ` - ${ticket.vehicles.tractor_brand}`}
                       {ticket.vehicles.tractor_model && ` ${ticket.vehicles.tractor_model}`}
                     </p>
                   )}
                   {ticket.vehicles?.trailer1_plate && (
                     <p className="text-xs text-muted-foreground">
-                      Carreta 1: {ticket.vehicles.trailer1_plate} ({bodyTypeLabels[ticket.vehicles.trailer1_body_type || ''] || ticket.vehicles.trailer1_body_type})
+                      Carreta 01: {ticket.vehicles.trailer1_plate} ({bodyTypeLabels[ticket.vehicles.trailer1_body_type || ''] || ticket.vehicles.trailer1_body_type})
                     </p>
                   )}
                   {ticket.vehicles?.trailer2_plate && (
                     <p className="text-xs text-muted-foreground">
-                      Carreta 2: {ticket.vehicles.trailer2_plate} ({bodyTypeLabels[ticket.vehicles.trailer2_body_type || ''] || ticket.vehicles.trailer2_body_type})
+                      Carreta 02: {ticket.vehicles.trailer2_plate} ({bodyTypeLabels[ticket.vehicles.trailer2_body_type || ''] || ticket.vehicles.trailer2_body_type})
                     </p>
                   )}
                   {ticket.vehicles?.trailer3_plate && (
                     <p className="text-xs text-muted-foreground">
-                      Carreta 3: {ticket.vehicles.trailer3_plate} ({bodyTypeLabels[ticket.vehicles.trailer3_body_type || ''] || ticket.vehicles.trailer3_body_type})
+                      Carreta 03: {ticket.vehicles.trailer3_plate} ({bodyTypeLabels[ticket.vehicles.trailer3_body_type || ''] || ticket.vehicles.trailer3_body_type})
                     </p>
                   )}
                 </CardContent>

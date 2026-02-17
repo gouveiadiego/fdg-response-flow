@@ -486,15 +486,35 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   // Card: VEÍCULO / ALVO
   drawCard(pdf, colTwoX, y, colWidth, cardH, 'VEÍCULO / ALVO');
   cy = y + 16;
-  cy = drawField(pdf, 'Descrição', data.vehicle.description, colTwoX + 6, cy, colWidth - 10);
+
+  setColor(pdf, THEME.primary);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(8);
+  pdf.text('CAVALO MECÂNICO', colTwoX + 6, cy);
+  cy += 5;
 
   let plateInfo = data.vehicle.tractor_plate || '-';
   if (data.vehicle.tractor_brand) plateInfo += ` • ${data.vehicle.tractor_brand}`;
-  cy = drawField(pdf, 'Cavalo/Placa', plateInfo, colTwoX + 6, cy, colWidth - 10);
+  if (data.vehicle.tractor_model) plateInfo += ` • ${data.vehicle.tractor_model}`;
+  cy = drawField(pdf, 'Placa / Marca', plateInfo, colTwoX + 6, cy, colWidth - 10);
 
-  let trailerInfo = data.vehicle.trailer1_plate || 'N/A';
-  if (data.vehicle.trailer1_body_type) trailerInfo += ` (${data.vehicle.trailer1_body_type})`;
-  cy = drawField(pdf, 'Carreta/Tipo', trailerInfo, colTwoX + 6, cy, colWidth - 10);
+  if (data.vehicle.trailer1_plate) {
+    let t1Info = data.vehicle.trailer1_plate;
+    if (data.vehicle.trailer1_body_type) t1Info += ` (${bodyTypeLabels[data.vehicle.trailer1_body_type] || data.vehicle.trailer1_body_type})`;
+    cy = drawField(pdf, 'Carreta 01', t1Info, colTwoX + 6, cy, colWidth - 10);
+  }
+
+  if (data.vehicle.trailer2_plate) {
+    let t2Info = data.vehicle.trailer2_plate;
+    if (data.vehicle.trailer2_body_type) t2Info += ` (${bodyTypeLabels[data.vehicle.trailer2_body_type] || data.vehicle.trailer2_body_type})`;
+    cy = drawField(pdf, 'Carreta 02', t2Info, colTwoX + 6, cy, colWidth - 10);
+  }
+
+  if (data.vehicle.trailer3_plate) {
+    let t3Info = data.vehicle.trailer3_plate;
+    if (data.vehicle.trailer3_body_type) t3Info += ` (${bodyTypeLabels[data.vehicle.trailer3_body_type] || data.vehicle.trailer3_body_type})`;
+    cy = drawField(pdf, 'Carreta 03', t3Info, colTwoX + 6, cy, colWidth - 10);
+  }
 
   y += cardH + 10;
 

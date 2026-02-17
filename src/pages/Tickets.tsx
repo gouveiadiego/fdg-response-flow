@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,6 +69,8 @@ const Tickets = () => {
   const [editTicketOpen, setEditTicketOpen] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [initialAgentId, setInitialAgentId] = useState<string | undefined>(undefined);
 
   // Delete state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -76,7 +79,16 @@ const Tickets = () => {
 
   useEffect(() => {
     fetchTickets();
-  }, []);
+
+    // Check for agentId in search params
+    const agentId = searchParams.get('agentId');
+    if (agentId) {
+      setInitialAgentId(agentId);
+      setNewTicketOpen(true);
+      // Clean up params after opening
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams]);
 
   const fetchTickets = async () => {
     try {
@@ -371,6 +383,7 @@ const Tickets = () => {
         open={newTicketOpen}
         onOpenChange={setNewTicketOpen}
         onSuccess={fetchTickets}
+        initialAgentId={initialAgentId}
       />
 
       <EditTicketDialog

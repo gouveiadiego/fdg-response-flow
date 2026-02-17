@@ -94,6 +94,25 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
     }
   };
 
+  const handleCEPBlur = async (cep: string) => {
+    const cleanedCEP = cep.replace(/\D/g, '');
+    if (cleanedCEP.length !== 8) return;
+
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanedCEP}/json/`);
+      const data = await response.json();
+
+      if (!data.erro) {
+        form.setValue('address', `${data.logradouro}${data.bairro ? `, ${data.bairro}` : ''}`, { shouldValidate: true });
+        form.setValue('city', data.localidade, { shouldValidate: true });
+        form.setValue('state', data.uf, { shouldValidate: true });
+        toast.success('Endereço preenchido automaticamente!');
+      }
+    } catch (error) {
+      console.error('Erro ao buscar CEP:', error);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh]">
@@ -227,7 +246,14 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
                     <FormItem>
                       <FormLabel>CEP</FormLabel>
                       <FormControl>
-                        <Input placeholder="00000-000" {...field} />
+                        <Input
+                          placeholder="00000-000"
+                          {...field}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            handleCEPBlur(e.target.value);
+                          }}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

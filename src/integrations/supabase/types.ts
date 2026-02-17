@@ -36,6 +36,13 @@ export type Database = {
           vehicle_plate: string | null
           performance_level: Database["public"]["Enums"]["agent_performance_level"]
           vehicle_type: Database["public"]["Enums"]["agent_vehicle_type"] | null
+          has_alarm_skill: boolean
+          has_investigation_skill: boolean
+          has_preservation_skill: boolean
+          has_logistics_skill: boolean
+          has_auditing_skill: boolean
+          latitude: number | null
+          longitude: number | null
         }
         Insert: {
           address?: string | null
@@ -392,6 +399,33 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      operators: {
+        Row: {
+          id: string
+          name: string
+          email: string | null
+          active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          email?: string | null
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string | null
+          active?: boolean
+          created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }

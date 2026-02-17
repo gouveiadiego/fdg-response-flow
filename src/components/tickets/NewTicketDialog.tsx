@@ -106,6 +106,7 @@ interface NewTicketDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  initialAgentId?: string;
 }
 
 const SERVICE_TYPE_LABELS = {
@@ -115,7 +116,7 @@ const SERVICE_TYPE_LABELS = {
   acompanhamento_logistico: 'Acompanhamento Logístico',
 };
 
-export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDialogProps) {
+export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId }: NewTicketDialogProps) {
   const { user } = useAuth();
   const { reverseGeocode, isLoading: isGeocoding } = useGeocoding();
   const [activeTab, setActiveTab] = useState('cliente');
@@ -179,8 +180,11 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
   useEffect(() => {
     if (open) {
       fetchData();
+      if (initialAgentId) {
+        form.setValue('main_agent_id', initialAgentId);
+      }
     }
-  }, [open]);
+  }, [open, initialAgentId]);
 
   useEffect(() => {
     if (selectedClientId) {
@@ -204,21 +208,22 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess }: NewTicketDial
 
   const fetchData = async () => {
     try {
-      // @ts-ignore - operators table might be missing in types
-      const [clientsRes, vehiclesRes, plansRes, agentsRes, operatorsRes] = await Promise.all([
-        supabase.from('clients').select('id, name, city, state').order('name'),
-        supabase.from('vehicles').select('id, description, plate_main, client_id'),
-        supabase.from('plans').select('id, name').order('name'),
-        supabase.from('agents').select('id, name, is_armed').eq('status', 'ativo').order('name'),
-        supabase.from('operators').select('id, name').eq('active', true).order('name'),
-      ]);
+      const { data: clientsData } = await supabase.from('clients').select('id, name, city, state').order('name');
+      const { data: vehiclesData } = await supabase.from('vehicles').select('id, description, plate_main, client_id');
+      const { data: plansData } = await supabase.from('plans').select('id, name').order('name');
+      const { data: agentsData } = await supabase.from('agents').select('id, name, is_armed').eq('status', 'ativo').order('name');
 
-      if (clientsRes.data) setClients(clientsRes.data);
-      if (vehiclesRes.data) setVehicles(vehiclesRes.data);
-      if (plansRes.data) setPlans(plansRes.data);
-      if (agentsRes.data) setAgents(agentsRes.data);
-      // @ts-ignore
-      if (operatorsRes.data) setOperators(operatorsRes.data);
+      // @ts-ignore - developers might be using a schema where operators is missing from generated types
+      const { data: operatorsData } = await (supabase.from('operators' as any)
+        .select('id, name')
+        .eq('active', true)
+        .order('name') as any);
+
+      if (clientsData) setClients(clientsData);
+      if (vehiclesData) setVehicles(vehiclesData);
+      if (plansData) setPlans(plansData);
+      if (agentsData) setAgents(agentsData);
+      if (operatorsData) setOperators(operatorsData);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       toast.error('Erro ao carregar dados do formulário');

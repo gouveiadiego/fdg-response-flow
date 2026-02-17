@@ -52,7 +52,7 @@ const vehicleSchema = z.object({
   trailer2_body_type: z.string().optional(),
   trailer3_plate: z.string().max(10).optional(),
   trailer3_body_type: z.string().optional(),
-  description: z.string().min(1, 'Descrição é obrigatória').max(500),
+  description: z.string().max(500).optional(),
   color: z.string().max(30).optional(),
   year: z.coerce.number().min(1900).max(2100).optional().nullable(),
 });
@@ -132,6 +132,8 @@ export function EditVehicleDialog({ vehicleId, open, onOpenChange, onSuccess }: 
 
     setIsLoading(true);
     try {
+      const description = `${data.tractor_plate || ''} ${data.tractor_brand || ''} ${data.tractor_model || ''}`.trim() || 'Veículo';
+
       const { error } = await supabase
         .from('vehicles')
         .update({
@@ -145,7 +147,7 @@ export function EditVehicleDialog({ vehicleId, open, onOpenChange, onSuccess }: 
           trailer2_body_type: (data.trailer2_body_type as any) || null,
           trailer3_plate: data.trailer3_plate || null,
           trailer3_body_type: (data.trailer3_body_type as any) || null,
-          description: data.description,
+          description: description,
           color: data.color || null,
           year: data.year || null,
         })
@@ -175,24 +177,6 @@ export function EditVehicleDialog({ vehicleId, open, onOpenChange, onSuccess }: 
         <ScrollArea className="max-h-[calc(90vh-120px)]">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pr-4">
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descrição do Conjunto *</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Ex: Scania R450 + Carreta Randon Graneleira"
-                        className="resize-none"
-                        rows={2}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <Separator />
               <p className="text-sm font-medium">Cavalo Mecânico</p>
@@ -242,7 +226,7 @@ export function EditVehicleDialog({ vehicleId, open, onOpenChange, onSuccess }: 
               </div>
 
               <Separator />
-              <p className="text-sm font-medium">Carreta 1</p>
+              <p className="text-sm font-medium">Carreta 01</p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
@@ -286,7 +270,7 @@ export function EditVehicleDialog({ vehicleId, open, onOpenChange, onSuccess }: 
               </div>
 
               <Separator />
-              <p className="text-sm font-medium">Carreta 2 (opcional)</p>
+              <p className="text-sm font-medium">Carreta 02 (opcional)</p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
@@ -330,7 +314,7 @@ export function EditVehicleDialog({ vehicleId, open, onOpenChange, onSuccess }: 
               </div>
 
               <Separator />
-              <p className="text-sm font-medium">Carreta 3 (opcional)</p>
+              <p className="text-sm font-medium">Carreta 03 (opcional)</p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
@@ -398,9 +382,9 @@ export function EditVehicleDialog({ vehicleId, open, onOpenChange, onSuccess }: 
                     <FormItem>
                       <FormLabel>Ano</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="2024" 
+                        <Input
+                          type="number"
+                          placeholder="2024"
                           {...field}
                           value={field.value || ''}
                           onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : null)}

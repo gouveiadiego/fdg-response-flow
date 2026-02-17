@@ -52,6 +52,13 @@ const agentSchema = z.object({
   bank_account_type: z.enum(['corrente', 'poupanca']).optional(),
   performance_level: z.enum(['ruim', 'bom', 'otimo']).default('bom'),
   vehicle_type: z.enum(['carro', 'moto']).optional().or(z.literal('')),
+  has_alarm_skill: z.boolean().default(false),
+  has_investigation_skill: z.boolean().default(false),
+  has_preservation_skill: z.boolean().default(false),
+  has_logistics_skill: z.boolean().default(false),
+  has_auditing_skill: z.boolean().default(false),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
 });
 
 type AgentFormData = z.infer<typeof agentSchema>;
@@ -86,6 +93,13 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
       bank_account_type: undefined,
       performance_level: 'bom',
       vehicle_type: '',
+      has_alarm_skill: false,
+      has_investigation_skill: false,
+      has_preservation_skill: false,
+      has_logistics_skill: false,
+      has_auditing_skill: false,
+      latitude: null,
+      longitude: null,
     },
   });
 
@@ -99,7 +113,24 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
     const result = await lookupCep(cep);
     if (result) {
       form.setValue('address', result.address);
-      toast.success('Endereço encontrado!');
+
+      // Geocoding with Nominatim
+      try {
+        const fullAddress = `${result.address}, ${result.city}, ${result.state}, BR`;
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}`);
+        const data = await response.json();
+
+        if (data && data.length > 0) {
+          form.setValue('latitude', parseFloat(data[0].lat));
+          form.setValue('longitude', parseFloat(data[0].lon));
+          toast.success('Endereço e coordenadas encontrados!');
+        } else {
+          toast.success('Endereço encontrado, mas não foi possível obter as coordenadas automaticamente.');
+        }
+      } catch (error) {
+        console.error('Erro ao buscar coordenadas:', error);
+        toast.success('Endereço encontrado!');
+      }
     }
   };
 
@@ -124,6 +155,13 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
         bank_account_type: data.bank_account_type || null,
         performance_level: data.performance_level,
         vehicle_type: (data.vehicle_type as any) || null,
+        has_alarm_skill: data.has_alarm_skill,
+        has_investigation_skill: data.has_investigation_skill,
+        has_preservation_skill: data.has_preservation_skill,
+        has_logistics_skill: data.has_logistics_skill,
+        has_auditing_skill: data.has_auditing_skill,
+        latitude: data.latitude || null,
+        longitude: data.longitude || null,
       });
 
       if (error) throw error;
@@ -255,6 +293,48 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
+                  name="latitude"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Latitude</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="any"
+                          placeholder="-00.000000"
+                          value={field.value || ''}
+                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="longitude"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Longitude</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="any"
+                          placeholder="-00.000000"
+                          value={field.value || ''}
+                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
                   name="vehicle_plate"
                   render={({ field }) => (
                     <FormItem>
@@ -313,26 +393,107 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="is_armed"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Armado</FormLabel>
-                      <p className="text-sm text-muted-foreground">
-                        O agente porta arma de fogo?
-                      </p>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                <h3 className="text-sm font-semibold">Habilidades e Especialidades</h3>
+
+                <div className="grid grid-cols-1 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="is_armed"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between">
+                        <div className="space-y-0.5">
+                          <FormLabel>Armado</FormLabel>
+                          <p className="text-xs text-muted-foreground">Porta arma de fogo</p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="has_alarm_skill"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between">
+                        <div className="space-y-0.5">
+                          <FormLabel>Alarme</FormLabel>
+                          <p className="text-xs text-muted-foreground">Atendimento de alarmes</p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="has_investigation_skill"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between">
+                        <div className="space-y-0.5">
+                          <FormLabel>Averiguação</FormLabel>
+                          <p className="text-xs text-muted-foreground">Averiguação de ocorrências</p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="has_preservation_skill"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between">
+                        <div className="space-y-0.5">
+                          <FormLabel>Preservação</FormLabel>
+                          <p className="text-xs text-muted-foreground">Preservação de local</p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="has_logistics_skill"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between">
+                        <div className="space-y-0.5">
+                          <FormLabel>Acompanhamento Logístico</FormLabel>
+                          <p className="text-xs text-muted-foreground">Escolta e acompanhamento</p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="has_auditing_skill"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between">
+                        <div className="space-y-0.5">
+                          <FormLabel>Sindicância</FormLabel>
+                          <p className="text-xs text-muted-foreground">Levantamento de informações</p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
 
               <FormField
                 control={form.control}
