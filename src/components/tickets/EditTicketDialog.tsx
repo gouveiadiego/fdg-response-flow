@@ -249,6 +249,17 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
     }
   }, [ticketId, open, clients.length]);
 
+  // Auto-fill end_datetime when status is set to 'finalizado'
+  const status = form.watch('status');
+  useEffect(() => {
+    if (status === 'finalizado' && !form.getValues('end_datetime')) {
+      const now = new Date();
+      // Format datetime-local string (YYYY-MM-DDTHH:mm)
+      const formatted = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+      form.setValue('end_datetime', formatted);
+    }
+  }, [status, form]);
+
   useEffect(() => {
     if (selectedClientId) {
       setFilteredVehicles(vehicles.filter(v => v.client_id === selectedClientId));

@@ -584,12 +584,12 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
               </CardContent>
             </Card>
 
-            {/* KM Details - Per Agent */}
+            {/* Operation Details - Per Agent (KM & Time) */}
             <Card className="border-none shadow-none bg-transparent p-0">
               <CardHeader className="px-0 pt-4 pb-2">
                 <CardTitle className="text-xs font-semibold flex items-center gap-2 uppercase tracking-wider text-muted-foreground">
                   <Navigation className="h-3.5 w-3.5" />
-                  Detalhamento de KM
+                  Detalhamento da Operação
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0 space-y-3">
@@ -610,21 +610,51 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                         {ticket.main_agent?.is_armed ? 'Armado' : 'Desarmado'}
                       </Badge>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
+                    {/* KM Grid */}
+                    <div className="grid grid-cols-3 gap-2 mb-2">
                       <div className="bg-muted/30 rounded p-2 text-center">
-                        <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Inicial</span>
-                        <span className="text-sm font-semibold">{ticket.km_start ?? '-'}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">KM Inicial</span>
+                        <span className="text-xs font-semibold">{ticket.km_start ?? '-'}</span>
                       </div>
                       <div className="bg-muted/30 rounded p-2 text-center">
-                        <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Final</span>
-                        <span className="text-sm font-semibold">{ticket.km_end ?? '-'}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">KM Final</span>
+                        <span className="text-xs font-semibold">{ticket.km_end ?? '-'}</span>
                       </div>
                       <div className="bg-primary/5 rounded p-2 text-center border border-primary/10">
                         <span className="text-[10px] text-primary/80 uppercase block mb-0.5 font-medium">Rodado</span>
-                        <span className="text-sm font-bold text-primary">
+                        <span className="text-xs font-bold text-primary">
                           {ticket.km_start && ticket.km_end
                             ? `${Number(ticket.km_end) - Number(ticket.km_start)} km`
                             : '-'}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Time Grid */}
+                    <div className="grid grid-cols-3 gap-2 border-t pt-2 border-dashed">
+                      <div className="text-center">
+                        <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Chegada</span>
+                        <span className="text-xs font-semibold">
+                          {ticket.main_agent_arrival ? format(new Date(ticket.main_agent_arrival), 'HH:mm') : '-'}
+                        </span>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Saída</span>
+                        <span className="text-xs font-semibold">
+                          {ticket.main_agent_departure ? format(new Date(ticket.main_agent_departure), 'HH:mm') : '-'}
+                        </span>
+                      </div>
+                      <div className="text-center bg-muted/20 rounded">
+                        <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Tempo</span>
+                        <span className="text-xs font-bold">
+                          {(() => {
+                            if (!ticket.main_agent_arrival || !ticket.main_agent_departure) return '-';
+                            const start = new Date(ticket.main_agent_arrival);
+                            const end = new Date(ticket.main_agent_departure);
+                            const diff = end.getTime() - start.getTime();
+                            const hours = Math.floor(diff / (1000 * 60 * 60));
+                            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                            return `${hours}h ${minutes}m`;
+                          })()}
                         </span>
                       </div>
                     </div>
@@ -647,21 +677,49 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                           {ticket.support_agent_1.is_armed ? 'Armado' : 'Desarmado'}
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-3 gap-2 mb-2">
                         <div className="bg-muted/30 rounded p-2 text-center">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Inicial</span>
-                          <span className="text-sm font-semibold">{ticket.support_agent_1_km_start ?? '-'}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">KM Inicial</span>
+                          <span className="text-xs font-semibold">{ticket.support_agent_1_km_start ?? '-'}</span>
                         </div>
                         <div className="bg-muted/30 rounded p-2 text-center">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Final</span>
-                          <span className="text-sm font-semibold">{ticket.support_agent_1_km_end ?? '-'}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">KM Final</span>
+                          <span className="text-xs font-semibold">{ticket.support_agent_1_km_end ?? '-'}</span>
                         </div>
                         <div className="bg-muted/50 rounded p-2 text-center border border-muted">
                           <span className="text-[10px] text-muted-foreground uppercase block mb-0.5 font-medium">Rodado</span>
-                          <span className="text-sm font-bold">
+                          <span className="text-xs font-bold">
                             {ticket.support_agent_1_km_start && ticket.support_agent_1_km_end
                               ? `${Number(ticket.support_agent_1_km_end) - Number(ticket.support_agent_1_km_start)} km`
                               : '-'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 border-t pt-2 border-dashed">
+                        <div className="text-center">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Chegada</span>
+                          <span className="text-xs font-semibold">
+                            {ticket.support_agent_1_arrival ? format(new Date(ticket.support_agent_1_arrival), 'HH:mm') : '-'}
+                          </span>
+                        </div>
+                        <div className="text-center">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Saída</span>
+                          <span className="text-xs font-semibold">
+                            {ticket.support_agent_1_departure ? format(new Date(ticket.support_agent_1_departure), 'HH:mm') : '-'}
+                          </span>
+                        </div>
+                        <div className="text-center bg-muted/20 rounded">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Tempo</span>
+                          <span className="text-xs font-bold">
+                            {(() => {
+                              if (!ticket.support_agent_1_arrival || !ticket.support_agent_1_departure) return '-';
+                              const start = new Date(ticket.support_agent_1_arrival);
+                              const end = new Date(ticket.support_agent_1_departure);
+                              const diff = end.getTime() - start.getTime();
+                              const hours = Math.floor(diff / (1000 * 60 * 60));
+                              const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                              return `${hours}h ${minutes}m`;
+                            })()}
                           </span>
                         </div>
                       </div>
@@ -685,21 +743,49 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                           {ticket.support_agent_2.is_armed ? 'Armado' : 'Desarmado'}
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-3 gap-2 mb-2">
                         <div className="bg-muted/30 rounded p-2 text-center">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Inicial</span>
-                          <span className="text-sm font-semibold">{ticket.support_agent_2_km_start ?? '-'}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">KM Inicial</span>
+                          <span className="text-xs font-semibold">{ticket.support_agent_2_km_start ?? '-'}</span>
                         </div>
                         <div className="bg-muted/30 rounded p-2 text-center">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Final</span>
-                          <span className="text-sm font-semibold">{ticket.support_agent_2_km_end ?? '-'}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">KM Final</span>
+                          <span className="text-xs font-semibold">{ticket.support_agent_2_km_end ?? '-'}</span>
                         </div>
                         <div className="bg-muted/50 rounded p-2 text-center border border-muted">
                           <span className="text-[10px] text-muted-foreground uppercase block mb-0.5 font-medium">Rodado</span>
-                          <span className="text-sm font-bold">
+                          <span className="text-xs font-bold">
                             {ticket.support_agent_2_km_start && ticket.support_agent_2_km_end
                               ? `${Number(ticket.support_agent_2_km_end) - Number(ticket.support_agent_2_km_start)} km`
                               : '-'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 border-t pt-2 border-dashed">
+                        <div className="text-center">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Chegada</span>
+                          <span className="text-xs font-semibold">
+                            {ticket.support_agent_2_arrival ? format(new Date(ticket.support_agent_2_arrival), 'HH:mm') : '-'}
+                          </span>
+                        </div>
+                        <div className="text-center">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Saída</span>
+                          <span className="text-xs font-semibold">
+                            {ticket.support_agent_2_departure ? format(new Date(ticket.support_agent_2_departure), 'HH:mm') : '-'}
+                          </span>
+                        </div>
+                        <div className="text-center bg-muted/20 rounded">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Tempo</span>
+                          <span className="text-xs font-bold">
+                            {(() => {
+                              if (!ticket.support_agent_2_arrival || !ticket.support_agent_2_departure) return '-';
+                              const start = new Date(ticket.support_agent_2_arrival);
+                              const end = new Date(ticket.support_agent_2_departure);
+                              const diff = end.getTime() - start.getTime();
+                              const hours = Math.floor(diff / (1000 * 60 * 60));
+                              const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                              return `${hours}h ${minutes}m`;
+                            })()}
                           </span>
                         </div>
                       </div>
@@ -707,20 +793,49 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                   )}
 
                   {/* Operational Summary */}
-                  <div className="mt-2 bg-secondary/5 rounded-lg p-3 border border-secondary/20 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider">KM Total (Equipe)</span>
-                      <p className="text-xs text-muted-foreground mt-0.5">Soma de todos os veículos</p>
+                  <div className="mt-2 text-sm space-y-2">
+                    <div className="bg-secondary/5 rounded-lg p-3 border border-secondary/20 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider">KM Total (Equipe)</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">Soma de todos os veículos</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-lg font-bold text-primary tracking-tight">
+                          {(() => {
+                            const mainKm = (ticket.km_start && ticket.km_end) ? Number(ticket.km_end) - Number(ticket.km_start) : 0;
+                            const s1Km = (ticket.support_agent_1_km_start && ticket.support_agent_1_km_end) ? Number(ticket.support_agent_1_km_end) - Number(ticket.support_agent_1_km_start) : 0;
+                            const s2Km = (ticket.support_agent_2_km_start && ticket.support_agent_2_km_end) ? Number(ticket.support_agent_2_km_end) - Number(ticket.support_agent_2_km_start) : 0;
+                            return `${mainKm + s1Km + s2Km} km`;
+                          })()}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-xl font-bold text-primary tracking-tight">
-                        {(() => {
-                          const mainKm = (ticket.km_start && ticket.km_end) ? Number(ticket.km_end) - Number(ticket.km_start) : 0;
-                          const s1Km = (ticket.support_agent_1_km_start && ticket.support_agent_1_km_end) ? Number(ticket.support_agent_1_km_end) - Number(ticket.support_agent_1_km_start) : 0;
-                          const s2Km = (ticket.support_agent_2_km_start && ticket.support_agent_2_km_end) ? Number(ticket.support_agent_2_km_end) - Number(ticket.support_agent_2_km_start) : 0;
-                          return `${mainKm + s1Km + s2Km} km`;
-                        })()}
-                      </span>
+
+                    <div className="bg-secondary/10 rounded-lg p-3 border border-secondary/20 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider">Tempo Total de Operação</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">Soma das horas de todos os agentes</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xl font-bold text-foreground tracking-tight">
+                          {(() => {
+                            let totalDiff = 0;
+                            if (ticket.main_agent_arrival && ticket.main_agent_departure) {
+                              totalDiff += new Date(ticket.main_agent_departure).getTime() - new Date(ticket.main_agent_arrival).getTime();
+                            }
+                            if (ticket.support_agent_1_arrival && ticket.support_agent_1_departure) {
+                              totalDiff += new Date(ticket.support_agent_1_departure).getTime() - new Date(ticket.support_agent_1_arrival).getTime();
+                            }
+                            if (ticket.support_agent_2_arrival && ticket.support_agent_2_departure) {
+                              totalDiff += new Date(ticket.support_agent_2_departure).getTime() - new Date(ticket.support_agent_2_arrival).getTime();
+                            }
+
+                            const hours = Math.floor(totalDiff / (1000 * 60 * 60));
+                            const minutes = Math.floor((totalDiff % (1000 * 60 * 60)) / (1000 * 60));
+                            return totalDiff > 0 ? `${hours}h ${minutes}m` : '-';
+                          })()}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
