@@ -562,7 +562,6 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           other_costs: data.other_costs || 0,
           summary: data.summary || null,
           detailed_report: data.detailed_report || null,
-          operator_id: data.operator_id && data.operator_id !== 'none' ? data.operator_id : null,
         })
         .eq('id', ticketId);
 
@@ -580,7 +579,8 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
       onSuccess();
     } catch (error) {
       console.error('Erro ao atualizar chamado:', error);
-      toast.error('Erro ao atualizar chamado');
+      const msg = error instanceof Error ? error.message : (error as any)?.message || 'Erro desconhecido';
+      toast.error(`Erro ao atualizar chamado: ${msg}`);
     } finally {
       setIsLoading(false);
     }
