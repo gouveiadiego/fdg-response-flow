@@ -576,49 +576,28 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   y += cardH + 10;
 
   // Card: OPERAÇÃO (Full Width)
-  const opH = 50;
-  drawCard(pdf, margin, y, contentWidth, opH, 'DETALHES DA OPERAÇÃO');
-
-  // Col 1 insde Op Card
-  cy = y + 16;
-  const innerColW = (contentWidth / 3) - 5;
-
-  // Team
-  drawField(pdf, 'Equipe Mobilizada', calculateEfetivoMobilizado(data), margin + 6, cy, innerColW * 2);
-  drawField(pdf, 'Início', data.start_datetime ? format(new Date(data.start_datetime), "dd/MM 'às' HH:mm") : '-', margin + 6, cy + 12, innerColW);
-  drawField(pdf, 'Término', data.end_datetime ? format(new Date(data.end_datetime), "dd/MM 'às' HH:mm") : '-', margin + 6, cy + 24, innerColW);
-
-  // Col 2 inside Op Card
-  const col2InnerX = margin + 6 + innerColW + 10;
-  const totalTeamKm = calculateTotalTeamKm(data);
-  drawField(pdf, 'KM Total da Equipe', totalTeamKm > 0 ? `${totalTeamKm} km` : '-', col2InnerX, cy + 12, innerColW);
-  drawField(pdf, 'Duração Total', formatDurationText(data.duration_minutes), col2InnerX, cy + 24, innerColW);
-
-  // Col 3 inside Op Card (Coordinates)
-  const col3InnerX = margin + 6 + (innerColW * 2) + 10;
-  drawField(pdf, 'Coordenadas', data.coordinates_lat ? `${data.coordinates_lat}, ${data.coordinates_lng}` : '-', col3InnerX, cy + 12, innerColW);
-
-  y += opH + 10;
-
-  // ==================== DETALHAMENTO POR AGENTE ====================
+  // ==================== DETALHAMENTO POR AGENTE (UNIFIED) ====================
   // Only show this section if there's any KM or cost data
   const hasMainData = true; // Main agent always exists
   const hasS1Data = !!data.support_agent_1;
   const hasS2Data = !!data.support_agent_2;
 
   if (hasMainData || hasS1Data || hasS2Data) {
+
+    // Removed "DETALHES DA OPERAÇÃO" card as requested - merging into agent cards
+
     // Section Title
     setColor(pdf, THEME.primary);
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('DETALHAMENTO POR AGENTE', margin, y);
+    pdf.text('DETALHAMENTO DA OPERAÇÃO POR AGENTE', margin, y);
 
     setColor(pdf, THEME.primary);
     pdf.rect(margin, y + 2, 25, 0.8, 'F');
 
     y += 10;
 
-    const agentCardH = 38;
+    const agentCardH = 65; // Increased height for more details
     const agentCardW = contentWidth;
 
     // Helper function to draw agent card
@@ -635,7 +614,6 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       drawCard(pdf, margin, yPos, agentCardW, agentCardH, title);
 
       let cardY = yPos + 16;
-      const fieldW = (agentCardW / 6) - 5;
 
       // Row 1: Agent info
       setColor(pdf, THEME.text);
@@ -652,64 +630,50 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
         pdf.text(armedText, margin + 6 + agentNameWidth + 10, cardY);
       }
 
-      cardY += 8;
+      cardY += 10;
 
-      // Row 2: KM Data
-      const kmRodado = calculateAgentKm(kmStart, kmEnd);
+      // Col Widths
+      const col1W = (agentCardW / 2) - 5;
+      const col2W = (agentCardW / 2) - 5;
+      const col2X = margin + 6 + col1W + 10;
+
+      // Row 2: Location (City/State & Coords)
+      setColor(pdf, THEME.secondaryText);
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('CIDADE / UF', margin + 6, cardY);
+      pdf.text('COORDENADAS', col2X, cardY);
+
+      setColor(pdf, THEME.text);
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`${data.city} / ${data.state}`, margin + 6, cardY + 4);
+      pdf.text(data.coordinates_lat ? `${data.coordinates_lat}, ${data.coordinates_lng}` : '-', col2X, cardY + 4);
+
+      cardY += 10;
+
+      // Row 3: Timeline (Start | End | Duration)
+      const timeFieldW = (agentCardW / 3) - 10;
       let xPos = margin + 6;
 
       setColor(pdf, THEME.secondaryText);
       pdf.setFontSize(6.5);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('KM INICIAL', xPos, cardY);
+      pdf.text('DATA/HORA INICIAL', xPos, cardY);
       setColor(pdf, THEME.text);
       pdf.setFontSize(8.5);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(kmStart ? kmStart.toString() : '-', xPos, cardY + 4);
-
-      xPos += fieldW;
-      setColor(pdf, THEME.secondaryText);
-      pdf.setFontSize(6.5);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('KM FINAL', xPos, cardY);
-      setColor(pdf, THEME.text);
-      pdf.setFontSize(8.5);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(kmEnd ? kmEnd.toString() : '-', xPos, cardY + 4);
-
-      xPos += fieldW;
-      setColor(pdf, THEME.secondaryText);
-      pdf.setFontSize(6.5);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('KM RODADO', xPos, cardY);
-      setColor(pdf, THEME.primary);
-      pdf.setFontSize(8.5);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(kmRodado > 0 ? `${kmRodado} km` : '-', xPos, cardY + 4);
-
-      // Row 3: Arrival / Departure / Duration
-      cardY += 10;
-      xPos = margin + 6;
-      const timeFieldW = (agentCardW / 3) - 10; // Wider columns for time row
-
-      setColor(pdf, THEME.secondaryText);
-      pdf.setFontSize(6.5);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('CHEGADA', xPos, cardY);
-      setColor(pdf, THEME.text);
-      pdf.setFontSize(8.5);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(arrival ? format(new Date(arrival), 'HH:mm') : '-', xPos, cardY + 4);
+      pdf.text(arrival ? format(new Date(arrival), 'dd/MM/yyyy HH:mm') : '-', xPos, cardY + 4);
 
       xPos += timeFieldW;
       setColor(pdf, THEME.secondaryText);
       pdf.setFontSize(6.5);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('SAÍDA', xPos, cardY);
+      pdf.text('DATA/HORA FINAL', xPos, cardY);
       setColor(pdf, THEME.text);
       pdf.setFontSize(8.5);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(departure ? format(new Date(departure), 'HH:mm') : '-', xPos, cardY + 4);
+      pdf.text(departure ? format(new Date(departure), 'dd/MM/yyyy HH:mm') : '-', xPos, cardY + 4);
 
       xPos += timeFieldW;
       setColor(pdf, THEME.secondaryText);
@@ -728,7 +692,41 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
         pdf.text('-', xPos, cardY + 4);
       }
 
-      // Costs row removed as requested
+      cardY += 10;
+
+      // Row 4: KM Data
+      const kmRodado = calculateAgentKm(kmStart, kmEnd);
+      xPos = margin + 6;
+      const kmFieldW = (agentCardW / 3) - 10;
+
+      setColor(pdf, THEME.secondaryText);
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('KM INICIAL', xPos, cardY);
+      setColor(pdf, THEME.text);
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(kmStart ? kmStart.toString() : '-', xPos, cardY + 4);
+
+      xPos += kmFieldW;
+      setColor(pdf, THEME.secondaryText);
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('KM FINAL', xPos, cardY);
+      setColor(pdf, THEME.text);
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(kmEnd ? kmEnd.toString() : '-', xPos, cardY + 4);
+
+      xPos += kmFieldW;
+      setColor(pdf, THEME.secondaryText);
+      pdf.setFontSize(6.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('KM RODADO', xPos, cardY);
+      setColor(pdf, THEME.primary);
+      pdf.setFontSize(8.5);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(kmRodado > 0 ? `${kmRodado} km` : '-', xPos, cardY + 4);
 
       return yPos + agentCardH + 6;
     };
@@ -787,6 +785,8 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
     if (await checkPageBreak(summaryCardH + 20)) {
       // y updated
     }
+
+    const totalTeamKm = calculateTotalTeamKm(data);
 
     drawShadowRect(pdf, margin, y, contentWidth, summaryCardH, 2);
     setColor(pdf, { r: 240, g: 253, b: 244 }); // Light green background
