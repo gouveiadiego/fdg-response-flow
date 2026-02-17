@@ -56,7 +56,11 @@ function MapUpdater({ center, zoom }: MapUpdaterProps) {
     return null;
 }
 
-export function AgentMap() {
+interface AgentMapProps {
+    onSelect?: (agentId: string) => void;
+}
+
+export function AgentMap({ onSelect }: AgentMapProps) {
     const navigate = useNavigate();
     const [agents, setAgents] = useState<Agent[]>([]);
     const [loading, setLoading] = useState(true);
@@ -232,9 +236,15 @@ export function AgentMap() {
                                         <Button
                                             size="sm"
                                             className="w-full h-7 text-[10px] mt-2"
-                                            onClick={() => navigate(`/tickets?agentId=${agent.id}`)}
+                                            onClick={() => {
+                                                if (onSelect) {
+                                                    onSelect(agent.id);
+                                                } else {
+                                                    navigate(`/tickets?agentId=${agent.id}`);
+                                                }
+                                            }}
                                         >
-                                            Criar Chamado
+                                            {onSelect ? 'Selecionar Agente' : 'Criar Chamado'}
                                         </Button>
                                     </div>
                                 </Popup>

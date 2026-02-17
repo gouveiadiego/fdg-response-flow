@@ -35,7 +35,22 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { MapPin, Upload, X, Camera, Search, Loader2 } from 'lucide-react';
+import { AgentMap } from '@/components/agents/AgentMap';
+import { MapPin, Upload, X, Camera, Search, Loader2, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 const ticketSchema = z.object({
   client_id: z.string().min(1, 'Selecione um cliente'),
@@ -123,13 +138,15 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
   const [clients, setClients] = useState<Client[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
-
-
   const [plans, setPlans] = useState<Plan[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [operators, setOperators] = useState<Operator[]>([]);
   const [photoGroups, setPhotoGroups] = useState<PhotoGroup[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [openAgent, setOpenAgent] = useState(false);
+  const [openSupport1, setOpenSupport1] = useState(false);
+  const [openSupport2, setOpenSupport2] = useState(false);
+  const [isMapDialogOpen, setIsMapDialogOpen] = useState(false);
 
   const form = useForm<TicketFormData>({
     resolver: zodResolver(ticketSchema),
@@ -436,663 +453,830 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Novo Chamado</DialogTitle>
-          <DialogDescription>
-            Preencha os dados para criar um novo chamado
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Novo Chamado</DialogTitle>
+            <DialogDescription>
+              Preencha os dados para criar um novo chamado
+            </DialogDescription>
+          </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="cliente">Cliente</TabsTrigger>
-                <TabsTrigger value="agente">Agente/Despesas</TabsTrigger>
-                <TabsTrigger value="fotos">Fotos</TabsTrigger>
-              </TabsList>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="cliente">Cliente</TabsTrigger>
+                  <TabsTrigger value="agente">Agente/Despesas</TabsTrigger>
+                  <TabsTrigger value="fotos">Fotos</TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="cliente" className="space-y-4 mt-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="client_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cliente *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o cliente" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {clients.map((client) => (
-                              <SelectItem key={client.id} value={client.id}>
-                                {client.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="vehicle_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Veículo *</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          disabled={!selectedClientId}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={selectedClientId ? "Selecione o veículo" : "Selecione um cliente primeiro"} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {filteredVehicles.map((vehicle) => (
-                              <SelectItem key={vehicle.id} value={vehicle.id}>
-                                {vehicle.description} - {vehicle.plate_main}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="plan_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Plano *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o plano" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {plans.map((plan) => (
-                              <SelectItem key={plan.id} value={plan.id}>
-                                {plan.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="service_type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tipo de Serviço *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o tipo" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {Object.entries(SERVICE_TYPE_LABELS).map(([value, label]) => (
-                              <SelectItem key={value} value={value}>
-                                {label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="city"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cidade *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: São Paulo" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="state"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Estado *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: SP" maxLength={2} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Coordenadas</Label>
-                  <div className="flex items-end gap-2">
-                    <div className="flex-1 grid grid-cols-2 gap-2">
-                      <FormField
-                        control={form.control}
-                        name="coordinates_lat"
-                        render={({ field }) => (
-                          <FormItem>
+                <TabsContent value="cliente" className="space-y-4 mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="client_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cliente *</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <Input
-                                type="number"
-                                step="any"
-                                placeholder="Latitude"
-                                {...field}
-                                value={field.value ?? ''}
-                                onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                              />
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o cliente" />
+                              </SelectTrigger>
                             </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="coordinates_lng"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="any"
-                                placeholder="Longitude"
-                                {...field}
-                                value={field.value ?? ''}
-                                onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <Button type="button" variant="outline" size="icon" onClick={getLocation} title="Localização atual">
-                      <MapPin className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={handleReverseGeocode}
-                      disabled={!coordLat || !coordLng || isGeocoding}
-                      title="Buscar cidade/estado"
-                    >
-                      {isGeocoding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button type="button" onClick={goToNextTab}>
-                    Próximo
-                  </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="agente" className="space-y-6 mt-4">
-                {/* Operador Responsável */}
-                <div className="bg-muted/30 p-4 rounded-lg border border-muted">
-                  <FormField
-                    control={form.control}
-                    name="operator_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Operador Responsável (Quem abriu o chamado)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o operador" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">Selecione...</SelectItem>
-                            {operators.map((operator) => (
-                              <SelectItem key={operator.id} value={operator.id}>
-                                {operator.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Agente Principal e Veículo */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="main_agent_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Agente Principal *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o agente" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {agents.map((agent) => (
-                              <SelectItem key={agent.id} value={agent.id}>
-                                {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div>
-                    <Label>Veículo Selecionado</Label>
-                    <Input
-                      value={selectedVehicle ? `${selectedVehicle.description} - ${selectedVehicle.plate_main}` : 'Selecione um veículo na aba Cliente'}
-                      disabled
-                      className="mt-2 bg-muted"
+                            <SelectContent>
+                              {clients.map((client) => (
+                                <SelectItem key={client.id} value={client.id}>
+                                  {client.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
+
+                    <FormField
+                      control={form.control}
+                      name="vehicle_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Veículo *</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            disabled={!selectedClientId}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder={selectedClientId ? "Selecione o veículo" : "Selecione um cliente primeiro"} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {filteredVehicles.map((vehicle) => (
+                                <SelectItem key={vehicle.id} value={vehicle.id}>
+                                  {vehicle.description} - {vehicle.plate_main}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="plan_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Plano *</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o plano" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {plans.map((plan) => (
+                                <SelectItem key={plan.id} value={plan.id}>
+                                  {plan.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="service_type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tipo de Serviço *</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o tipo" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {Object.entries(SERVICE_TYPE_LABELS).map(([value, label]) => (
+                                <SelectItem key={value} value={value}>
+                                  {label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cidade *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: São Paulo" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="state"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Estado *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: SP" maxLength={2} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                   </div>
-                </div>
 
-                {/* Seção Apoios */}
-                <div className="space-y-3">
-                  <h4 className="font-semibold text-sm border-b pb-2">Apoios</h4>
-
-                  {/* Apoio 1 */}
-                  <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
-                    <Label className="font-medium">Apoio 1</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <FormField
-                        control={form.control}
-                        name="support_agent_1_id"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Agente</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value || ''}>
+                  <div className="space-y-2">
+                    <Label>Coordenadas</Label>
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1 grid grid-cols-2 gap-2">
+                        <FormField
+                          control={form.control}
+                          name="coordinates_lat"
+                          render={({ field }) => (
+                            <FormItem>
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione" />
-                                </SelectTrigger>
+                                <Input
+                                  type="number"
+                                  step="any"
+                                  placeholder="Latitude"
+                                  {...field}
+                                  value={field.value ?? ''}
+                                  onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                />
                               </FormControl>
-                              <SelectContent>
-                                <SelectItem value="none">Nenhum</SelectItem>
-                                {agents.map((agent) => (
-                                  <SelectItem key={agent.id} value={agent.id}>
-                                    {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="support_agent_1_arrival"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Chegada</FormLabel>
-                            <FormControl>
-                              <Input type="datetime-local" {...field} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="support_agent_1_departure"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Saída</FormLabel>
-                            <FormControl>
-                              <Input type="datetime-local" {...field} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Apoio 2 */}
-                  <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
-                    <Label className="font-medium">Apoio 2</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <FormField
-                        control={form.control}
-                        name="support_agent_2_id"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Agente</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value || ''}>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="coordinates_lng"
+                          render={({ field }) => (
+                            <FormItem>
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione" />
-                                </SelectTrigger>
+                                <Input
+                                  type="number"
+                                  step="any"
+                                  placeholder="Longitude"
+                                  {...field}
+                                  value={field.value ?? ''}
+                                  onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                />
                               </FormControl>
-                              <SelectContent>
-                                <SelectItem value="none">Nenhum</SelectItem>
-                                {agents.map((agent) => (
-                                  <SelectItem key={agent.id} value={agent.id}>
-                                    {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="support_agent_2_arrival"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Chegada</FormLabel>
-                            <FormControl>
-                              <Input type="datetime-local" {...field} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="support_agent_2_departure"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">Saída</FormLabel>
-                            <FormControl>
-                              <Input type="datetime-local" {...field} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Seção Quilometragem */}
-                <div className="space-y-3">
-                  <h4 className="font-semibold text-sm border-b pb-2">Quilometragem</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="km_start"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>KM Inicial</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              placeholder="Ex: 150000"
-                              {...field}
-                              value={field.value ?? ''}
-                              onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="km_end"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>KM Final</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              placeholder="Ex: 150250"
-                              {...field}
-                              value={field.value ?? ''}
-                              onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <div>
-                      <Label>KM Rodado</Label>
-                      <Input
-                        value={kmRodado !== null ? `${kmRodado} km` : '-'}
-                        disabled
-                        className="mt-2 bg-muted font-semibold"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Seção Despesas */}
-                <div className="space-y-3">
-                  <h4 className="font-semibold text-sm border-b pb-2">Despesas</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="toll_cost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Pedágio (R$)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder="0.00"
-                              {...field}
-                              value={field.value ?? ''}
-                              onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="food_cost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Alimentação (R$)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder="0.00"
-                              {...field}
-                              value={field.value ?? ''}
-                              onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="other_costs"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Outros (R$)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder="0.00"
-                              {...field}
-                              value={field.value ?? ''}
-                              onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-
-                    <div>
-                      <Label>Total</Label>
-                      <Input
-                        value={`R$ ${totalCost.toFixed(2)}`}
-                        disabled
-                        className="mt-2 bg-muted font-semibold"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Resumo e Descrição */}
-                <FormField
-                  control={form.control}
-                  name="summary"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Resumo (opcional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Breve resumo do atendimento..."
-                          maxLength={500}
-                          {...field}
+                            </FormItem>
+                          )}
                         />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="detailed_report"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Descrição do Evento</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Descreva os detalhes do atendimento..."
-                          className="min-h-[100px]"
-                          {...field}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex justify-between">
-                  <Button type="button" variant="outline" onClick={goToPrevTab}>
-                    Anterior
-                  </Button>
-                  <Button type="button" onClick={goToNextTab}>
-                    Próximo
-                  </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="fotos" className="space-y-4 mt-4">
-                <div className="border-2 border-dashed border-border rounded-lg p-6">
-                  <div className="flex flex-col items-center justify-center gap-4">
-                    <Camera className="h-12 w-12 text-muted-foreground" />
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Arraste fotos ou clique para selecionar
-                      </p>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handlePhotoAdd}
-                        className="hidden"
-                        id="photo-upload"
-                      />
-                      <Label htmlFor="photo-upload" className="cursor-pointer">
-                        <Button type="button" variant="outline" asChild>
-                          <span>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Selecionar Fotos
-                          </span>
-                        </Button>
-                      </Label>
-                    </div>
-                  </div>
-                </div>
-
-                {photoGroups.length > 0 && (
-                  <div className="space-y-4">
-                    {photoGroups.map((group, groupIndex) => (
-                      <div key={groupIndex} className="border border-border rounded-lg p-4 space-y-3">
-                        <p className="text-xs font-medium text-muted-foreground uppercase">
-                          Grupo {groupIndex + 1} — {group.files.length} foto{group.files.length !== 1 ? 's' : ''}
-                        </p>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                          {group.files.map((photo, photoIndex) => (
-                            <div key={photoIndex} className="relative aspect-[4/3]">
-                              <img
-                                src={photo.preview}
-                                alt={`Foto ${photoIndex + 1}`}
-                                className="w-full h-full object-cover rounded-lg"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => removePhoto(groupIndex, photoIndex)}
-                                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                        <div>
-                          <Label htmlFor={`group-caption-${groupIndex}`} className="text-xs">
-                            Descrição do grupo (opcional)
-                          </Label>
-                          <Textarea
-                            id={`group-caption-${groupIndex}`}
-                            placeholder="Descreva este grupo de fotos..."
-                            value={group.caption}
-                            onChange={(e) => updateGroupCaption(groupIndex, e.target.value)}
-                            className="mt-1 resize-none"
-                            rows={2}
-                          />
-                        </div>
                       </div>
-                    ))}
+                      <Button type="button" variant="outline" size="icon" onClick={getLocation} title="Localização atual">
+                        <MapPin className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleReverseGeocode}
+                        disabled={!coordLat || !coordLng || isGeocoding}
+                        title="Buscar cidade/estado"
+                      >
+                        {isGeocoding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                      </Button>
+                    </div>
                   </div>
-                )}
 
-                <div className="flex justify-between">
-                  <Button type="button" variant="outline" onClick={goToPrevTab}>
-                    Anterior
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'Criando...' : 'Criar Chamado'}
-                  </Button>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+                  <div className="flex justify-end">
+                    <Button type="button" onClick={goToNextTab}>
+                      Próximo
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="agente" className="space-y-6 mt-4">
+                  {/* Operador Responsável */}
+                  <div className="bg-muted/30 p-4 rounded-lg border border-muted">
+                    <FormField
+                      control={form.control}
+                      name="operator_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Operador Responsável (Quem abriu o chamado)</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o operador" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">Selecione...</SelectItem>
+                              {operators.map((operator) => (
+                                <SelectItem key={operator.id} value={operator.id}>
+                                  {operator.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Agente Principal e Veículo */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="main_agent_id"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <div className="flex items-center justify-between">
+                            <FormLabel>Agente Principal *</FormLabel>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs text-primary flex items-center gap-1"
+                              onClick={() => setIsMapDialogOpen(true)}
+                            >
+                              <MapPin className="h-3 w-3" />
+                              Buscar no Mapa
+                            </Button>
+                          </div>
+                          <Popover open={openAgent} onOpenChange={setOpenAgent}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={openAgent}
+                                  className={cn(
+                                    "w-full justify-between font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value
+                                    ? agents.find((agent) => agent.id === field.value)?.name
+                                    : "Selecione o agente"}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Pesquisar agente..." />
+                                <CommandList>
+                                  <CommandEmpty>Agente não encontrado.</CommandEmpty>
+                                  <CommandGroup>
+                                    {agents.map((agent) => (
+                                      <CommandItem
+                                        key={agent.id}
+                                        value={agent.name}
+                                        onSelect={() => {
+                                          form.setValue("main_agent_id", agent.id);
+                                          setOpenAgent(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            agent.id === field.value ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div>
+                      <Label>Veículo Selecionado</Label>
+                      <Input
+                        value={selectedVehicle ? `${selectedVehicle.description} - ${selectedVehicle.plate_main}` : 'Selecione um veículo na aba Cliente'}
+                        disabled
+                        className="mt-2 bg-muted"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Seção Apoios */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm border-b pb-2">Apoios</h4>
+
+                    {/* Apoio 1 */}
+                    <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
+                      <Label className="font-medium">Apoio 1</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="support_agent_1_id"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel className="text-xs">Agente</FormLabel>
+                              <Popover open={openSupport1} onOpenChange={setOpenSupport1}>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      aria-expanded={openSupport1}
+                                      className={cn(
+                                        "w-full justify-between font-normal h-9 text-xs",
+                                        !field.value && "text-muted-foreground"
+                                      )}
+                                    >
+                                      {field.value && field.value !== "none"
+                                        ? agents.find((agent) => agent.id === field.value)?.name
+                                        : "Selecione"}
+                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                  <Command>
+                                    <CommandInput placeholder="Pesquisar..." />
+                                    <CommandList>
+                                      <CommandEmpty>Não encontrado.</CommandEmpty>
+                                      <CommandGroup>
+                                        <CommandItem
+                                          value="none"
+                                          onSelect={() => {
+                                            form.setValue("support_agent_1_id", "");
+                                            setOpenSupport1(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              !field.value || field.value === "none" ? "opacity-100" : "opacity-0"
+                                            )}
+                                          />
+                                          Nenhum
+                                        </CommandItem>
+                                        {agents.map((agent) => (
+                                          <CommandItem
+                                            key={agent.id}
+                                            value={agent.name}
+                                            onSelect={() => {
+                                              form.setValue("support_agent_1_id", agent.id);
+                                              setOpenSupport1(false);
+                                            }}
+                                          >
+                                            <Check
+                                              className={cn(
+                                                "mr-2 h-4 w-4",
+                                                agent.id === field.value ? "opacity-100" : "opacity-0"
+                                              )}
+                                            />
+                                            {agent.name}
+                                          </CommandItem>
+                                        ))}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="support_agent_1_arrival"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Chegada</FormLabel>
+                              <FormControl>
+                                <Input type="datetime-local" {...field} />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="support_agent_1_departure"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Saída</FormLabel>
+                              <FormControl>
+                                <Input type="datetime-local" {...field} />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Apoio 2 */}
+                    <div className="space-y-2 p-3 border rounded-lg bg-muted/30">
+                      <Label className="font-medium">Apoio 2</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="support_agent_2_id"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                              <FormLabel className="text-xs">Agente</FormLabel>
+                              <Popover open={openSupport2} onOpenChange={setOpenSupport2}>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      aria-expanded={openSupport2}
+                                      className={cn(
+                                        "w-full justify-between font-normal h-9 text-xs",
+                                        !field.value && "text-muted-foreground"
+                                      )}
+                                    >
+                                      {field.value && field.value !== "none"
+                                        ? agents.find((agent) => agent.id === field.value)?.name
+                                        : "Selecione"}
+                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                  <Command>
+                                    <CommandInput placeholder="Pesquisar..." />
+                                    <CommandList>
+                                      <CommandEmpty>Não encontrado.</CommandEmpty>
+                                      <CommandGroup>
+                                        <CommandItem
+                                          value="none"
+                                          onSelect={() => {
+                                            form.setValue("support_agent_2_id", "");
+                                            setOpenSupport2(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              !field.value || field.value === "none" ? "opacity-100" : "opacity-0"
+                                            )}
+                                          />
+                                          Nenhum
+                                        </CommandItem>
+                                        {agents.map((agent) => (
+                                          <CommandItem
+                                            key={agent.id}
+                                            value={agent.name}
+                                            onSelect={() => {
+                                              form.setValue("support_agent_2_id", agent.id);
+                                              setOpenSupport2(false);
+                                            }}
+                                          >
+                                            <Check
+                                              className={cn(
+                                                "mr-2 h-4 w-4",
+                                                agent.id === field.value ? "opacity-100" : "opacity-0"
+                                              )}
+                                            />
+                                            {agent.name}
+                                          </CommandItem>
+                                        ))}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="support_agent_2_arrival"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Chegada</FormLabel>
+                              <FormControl>
+                                <Input type="datetime-local" {...field} />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="support_agent_2_departure"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">Saída</FormLabel>
+                              <FormControl>
+                                <Input type="datetime-local" {...field} />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Seção Quilometragem */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm border-b pb-2">Quilometragem</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="km_start"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>KM Inicial</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="Ex: 150000"
+                                {...field}
+                                value={field.value ?? ''}
+                                onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="km_end"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>KM Final</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="Ex: 150250"
+                                {...field}
+                                value={field.value ?? ''}
+                                onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <div>
+                        <Label>KM Rodado</Label>
+                        <Input
+                          value={kmRodado !== null ? `${kmRodado} km` : '-'}
+                          disabled
+                          className="mt-2 bg-muted font-semibold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Seção Despesas */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm border-b pb-2">Despesas</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="toll_cost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Pedágio (R$)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                {...field}
+                                value={field.value ?? ''}
+                                onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="food_cost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Alimentação (R$)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                {...field}
+                                value={field.value ?? ''}
+                                onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="other_costs"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Outros (R$)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                {...field}
+                                value={field.value ?? ''}
+                                onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <div>
+                        <Label>Total</Label>
+                        <Input
+                          value={`R$ ${totalCost.toFixed(2)}`}
+                          disabled
+                          className="mt-2 bg-muted font-semibold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Resumo e Descrição */}
+                  <FormField
+                    control={form.control}
+                    name="summary"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Resumo (opcional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Breve resumo do atendimento..."
+                            maxLength={500}
+                            {...field}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="detailed_report"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descrição do Evento</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Descreva os detalhes do atendimento..."
+                            className="min-h-[100px]"
+                            {...field}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex justify-between">
+                    <Button type="button" variant="outline" onClick={goToPrevTab}>
+                      Anterior
+                    </Button>
+                    <Button type="button" onClick={goToNextTab}>
+                      Próximo
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="fotos" className="space-y-4 mt-4">
+                  <div className="border-2 border-dashed border-border rounded-lg p-6">
+                    <div className="flex flex-col items-center justify-center gap-4">
+                      <Camera className="h-12 w-12 text-muted-foreground" />
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Arraste fotos ou clique para selecionar
+                        </p>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handlePhotoAdd}
+                          className="hidden"
+                          id="photo-upload"
+                        />
+                        <Label htmlFor="photo-upload" className="cursor-pointer">
+                          <Button type="button" variant="outline" asChild>
+                            <span>
+                              <Upload className="h-4 w-4 mr-2" />
+                              Selecionar Fotos
+                            </span>
+                          </Button>
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {photoGroups.length > 0 && (
+                    <div className="space-y-4">
+                      {photoGroups.map((group, groupIndex) => (
+                        <div key={groupIndex} className="border border-border rounded-lg p-4 space-y-3">
+                          <p className="text-xs font-medium text-muted-foreground uppercase">
+                            Grupo {groupIndex + 1} — {group.files.length} foto{group.files.length !== 1 ? 's' : ''}
+                          </p>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {group.files.map((photo, photoIndex) => (
+                              <div key={photoIndex} className="relative aspect-[4/3]">
+                                <img
+                                  src={photo.preview}
+                                  alt={`Foto ${photoIndex + 1}`}
+                                  className="w-full h-full object-cover rounded-lg"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removePhoto(groupIndex, photoIndex)}
+                                  className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <div>
+                            <Label htmlFor={`group-caption-${groupIndex}`} className="text-xs">
+                              Descrição do grupo (opcional)
+                            </Label>
+                            <Textarea
+                              id={`group-caption-${groupIndex}`}
+                              placeholder="Descreva este grupo de fotos..."
+                              value={group.caption}
+                              onChange={(e) => updateGroupCaption(groupIndex, e.target.value)}
+                              className="mt-1 resize-none"
+                              rows={2}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex justify-between">
+                    <Button type="button" variant="outline" onClick={goToPrevTab}>
+                      Anterior
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? 'Criando...' : 'Criar Chamado'}
+                    </Button>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isMapDialogOpen} onOpenChange={setIsMapDialogOpen}>
+        <DialogContent className="max-w-[95vw] w-[1200px] h-[90vh] p-0 flex flex-col overflow-hidden">
+          <DialogHeader className="p-4 border-b bg-muted/30">
+            <DialogTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-primary" />
+              Selecionar Agente no Mapa
+            </DialogTitle>
+            <DialogDescription>
+              Localize os agentes ativos no mapa e selecione o mais próximo do local do chamado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden p-4">
+            <AgentMap
+              onSelect={(agentId) => {
+                form.setValue('main_agent_id', agentId);
+                setIsMapDialogOpen(false);
+                toast.success("Agente selecionado no mapa!");
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
