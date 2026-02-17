@@ -600,22 +600,22 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                       <div className="text-center">
                         <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Chegada</span>
                         <span className="text-xs font-semibold">
-                          {ticket.start_datetime ? format(new Date(ticket.start_datetime), 'HH:mm') : '-'}
+                          {ticket.main_agent_arrival ? format(new Date(ticket.main_agent_arrival), 'HH:mm') : '-'}
                         </span>
                       </div>
                       <div className="text-center">
                         <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Saída</span>
                         <span className="text-xs font-semibold">
-                          {ticket.end_datetime ? format(new Date(ticket.end_datetime), 'HH:mm') : '-'}
+                          {ticket.main_agent_departure ? format(new Date(ticket.main_agent_departure), 'HH:mm') : '-'}
                         </span>
                       </div>
                       <div className="text-center bg-muted/20 rounded">
                         <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Tempo</span>
                         <span className="text-xs font-bold">
                           {(() => {
-                            if (!ticket.start_datetime || !ticket.end_datetime) return '-';
-                            const start = new Date(ticket.start_datetime);
-                            const end = new Date(ticket.end_datetime);
+                            if (!ticket.main_agent_arrival || !ticket.main_agent_departure) return '-';
+                            const start = new Date(ticket.main_agent_arrival);
+                            const end = new Date(ticket.main_agent_departure);
                             const diff = end.getTime() - start.getTime();
                             const hours = Math.floor(diff / (1000 * 60 * 60));
                             const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
