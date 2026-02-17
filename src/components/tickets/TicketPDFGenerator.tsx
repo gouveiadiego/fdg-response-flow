@@ -512,7 +512,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   const colOneX = margin;
   const colTwoX = pageWidth / 2 + 5;
   const colWidth = (contentWidth / 2) - 5;
-  const cardH = 55;
+  const cardH = 65;
 
   // Card: SOLICITANTE
   drawCard(pdf, colOneX, y, colWidth, cardH, 'DADOS DO SOLICITANTE');
@@ -582,9 +582,9 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
 
   // ==================== DETALHAMENTO POR AGENTE ====================
   // Only show this section if there's any KM or cost data
-  const hasMainData = (data.km_start && data.km_end) || data.toll_cost || data.food_cost || data.other_costs || data.main_agent_arrival || data.main_agent_departure;
-  const hasS1Data = data.support_agent_1 && ((data.support_agent_1_km_start && data.support_agent_1_km_end) || data.support_agent_1_toll_cost || data.support_agent_1_food_cost || data.support_agent_1_other_costs);
-  const hasS2Data = data.support_agent_2 && ((data.support_agent_2_km_start && data.support_agent_2_km_end) || data.support_agent_2_toll_cost || data.support_agent_2_food_cost || data.support_agent_2_other_costs);
+  const hasMainData = true; // Main agent always exists
+  const hasS1Data = !!data.support_agent_1;
+  const hasS2Data = !!data.support_agent_2;
 
   if (hasMainData || hasS1Data || hasS2Data) {
     // Section Title
