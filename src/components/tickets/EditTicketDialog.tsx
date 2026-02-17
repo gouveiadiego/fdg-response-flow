@@ -51,6 +51,11 @@ import { cn } from '@/lib/utils';
 import { AgentMap } from '@/components/agents/AgentMap';
 import { MapPin, Search, Loader2, Upload, X, Camera, Trash2, Check, ChevronsUpDown } from 'lucide-react';
 
+const optionalNumber = z.preprocess(
+  (val) => (val === '' || val === null || val === undefined ? null : Number(val)),
+  z.number().nullable().optional()
+);
+
 const ticketSchema = z.object({
   status: z.enum(['aberto', 'em_andamento', 'finalizado', 'cancelado']),
   client_id: z.string().min(1, 'Cliente é obrigatório'),
@@ -61,32 +66,32 @@ const ticketSchema = z.object({
   support_agent_1_id: z.string().optional(),
   support_agent_1_arrival: z.string().optional(),
   support_agent_1_departure: z.string().optional(),
-  support_agent_1_km_start: z.coerce.number().optional().nullable(),
-  support_agent_1_km_end: z.coerce.number().optional().nullable(),
-  support_agent_1_toll_cost: z.coerce.number().optional().nullable(),
-  support_agent_1_food_cost: z.coerce.number().optional().nullable(),
-  support_agent_1_other_costs: z.coerce.number().optional().nullable(),
+  support_agent_1_km_start: optionalNumber,
+  support_agent_1_km_end: optionalNumber,
+  support_agent_1_toll_cost: optionalNumber,
+  support_agent_1_food_cost: optionalNumber,
+  support_agent_1_other_costs: optionalNumber,
   support_agent_2_id: z.string().optional(),
   support_agent_2_arrival: z.string().optional(),
   support_agent_2_departure: z.string().optional(),
-  support_agent_2_km_start: z.coerce.number().optional().nullable(),
-  support_agent_2_km_end: z.coerce.number().optional().nullable(),
-  support_agent_2_toll_cost: z.coerce.number().optional().nullable(),
-  support_agent_2_food_cost: z.coerce.number().optional().nullable(),
-  support_agent_2_other_costs: z.coerce.number().optional().nullable(),
+  support_agent_2_km_start: optionalNumber,
+  support_agent_2_km_end: optionalNumber,
+  support_agent_2_toll_cost: optionalNumber,
+  support_agent_2_food_cost: optionalNumber,
+  support_agent_2_other_costs: optionalNumber,
   plan_id: z.string().min(1, 'Plano é obrigatório'),
   service_type: z.enum(['alarme', 'averiguacao', 'preservacao', 'acompanhamento_logistico']),
   city: z.string().min(1, 'Cidade é obrigatória'),
   state: z.string().min(2, 'Estado é obrigatório').max(2),
   start_datetime: z.string().min(1, 'Data/hora início é obrigatória'),
   end_datetime: z.string().optional(),
-  coordinates_lat: z.coerce.number().optional().nullable(),
-  coordinates_lng: z.coerce.number().optional().nullable(),
-  km_start: z.coerce.number().optional().nullable(),
-  km_end: z.coerce.number().optional().nullable(),
-  toll_cost: z.coerce.number().optional().nullable(),
-  food_cost: z.coerce.number().optional().nullable(),
-  other_costs: z.coerce.number().optional().nullable(),
+  coordinates_lat: optionalNumber,
+  coordinates_lng: optionalNumber,
+  km_start: optionalNumber,
+  km_end: optionalNumber,
+  toll_cost: optionalNumber,
+  food_cost: optionalNumber,
+  other_costs: optionalNumber,
   summary: z.string().max(500).optional(),
   detailed_report: z.string().max(5000).optional(),
   operator_id: z.string().optional(),
@@ -592,7 +597,15 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
 
           <ScrollArea className="max-h-[calc(90vh-120px)]">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pr-4">
+              <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                console.error('Form validation errors:', errors);
+                const firstError = Object.values(errors)[0];
+                if (firstError?.message) {
+                  toast.error(`Erro de validação: ${firstError.message}`);
+                } else {
+                  toast.error('Verifique os campos obrigatórios');
+                }
+              })} className="space-y-4 pr-4">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                   <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="cliente">Cliente</TabsTrigger>
