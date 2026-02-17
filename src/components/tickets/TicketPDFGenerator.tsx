@@ -690,6 +690,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       // Row 3: Arrival / Departure / Duration
       cardY += 10;
       xPos = margin + 6;
+      const timeFieldW = (agentCardW / 3) - 10; // Wider columns for time row
 
       setColor(pdf, THEME.secondaryText);
       pdf.setFontSize(6.5);
@@ -700,7 +701,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       pdf.setFont('helvetica', 'normal');
       pdf.text(arrival ? format(new Date(arrival), 'HH:mm') : '-', xPos, cardY + 4);
 
-      xPos += fieldW;
+      xPos += timeFieldW;
       setColor(pdf, THEME.secondaryText);
       pdf.setFontSize(6.5);
       pdf.setFont('helvetica', 'bold');
@@ -710,7 +711,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       pdf.setFont('helvetica', 'normal');
       pdf.text(departure ? format(new Date(departure), 'HH:mm') : '-', xPos, cardY + 4);
 
-      xPos += fieldW;
+      xPos += timeFieldW;
       setColor(pdf, THEME.secondaryText);
       pdf.setFontSize(6.5);
       pdf.setFont('helvetica', 'bold');
@@ -796,7 +797,6 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
     pdf.setFont('helvetica', 'bold');
     pdf.text('RESUMO GERAL DA OPERAÇÃO', margin + 6, y + 8);
 
-    const totalOperationCost = calculateTotalOperationCost(data);
     const summaryY = y + 15;
     const summaryColW = contentWidth / 2;
 
@@ -808,7 +808,36 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
     pdf.setFont('helvetica', 'bold');
     pdf.text(`${totalTeamKm} km`, margin + 6, summaryY + 5);
 
+    // Calculate Total Team Time
+    let totalMinutes = 0;
+    // Main
+    if (data.main_agent_arrival && data.main_agent_departure) {
+      totalMinutes += (new Date(data.main_agent_departure).getTime() - new Date(data.main_agent_arrival).getTime()) / 60000;
+    }
+    // S1
+    if (data.support_agent_1_arrival && data.support_agent_1_departure) {
+      totalMinutes += (new Date(data.support_agent_1_departure).getTime() - new Date(data.support_agent_1_arrival).getTime()) / 60000;
+    }
+    // S2
+    if (data.support_agent_2_arrival && data.support_agent_2_departure) {
+      totalMinutes += (new Date(data.support_agent_2_departure).getTime() - new Date(data.support_agent_2_arrival).getTime()) / 60000;
+    }
+
+    const teamHours = Math.floor(totalMinutes / 60);
+    const teamMinutes = Math.floor(totalMinutes % 60);
+    const teamDurationText = totalMinutes > 0 ? `${teamHours}h ${teamMinutes}m` : '-';
+
+    setColor(pdf, THEME.secondaryText);
+    pdf.setFontSize(7);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('TEMPO TOTAL (EQUIPE)', margin + 6 + summaryColW, summaryY);
+    setColor(pdf, THEME.primary); // Blue color like KM
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(teamDurationText, margin + 6 + summaryColW, summaryY + 5);
+
     // Cost section removed
+
 
     y += summaryCardH + 10;
   }
