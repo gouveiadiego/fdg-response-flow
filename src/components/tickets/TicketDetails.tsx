@@ -61,10 +61,22 @@ interface TicketFull {
   detailed_report: string | null;
   summary: string | null;
   service_type: string;
+  main_agent_arrival: string | null;
+  main_agent_departure: string | null;
   support_agent_1_arrival: string | null;
   support_agent_1_departure: string | null;
+  support_agent_1_km_start: number | null;
+  support_agent_1_km_end: number | null;
+  support_agent_1_toll_cost: number | null;
+  support_agent_1_food_cost: number | null;
+  support_agent_1_other_costs: number | null;
   support_agent_2_arrival: string | null;
   support_agent_2_departure: string | null;
+  support_agent_2_km_start: number | null;
+  support_agent_2_km_end: number | null;
+  support_agent_2_toll_cost: number | null;
+  support_agent_2_food_cost: number | null;
+  support_agent_2_other_costs: number | null;
   clients: { name: string; document: string; contact_phone: string | null };
   main_agent: { name: string; is_armed: boolean | null; pix_key: string | null; bank_name: string | null; bank_agency: string | null; bank_account: string | null; bank_account_type: string | null; vehicle_plate: string | null };
   support_agent_1: { name: string; is_armed: boolean | null } | null;
@@ -309,14 +321,30 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
           name: (freshTicket as any).main_agent?.name || '',
           is_armed: (freshTicket as any).main_agent?.is_armed || null,
         },
+        main_agent_arrival: (freshTicket as any).main_agent_arrival,
+        main_agent_departure: (freshTicket as any).main_agent_departure,
         support_agent_1: (freshTicket as any).support_agent_1 ? {
           name: (freshTicket as any).support_agent_1.name,
           is_armed: (freshTicket as any).support_agent_1.is_armed,
         } : null,
+        support_agent_1_arrival: (freshTicket as any).support_agent_1_arrival,
+        support_agent_1_departure: (freshTicket as any).support_agent_1_departure,
+        support_agent_1_km_start: (freshTicket as any).support_agent_1_km_start,
+        support_agent_1_km_end: (freshTicket as any).support_agent_1_km_end,
+        support_agent_1_toll_cost: (freshTicket as any).support_agent_1_toll_cost,
+        support_agent_1_food_cost: (freshTicket as any).support_agent_1_food_cost,
+        support_agent_1_other_costs: (freshTicket as any).support_agent_1_other_costs,
         support_agent_2: (freshTicket as any).support_agent_2 ? {
           name: (freshTicket as any).support_agent_2.name,
           is_armed: (freshTicket as any).support_agent_2.is_armed,
         } : null,
+        support_agent_2_arrival: (freshTicket as any).support_agent_2_arrival,
+        support_agent_2_departure: (freshTicket as any).support_agent_2_departure,
+        support_agent_2_km_start: (freshTicket as any).support_agent_2_km_start,
+        support_agent_2_km_end: (freshTicket as any).support_agent_2_km_end,
+        support_agent_2_toll_cost: (freshTicket as any).support_agent_2_toll_cost,
+        support_agent_2_food_cost: (freshTicket as any).support_agent_2_food_cost,
+        support_agent_2_other_costs: (freshTicket as any).support_agent_2_other_costs,
         vehicle: {
           description: (freshTicket as any).vehicles?.description || '',
           tractor_plate: (freshTicket as any).vehicles?.tractor_plate || null,
@@ -556,62 +584,190 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
               </CardContent>
             </Card>
 
-            {/* KM and Costs */}
+            {/* KM and Costs - Per Agent Breakdown */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-primary" />
-                  Quilometragem e Custos
+                  Detalhamento por Agente
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">KM Inicial</p>
-                    <p className="font-semibold flex items-center gap-1">
-                      <Navigation className="h-4 w-4" />
-                      {ticket.km_start ?? '-'}
-                    </p>
+              <CardContent className="space-y-4">
+                {/* Main Agent */}
+                <div className="p-3 border rounded-lg bg-primary/5">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-sm">{ticket.main_agent?.name}</h4>
+                    <Badge variant="outline" className="text-xs">
+                      {ticket.main_agent?.is_armed ? 'Armado' : 'Desarmado'}
+                    </Badge>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">KM Final</p>
-                    <p className="font-semibold flex items-center gap-1">
-                      <Navigation className="h-4 w-4" />
-                      {ticket.km_end ?? '-'}
-                    </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                    <div>
+                      <p className="text-muted-foreground">KM Inicial</p>
+                      <p className="font-semibold">{ticket.km_start ?? '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">KM Final</p>
+                      <p className="font-semibold">{ticket.km_end ?? '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">KM Rodado</p>
+                      <p className="font-bold text-primary">
+                        {ticket.km_start && ticket.km_end
+                          ? `${Number(ticket.km_end) - Number(ticket.km_start)} km`
+                          : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Total Agente</p>
+                      <p className="font-bold text-success">
+                        {formatCurrency((ticket.toll_cost || 0) + (ticket.food_cost || 0) + (ticket.other_costs || 0))}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">KM Rodados</p>
-                    <p className="font-semibold">
-                      {ticket.km_start && ticket.km_end
-                        ? `${Number(ticket.km_end) - Number(ticket.km_start)} km`
-                        : '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Tipo Serviço</p>
-                    <p className="font-semibold">{serviceTypeLabels[ticket.service_type]}</p>
+                  <Separator className="my-2" />
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <p className="text-muted-foreground">Pedágio</p>
+                      <p className="font-semibold">{formatCurrency(ticket.toll_cost)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Alimentação</p>
+                      <p className="font-semibold">{formatCurrency(ticket.food_cost)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Outros</p>
+                      <p className="font-semibold">{formatCurrency(ticket.other_costs)}</p>
+                    </div>
                   </div>
                 </div>
 
-                <Separator className="my-4" />
+                {/* Support Agent 1 */}
+                {ticket.support_agent_1 && (ticket.support_agent_1_km_start || ticket.support_agent_1_toll_cost || ticket.support_agent_1_food_cost || ticket.support_agent_1_other_costs) && (
+                  <div className="p-3 border rounded-lg bg-muted/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-sm">{ticket.support_agent_1.name}</h4>
+                      <Badge variant="outline" className="text-xs">
+                        Apoio 1 • {ticket.support_agent_1.is_armed ? 'Armado' : 'Desarmado'}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">KM Inicial</p>
+                        <p className="font-semibold">{ticket.support_agent_1_km_start ?? '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">KM Final</p>
+                        <p className="font-semibold">{ticket.support_agent_1_km_end ?? '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">KM Rodado</p>
+                        <p className="font-bold text-primary">
+                          {ticket.support_agent_1_km_start && ticket.support_agent_1_km_end
+                            ? `${Number(ticket.support_agent_1_km_end) - Number(ticket.support_agent_1_km_start)} km`
+                            : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Total Agente</p>
+                        <p className="font-bold text-success">
+                          {formatCurrency((ticket.support_agent_1_toll_cost || 0) + (ticket.support_agent_1_food_cost || 0) + (ticket.support_agent_1_other_costs || 0))}
+                        </p>
+                      </div>
+                    </div>
+                    <Separator className="my-2" />
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Pedágio</p>
+                        <p className="font-semibold">{formatCurrency(ticket.support_agent_1_toll_cost)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Alimentação</p>
+                        <p className="font-semibold">{formatCurrency(ticket.support_agent_1_food_cost)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Outros</p>
+                        <p className="font-semibold">{formatCurrency(ticket.support_agent_1_other_costs)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Pedágio</p>
-                    <p className="font-semibold">{formatCurrency(ticket.toll_cost)}</p>
+                {/* Support Agent 2 */}
+                {ticket.support_agent_2 && (ticket.support_agent_2_km_start || ticket.support_agent_2_toll_cost || ticket.support_agent_2_food_cost || ticket.support_agent_2_other_costs) && (
+                  <div className="p-3 border rounded-lg bg-muted/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-sm">{ticket.support_agent_2.name}</h4>
+                      <Badge variant="outline" className="text-xs">
+                        Apoio 2 • {ticket.support_agent_2.is_armed ? 'Armado' : 'Desarmado'}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">KM Inicial</p>
+                        <p className="font-semibold">{ticket.support_agent_2_km_start ?? '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">KM Final</p>
+                        <p className="font-semibold">{ticket.support_agent_2_km_end ?? '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">KM Rodado</p>
+                        <p className="font-bold text-primary">
+                          {ticket.support_agent_2_km_start && ticket.support_agent_2_km_end
+                            ? `${Number(ticket.support_agent_2_km_end) - Number(ticket.support_agent_2_km_start)} km`
+                            : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Total Agente</p>
+                        <p className="font-bold text-success">
+                          {formatCurrency((ticket.support_agent_2_toll_cost || 0) + (ticket.support_agent_2_food_cost || 0) + (ticket.support_agent_2_other_costs || 0))}
+                        </p>
+                      </div>
+                    </div>
+                    <Separator className="my-2" />
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Pedágio</p>
+                        <p className="font-semibold">{formatCurrency(ticket.support_agent_2_toll_cost)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Alimentação</p>
+                        <p className="font-semibold">{formatCurrency(ticket.support_agent_2_food_cost)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Outros</p>
+                        <p className="font-semibold">{formatCurrency(ticket.support_agent_2_other_costs)}</p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Alimentação</p>
-                    <p className="font-semibold">{formatCurrency(ticket.food_cost)}</p>
+                )}
+
+                {/* Summary */}
+                <div className="p-3 border-2 rounded-lg bg-secondary/10 border-secondary">
+                  <h4 className="font-bold text-sm mb-2 text-secondary">Resumo Geral da Operação</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">KM Total Rodado (Equipe)</p>
+                      <p className="text-lg font-bold text-primary">
+                        {(() => {
+                          const mainKm = (ticket.km_start && ticket.km_end) ? Number(ticket.km_end) - Number(ticket.km_start) : 0;
+                          const s1Km = (ticket.support_agent_1_km_start && ticket.support_agent_1_km_end) ? Number(ticket.support_agent_1_km_end) - Number(ticket.support_agent_1_km_start) : 0;
+                          const s2Km = (ticket.support_agent_2_km_start && ticket.support_agent_2_km_end) ? Number(ticket.support_agent_2_km_end) - Number(ticket.support_agent_2_km_start) : 0;
+                          return `${mainKm + s1Km + s2Km} km`;
+                        })()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Custo Total da Operação</p>
+                      <p className="text-lg font-bold text-success">
+                        {formatCurrency(ticket.total_cost)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Outros</p>
-                    <p className="font-semibold">{formatCurrency(ticket.other_costs)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total</p>
-                    <p className="font-semibold text-primary">{formatCurrency(ticket.total_cost)}</p>
+                  <div className="mt-2 pt-2 border-t">
+                    <p className="text-xs text-muted-foreground">Tipo de Serviço: <span className="font-semibold text-foreground">{serviceTypeLabels[ticket.service_type]}</span></p>
                   </div>
                 </div>
               </CardContent>
