@@ -513,7 +513,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   const colTwoX = pageWidth / 2 + 5;
   const colWidth = (contentWidth / 2) - 5;
   const checkPageBreak = async (heightNeeded: number) => {
-    if (y + heightNeeded > pageHeight - margin) {
+    if (y + heightNeeded > pageHeight - (margin + 10)) {
       pdf.addPage();
       setColor(pdf, THEME.background);
       pdf.rect(0, 0, pageWidth, pageHeight, 'F');
@@ -648,7 +648,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
         const armedColor = isArmed ? THEME.warning : THEME.secondaryText;
         setColor(pdf, armedColor);
         pdf.setFontSize(7);
-        pdf.text(armedText, margin + 6 + pdf.getTextWidth(agentName) + 3, cardY);
+        pdf.text(armedText, margin + 6 + pdf.getTextWidth(agentName) + 10, cardY);
       }
 
       cardY += 8;
@@ -807,14 +807,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
     pdf.setFont('helvetica', 'bold');
     pdf.text(`${totalTeamKm} km`, margin + 6, summaryY + 5);
 
-    setColor(pdf, THEME.secondaryText);
-    pdf.setFontSize(7);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('CUSTO TOTAL DA OPERAÇÃO', margin + 6 + summaryColW, summaryY);
-    setColor(pdf, THEME.success);
-    pdf.setFontSize(11);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(`R$ ${totalOperationCost.toFixed(2)}`, margin + 6 + summaryColW, summaryY + 5);
+    // Cost section removed
 
     y += summaryCardH + 10;
   }
