@@ -297,6 +297,8 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           client_id: ticket.client_id,
           vehicle_id: ticket.vehicle_id,
           main_agent_id: ticket.main_agent_id,
+          main_agent_arrival: ticket.start_datetime ? new Date(ticket.start_datetime).toISOString().slice(0, 16) : '',
+          main_agent_departure: ticket.end_datetime ? new Date(ticket.end_datetime).toISOString().slice(0, 16) : '',
           support_agent_1_id: ticket.support_agent_1_id || '',
           support_agent_1_arrival: ticket.support_agent_1_arrival ? new Date(ticket.support_agent_1_arrival).toISOString().slice(0, 16) : '',
           support_agent_1_departure: ticket.support_agent_1_departure ? new Date(ticket.support_agent_1_departure).toISOString().slice(0, 16) : '',
