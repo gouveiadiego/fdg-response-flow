@@ -512,7 +512,27 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   const colOneX = margin;
   const colTwoX = pageWidth / 2 + 5;
   const colWidth = (contentWidth / 2) - 5;
-  const cardH = 65;
+  const checkPageBreak = async (heightNeeded: number) => {
+    if (y + heightNeeded > pageHeight - margin) {
+      pdf.addPage();
+      setColor(pdf, THEME.background);
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+      y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg);
+      return true;
+    }
+    return false;
+  };
+
+  const cardH = 75;
+
+  // Card: SOLICITANTE
+  drawCard(pdf, colOneX, y, colWidth, cardH, 'DADOS DO SOLICITANTE');
+  // ... (content of Solicitante) ...
+
+  // ... (content of Veículo) ...
+
+  // (Note: I need to target the drawAgentDetailCard function first to remove costs, then the calling logic)
+
 
   // Card: SOLICITANTE
   drawCard(pdf, colOneX, y, colWidth, cardH, 'DADOS DO SOLICITANTE');
@@ -598,7 +618,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
 
     y += 10;
 
-    const agentCardH = 48;
+    const agentCardH = 38;
     const agentCardW = contentWidth;
 
     // Helper function to draw agent card
@@ -607,9 +627,6 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       isArmed: boolean | null,
       kmStart: number | null,
       kmEnd: number | null,
-      tollCost: number | null,
-      foodCost: number | null,
-      otherCosts: number | null,
       yPos: number,
       title: string,
       arrival: string | null = null,
@@ -709,63 +726,21 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
         pdf.text('-', xPos, cardY + 4);
       }
 
-      // Row 4: Costs
-      cardY += 10;
-      xPos = margin + 6;
-
-      setColor(pdf, THEME.secondaryText);
-      pdf.setFontSize(6.5);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('PEDÁGIO', xPos, cardY);
-      setColor(pdf, THEME.text);
-      pdf.setFontSize(8.5);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(tollCost ? `R$ ${tollCost.toFixed(2)}` : '-', xPos, cardY + 4);
-
-      xPos += fieldW;
-      setColor(pdf, THEME.secondaryText);
-      pdf.setFontSize(6.5);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('ALIMENTAÇÃO', xPos, cardY);
-      setColor(pdf, THEME.text);
-      pdf.setFontSize(8.5);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(foodCost ? `R$ ${foodCost.toFixed(2)}` : '-', xPos, cardY + 4);
-
-      xPos += fieldW;
-      setColor(pdf, THEME.secondaryText);
-      pdf.setFontSize(6.5);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('OUTROS', xPos, cardY);
-      setColor(pdf, THEME.text);
-      pdf.setFontSize(8.5);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(otherCosts ? `R$ ${otherCosts.toFixed(2)}` : '-', xPos, cardY + 4);
-
-      xPos += fieldW;
-      const totalCost = calculateAgentCosts(tollCost, foodCost, otherCosts);
-      setColor(pdf, THEME.secondaryText);
-      pdf.setFontSize(6.5);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('TOTAL AGENTE', xPos, cardY);
-      setColor(pdf, THEME.success);
-      pdf.setFontSize(9);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(totalCost > 0 ? `R$ ${totalCost.toFixed(2)}` : '-', xPos, cardY + 4);
+      // Costs row removed as requested
 
       return yPos + agentCardH + 6;
     };
 
     // Draw agent cards
     if (hasMainData) {
+      if (await checkPageBreak(agentCardH + 10)) {
+        // y updated in checkPageBreak
+      }
       y = drawAgentDetailCard(
         data.agent.name,
         data.agent.is_armed,
         data.km_start,
         data.km_end,
-        data.toll_cost,
-        data.food_cost,
-        data.other_costs,
         y,
         'AGENTE PRINCIPAL',
         data.main_agent_arrival,
@@ -774,14 +749,14 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
     }
 
     if (hasS1Data && data.support_agent_1) {
+      if (await checkPageBreak(agentCardH + 10)) {
+        // y updated
+      }
       y = drawAgentDetailCard(
         data.support_agent_1.name,
         data.support_agent_1.is_armed,
         data.support_agent_1_km_start,
         data.support_agent_1_km_end,
-        data.support_agent_1_toll_cost,
-        data.support_agent_1_food_cost,
-        data.support_agent_1_other_costs,
         y,
         'APOIO SECUNDÁRIO (1)',
         data.support_agent_1_arrival,
@@ -790,14 +765,14 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
     }
 
     if (hasS2Data && data.support_agent_2) {
+      if (await checkPageBreak(agentCardH + 10)) {
+        // y updated
+      }
       y = drawAgentDetailCard(
         data.support_agent_2.name,
         data.support_agent_2.is_armed,
         data.support_agent_2_km_start,
         data.support_agent_2_km_end,
-        data.support_agent_2_toll_cost,
-        data.support_agent_2_food_cost,
-        data.support_agent_2_other_costs,
         y,
         'APOIO TERCIÁRIO (2)',
         data.support_agent_2_arrival,
@@ -807,6 +782,10 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
 
     // Operation Summary
     const summaryCardH = 22;
+    if (await checkPageBreak(summaryCardH + 20)) {
+      // y updated
+    }
+
     drawShadowRect(pdf, margin, y, contentWidth, summaryCardH, 2);
     setColor(pdf, { r: 240, g: 253, b: 244 }); // Light green background
     drawRoundedRect(pdf, margin, y, contentWidth, summaryCardH, 2, 'F');
