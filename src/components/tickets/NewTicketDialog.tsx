@@ -588,33 +588,6 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="start_datetime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Data/Hora Inicial *</FormLabel>
-                        <FormControl>
-                          <Input type="datetime-local" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="end_datetime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Data/Hora Final</FormLabel>
-                        <FormControl>
-                          <Input type="datetime-local" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
 
                 <div className="space-y-2">
