@@ -55,7 +55,9 @@ const ticketSchema = z.object({
   status: z.enum(['aberto', 'em_andamento', 'finalizado', 'cancelado']),
   client_id: z.string().min(1, 'Cliente é obrigatório'),
   vehicle_id: z.string().min(1, 'Veículo é obrigatório'),
-  main_agent_id: z.string().min(1, 'Agente é obrigatório'),
+  main_agent_id: z.string().min(1, 'Selecione um agente'),
+  main_agent_arrival: z.string().optional(),
+  main_agent_departure: z.string().optional(),
   support_agent_1_id: z.string().optional(),
   support_agent_1_arrival: z.string().optional(),
   support_agent_1_departure: z.string().optional(),
@@ -954,6 +956,33 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                           </div>
                         </div>
 
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                          <FormField
+                            control={form.control}
+                            name="main_agent_arrival"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Chegada</FormLabel>
+                                <FormControl>
+                                  <Input type="datetime-local" className="h-9 text-xs" {...field} />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="main_agent_departure"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Saída</FormLabel>
+                                <FormControl>
+                                  <Input type="datetime-local" className="h-9 text-xs" {...field} />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t pt-3">
                           <FormField
                             control={form.control}
@@ -1509,25 +1538,8 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                       </div>
                     </div>
 
-                    {/* Resumo e Descrição */}
+                    {/* Descrição do Evento */}
                     <div className="space-y-4 pt-4 border-t">
-                      <FormField
-                        control={form.control}
-                        name="summary"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Resumo (opcional)</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Breve resumo do atendimento..."
-                                maxLength={500}
-                                {...field}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
                       <FormField
                         control={form.control}
                         name="detailed_report"

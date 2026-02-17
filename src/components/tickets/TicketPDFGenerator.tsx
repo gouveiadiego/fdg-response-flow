@@ -61,6 +61,8 @@ interface TicketPDFData {
     name: string;
     is_armed: boolean | null;
   };
+  main_agent_arrival: string | null;
+  main_agent_departure: string | null;
   support_agent_1?: {
     name: string;
     is_armed: boolean | null;
