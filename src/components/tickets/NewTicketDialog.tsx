@@ -419,6 +419,8 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
           plan_id: data.plan_id,
           service_type: data.service_type,
           main_agent_id: data.main_agent_id,
+          main_agent_arrival: data.main_agent_arrival || null,
+          main_agent_departure: data.main_agent_departure || null,
           support_agent_1_id: data.support_agent_1_id && data.support_agent_1_id !== 'none' ? data.support_agent_1_id : null,
           support_agent_1_arrival: data.support_agent_1_arrival || null,
           support_agent_1_departure: data.support_agent_1_departure || null,

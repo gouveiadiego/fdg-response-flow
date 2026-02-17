@@ -249,6 +249,8 @@ export type Database = {
           id: string
           km_end: number | null
           km_start: number | null
+          main_agent_arrival: string | null
+          main_agent_departure: string | null
           main_agent_id: string
           other_costs: number | null
           plan_id: string
@@ -283,6 +285,8 @@ export type Database = {
           id?: string
           km_end?: number | null
           km_start?: number | null
+          main_agent_arrival?: string | null
+          main_agent_departure?: string | null
           main_agent_id: string
           other_costs?: number | null
           plan_id: string
@@ -317,6 +321,8 @@ export type Database = {
           id?: string
           km_end?: number | null
           km_start?: number | null
+          main_agent_arrival?: string | null
+          main_agent_departure?: string | null
           main_agent_id?: string
           other_costs?: number | null
           plan_id?: string
