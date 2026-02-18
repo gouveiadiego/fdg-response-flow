@@ -644,45 +644,24 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       arrival: string | null = null,
       departure: string | null = null
     ): number => {
-      const height = 55;
+      const height = 42;
       drawCard(pdf, margin, yPos, agentCardW, height, title);
 
-      let cardY = yPos + 16;
+      let cardY = yPos + 14;
 
-      // Row 1: Status Only (Name removed)
+      // Row 1: Armed Status
       if (isArmed !== null) {
         const armedText = isArmed ? 'ARMADO' : 'DESARMADO';
         const armedColor = isArmed ? THEME.warning : THEME.secondaryText;
         setColor(pdf, armedColor);
-        pdf.setFontSize(9); // Larger font for status since name is gone
+        pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
         pdf.text(armedText, margin + 6, cardY);
       }
 
-      cardY += 10;
+      cardY += 8;
 
-      // Row 2: Location (City/State & Coords) - Conditional
-      if (false) { // location removed
-        const col1W = (agentCardW / 2) - 5;
-        const col2W = (agentCardW / 2) - 5;
-        const col2X = margin + 6 + col1W + 10;
-
-        setColor(pdf, THEME.secondaryText);
-        pdf.setFontSize(6.5);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('CIDADE / UF', margin + 6, cardY);
-        pdf.text('COORDENADAS', col2X, cardY);
-
-        setColor(pdf, THEME.text);
-        pdf.setFontSize(8.5);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(`${data.city} / ${data.state}`, margin + 6, cardY + 4);
-        pdf.text(data.coordinates_lat ? `${data.coordinates_lat}, ${data.coordinates_lng}` : '-', col2X, cardY + 4);
-
-        cardY += 10;
-      }
-
-      // Row 3: Timeline (Start | End | Duration)
+      // Row 2: Timeline (Start | End | Duration)
       const timeFieldW = (agentCardW / 3) - 10;
       let xPos = margin + 6;
 
@@ -722,9 +701,9 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
         pdf.text('-', xPos, cardY + 4);
       }
 
-      cardY += 10;
+      cardY += 9;
 
-      // Row 4: KM Data
+      // Row 3: KM Data
       const kmRodado = calculateAgentKm(kmStart, kmEnd);
       xPos = margin + 6;
       const kmFieldW = (agentCardW / 3) - 10;
@@ -758,13 +737,12 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       pdf.setFont('helvetica', 'bold');
       pdf.text(kmRodado > 0 ? `${kmRodado} km` : '-', xPos, cardY + 4);
 
-      return yPos + height + 6;
+      return yPos + height + 4;
     };
 
     // Draw agent cards
     if (hasMainData) {
-      // Main Agent: Show Location = true
-      const height = 65;
+      const height = 42;
       if (await checkPageBreak(height + 10)) {
         // y updated in checkPageBreak
       }
@@ -779,7 +757,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       );
     }
 
-    const supportHeight = 55;
+    const supportHeight = 42;
 
     if (hasS1Data && data.support_agent_1) {
       // S1: Show Location = false
