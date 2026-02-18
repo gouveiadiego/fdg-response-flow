@@ -25,6 +25,11 @@ interface Stats {
   totalAgents: number;
   completedTickets: number;
   cancelledTickets: number;
+  // Payment Stats
+  pendingPaymentValue: number;
+  pendingPaymentAgents: number;
+  paidPaymentValue: number;
+  paidPaymentAgents: number;
 }
 
 type FilterRange = '7days' | 'month' | 'year' | 'all' | 'custom';
@@ -37,6 +42,10 @@ const Dashboard = () => {
     totalAgents: 0,
     completedTickets: 0,
     cancelledTickets: 0,
+    pendingPaymentValue: 0,
+    pendingPaymentAgents: 0,
+    paidPaymentValue: 0,
+    paidPaymentAgents: 0,
   });
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<FilterRange>('month');
@@ -88,6 +97,69 @@ const Dashboard = () => {
         });
       }
 
+      // Process Payment Stats
+
+      // 1. Pending Payments (ALL TIME, finalizado status)
+      // We need to look at ALL tickets for pending status, not just the filtered ones
+      // However, for performance we might rely on the initial 'tickets' fetch which is unrestricted?
+      // Yes, 'tickets' contains all tickets.
+
+      const allTickets = tickets || [];
+      const pendingTickets = allTickets.filter(t => t.status === 'finalizado');
+
+      let pendingValue = 0;
+      const pendingAgents = new Set<string>();
+
+      pendingTickets.forEach(t => {
+        // Main Agent
+        if (t.main_agent_id && (t.main_agent_payment_status === 'pendente' || !t.main_agent_payment_status)) {
+          const cost = (Number(t.toll_cost) || 0) + (Number(t.food_cost) || 0) + (Number(t.other_costs) || 0);
+          pendingValue += cost;
+          pendingAgents.add(t.main_agent_id);
+        }
+        // Support 1
+        if (t.support_agent_1_id && (t.support_agent_1_payment_status === 'pendente' || !t.support_agent_1_payment_status)) {
+          const cost = (Number(t.support_agent_1_toll_cost) || 0) + (Number(t.support_agent_1_food_cost) || 0) + (Number(t.support_agent_1_other_costs) || 0);
+          pendingValue += cost;
+          pendingAgents.add(t.support_agent_1_id);
+        }
+        // Support 2
+        if (t.support_agent_2_id && (t.support_agent_2_payment_status === 'pendente' || !t.support_agent_2_payment_status)) {
+          const cost = (Number(t.support_agent_2_toll_cost) || 0) + (Number(t.support_agent_2_food_cost) || 0) + (Number(t.support_agent_2_other_costs) || 0);
+          pendingValue += cost;
+          pendingAgents.add(t.support_agent_2_id);
+        }
+      });
+
+      // 2. Paid Payments (FILTERED by date range)
+      // We look at 'filteredTickets' which are already filtered by the selected date range
+      const paidTickets = filteredTickets.filter(t => t.status === 'finalizado');
+
+      let paidValue = 0;
+      const paidAgents = new Set<string>();
+
+      paidTickets.forEach(t => {
+        // Main Agent
+        if (t.main_agent_id && t.main_agent_payment_status === 'pago') {
+          // Ideally we should use the exact paid amount if stored, but we recalc from costs
+          const cost = (Number(t.toll_cost) || 0) + (Number(t.food_cost) || 0) + (Number(t.other_costs) || 0);
+          paidValue += cost;
+          paidAgents.add(t.main_agent_id);
+        }
+        // Support 1
+        if (t.support_agent_1_id && t.support_agent_1_payment_status === 'pago') {
+          const cost = (Number(t.support_agent_1_toll_cost) || 0) + (Number(t.support_agent_1_food_cost) || 0) + (Number(t.support_agent_1_other_costs) || 0);
+          paidValue += cost;
+          paidAgents.add(t.support_agent_1_id);
+        }
+        // Support 2
+        if (t.support_agent_2_id && t.support_agent_2_payment_status === 'pago') {
+          const cost = (Number(t.support_agent_2_toll_cost) || 0) + (Number(t.support_agent_2_food_cost) || 0) + (Number(t.support_agent_2_other_costs) || 0);
+          paidValue += cost;
+          paidAgents.add(t.support_agent_2_id);
+        }
+      });
+
       // Process Stats
       const statsObj: Stats = {
         totalTickets: filteredTickets.length,
@@ -96,6 +168,11 @@ const Dashboard = () => {
         cancelledTickets: filteredTickets.filter(t => t.status === 'cancelado').length,
         totalClients: clientsResult.count || 0,
         totalAgents: agentsResult.count || 0,
+        // Payment Stats
+        pendingPaymentValue: pendingValue,
+        pendingPaymentAgents: pendingAgents.size,
+        paidPaymentValue: paidValue,
+        paidPaymentAgents: paidAgents.size,
       };
       setStats(statsObj);
 
@@ -167,6 +244,24 @@ const Dashboard = () => {
       color: 'text-rose-600',
       bgColor: 'bg-rose-50',
     },
+    {
+      title: 'Pagamentos Pendentes',
+      value: stats.pendingPaymentValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      subValue: `${stats.pendingPaymentAgents} agentes a receber`,
+      icon: Clock, // Reusing Clock icon or maybe DollarSign?
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-50',
+      isCurrency: true,
+    },
+    {
+      title: 'Pagamentos Realizados',
+      value: stats.paidPaymentValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      subValue: `${stats.paidPaymentAgents} agentes pagos`,
+      icon: CheckCircle2,
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50',
+      isCurrency: true,
+    },
   ];
 
   return (
@@ -233,7 +328,14 @@ const Dashboard = () => {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-black">{stat.value}</div>
+                    <div className={stat.isCurrency ? "text-2xl font-black" : "text-3xl font-black"}>
+                      {stat.value}
+                    </div>
+                    {stat.subValue && (
+                      <div className="text-xs font-medium text-muted-foreground mt-1">
+                        {stat.subValue}
+                      </div>
+                    )}
                     <div className="flex items-center gap-1 mt-2 text-[10px] text-muted-foreground">
                       <TrendingUp className="h-3 w-3 text-emerald-500" />
                       <span>Atualizado em tempo real</span>
