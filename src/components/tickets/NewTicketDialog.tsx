@@ -164,6 +164,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
       service_type: 'acompanhamento_logistico',
       operator_id: '',
       support_agents: [],
+      start_datetime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     },
   });
 
@@ -504,7 +505,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
     console.error('Erros de validação:', errors);
     toast.error('Por favor, verifique os campos obrigatórios preenchidos incorretamente.');
 
-    if (errors.client_id || errors.vehicle_id || errors.plan_id || errors.service_type || errors.city || errors.state) {
+    if (errors.client_id || errors.vehicle_id || errors.plan_id || errors.service_type || errors.city || errors.state || errors.start_datetime) {
       setActiveTab('cliente');
       return;
     }
@@ -763,6 +764,20 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                               ))}
                             </SelectContent>
                           </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="start_datetime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Data/Hora Início *</FormLabel>
+                          <FormControl>
+                            <Input type="datetime-local" {...field} />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}

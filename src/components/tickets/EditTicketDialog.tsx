@@ -648,7 +648,7 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                 console.error('Form validation errors:', errors);
                 toast.error('Por favor, verifique os campos obrigatórios preenchidos incorretamente.');
 
-                if (errors.status || errors.client_id || errors.vehicle_id || errors.plan_id || errors.service_type || errors.city || errors.state) {
+                if (errors.status || errors.client_id || errors.vehicle_id || errors.plan_id || errors.service_type || errors.city || errors.state || errors.start_datetime) {
                   setActiveTab('cliente');
                   return;
                 }
@@ -814,6 +814,36 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                             <FormLabel>Estado *</FormLabel>
                             <FormControl>
                               <Input placeholder="UF" maxLength={2} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="start_datetime"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Data/Hora Início *</FormLabel>
+                            <FormControl>
+                              <Input type="datetime-local" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="end_datetime"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Data/Hora Fim</FormLabel>
+                            <FormControl>
+                              <Input type="datetime-local" {...field} value={field.value || ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
