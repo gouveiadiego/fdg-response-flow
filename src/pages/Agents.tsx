@@ -399,7 +399,7 @@ const Agents = () => {
         </TabsContent>
 
         <TabsContent value="map" className="mt-0">
-          <AgentMap />
+          <AgentMap onEdit={handleEdit} />
         </TabsContent>
       </Tabs>
 

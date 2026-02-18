@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, UserCheck, Phone, Shield, Navigation, Loader2 } from 'lucide-react';
+import { Search, MapPin, UserCheck, Phone, Shield, Navigation, Loader2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Fix for default marker icons in Leaflet with Vite
@@ -64,9 +64,10 @@ function MapUpdater({ center, zoom }: MapUpdaterProps) {
 
 interface AgentMapProps {
     onSelect?: (agentId: string) => void;
+    onEdit?: (agentId: string) => void;
 }
 
-export function AgentMap({ onSelect }: AgentMapProps) {
+export function AgentMap({ onSelect, onEdit }: AgentMapProps) {
     const navigate = useNavigate();
     const [agents, setAgents] = useState<Agent[]>([]);
     const [loading, setLoading] = useState(true);
@@ -332,6 +333,20 @@ export function AgentMap({ onSelect }: AgentMapProps) {
                                     {agent.performance_level.toUpperCase()}
                                 </Badge>
                             </div>
+                            {onEdit && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full h-7 text-xs gap-1.5 mt-1"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onEdit(agent.id);
+                                    }}
+                                >
+                                    <Pencil className="h-3 w-3" />
+                                    Editar
+                                </Button>
+                            )}
                         </CardContent>
                     </Card>
                 ))}
