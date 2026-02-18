@@ -5,11 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, UserCheck, Phone, Mail, Shield, ShieldOff, Trash2, Car, Bike, Bell, Eye, Lock, Truck, ClipboardCheck, Map as MapIcon, List } from 'lucide-react';
+import { Plus, Search, UserCheck, Phone, Mail, Shield, ShieldOff, Trash2, Car, Bike, Bell, Eye, Lock, Truck, ClipboardCheck, Map as MapIcon, List, Link2, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { NewAgentDialog } from '@/components/agents/NewAgentDialog';
 import { EditAgentDialog } from '@/components/agents/EditAgentDialog';
 import { AgentMap } from '@/components/agents/AgentMap';
+import { AgentRegistrationReview } from '@/components/agents/AgentRegistrationReview';
 import { RoleGuard } from '@/components/RoleGuard';
 import { DeleteAlertDialog } from '@/components/DeleteAlertDialog';
 
@@ -39,6 +40,7 @@ const Agents = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
 
   const skillsList = [
     { id: 'is_armed', label: 'Armado', icon: Shield },
@@ -56,7 +58,26 @@ const Agents = () => {
 
   useEffect(() => {
     fetchAgents();
+    fetchPendingCount();
   }, []);
+
+  const fetchPendingCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('agent_registrations' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pendente');
+      if (!error && count !== null) setPendingCount(count);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const copyRegistrationLink = () => {
+    const link = `${window.location.origin}/cadastro-agente`;
+    navigator.clipboard.writeText(link);
+    toast.success('Link copiado para a área de transferência!');
+  };
 
   const fetchAgents = async () => {
     try {
@@ -196,10 +217,16 @@ const Agents = () => {
           <p className="text-muted-foreground">Gerencie e localize sua equipe de agentes</p>
         </div>
         <RoleGuard allowedRoles={['admin', 'operador']}>
-          <Button onClick={() => setNewDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Agente
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={copyRegistrationLink}>
+              <Link2 className="h-4 w-4 mr-2" />
+              Copiar Link de Cadastro
+            </Button>
+            <Button onClick={() => setNewDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Agente
+            </Button>
+          </div>
         </RoleGuard>
       </div>
 
@@ -213,6 +240,15 @@ const Agents = () => {
             <TabsTrigger value="map" className="gap-2">
               <MapIcon className="h-4 w-4" />
               Mapa e Proximidade
+            </TabsTrigger>
+            <TabsTrigger value="pending" className="gap-2">
+              <UserPlus className="h-4 w-4" />
+              Cadastros Pendentes
+              {pendingCount > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                  {pendingCount}
+                </Badge>
+              )}
             </TabsTrigger>
           </TabsList>
         </div>
@@ -400,6 +436,10 @@ const Agents = () => {
 
         <TabsContent value="map" className="mt-0">
           <AgentMap onEdit={handleEdit} />
+        </TabsContent>
+
+        <TabsContent value="pending" className="mt-0">
+          <AgentRegistrationReview onAgentApproved={() => { fetchAgents(); fetchPendingCount(); }} />
         </TabsContent>
       </Tabs>
 

@@ -90,6 +90,99 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_registrations: {
+        Row: {
+          id: string
+          name: string
+          document: string
+          phone: string
+          email: string | null
+          address: string | null
+          cep: string | null
+          is_armed: boolean
+          vehicle_plate: string | null
+          vehicle_type: string | null
+          has_alarm_skill: boolean
+          has_investigation_skill: boolean
+          has_preservation_skill: boolean
+          has_logistics_skill: boolean
+          has_auditing_skill: boolean
+          pix_key: string | null
+          bank_name: string | null
+          bank_agency: string | null
+          bank_account: string | null
+          bank_account_type: string | null
+          notes: string | null
+          latitude: number | null
+          longitude: number | null
+          status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          document: string
+          phone: string
+          email?: string | null
+          address?: string | null
+          cep?: string | null
+          is_armed?: boolean
+          vehicle_plate?: string | null
+          vehicle_type?: string | null
+          has_alarm_skill?: boolean
+          has_investigation_skill?: boolean
+          has_preservation_skill?: boolean
+          has_logistics_skill?: boolean
+          has_auditing_skill?: boolean
+          pix_key?: string | null
+          bank_name?: string | null
+          bank_agency?: string | null
+          bank_account?: string | null
+          bank_account_type?: string | null
+          notes?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          document?: string
+          phone?: string
+          email?: string | null
+          address?: string | null
+          cep?: string | null
+          is_armed?: boolean
+          vehicle_plate?: string | null
+          vehicle_type?: string | null
+          has_alarm_skill?: boolean
+          has_investigation_skill?: boolean
+          has_preservation_skill?: boolean
+          has_logistics_skill?: boolean
+          has_auditing_skill?: boolean
+          pix_key?: string | null
+          bank_name?: string | null
+          bank_agency?: string | null
+          bank_account?: string | null
+          bank_account_type?: string | null
+          notes?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           address: string | null
