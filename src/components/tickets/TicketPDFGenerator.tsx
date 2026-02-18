@@ -531,7 +531,34 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   let cy = y + 16;
   cy = drawField(pdf, 'Cliente', data.client.name, colOneX + 6, cy, colWidth - 10);
   cy = drawField(pdf, 'Telefone', data.client.contact_phone || '-', colOneX + 6, cy, colWidth - 10);
-  cy = drawField(pdf, 'Local do Sinistro', `${data.city} / ${data.state}`, colOneX + 6, cy, colWidth - 10);
+  // Highlighted Local do Sinistro
+  cy += 4;
+  setColor(pdf, { r: 255, g: 255, b: 255 }); // White bg for contrast
+  // Or maybe user wants border only? "algum contorno ou que chame atenção"
+  // Let's use a subtle background + border
+  setColor(pdf, { r: 254, g: 242, b: 242 }); // Light red/orange bg
+  drawRoundedRect(pdf, colOneX + 6, cy, colWidth - 12, 24, 1, 'F');
+  setColor(pdf, THEME.border);
+  drawRoundedRect(pdf, colOneX + 6, cy, colWidth - 12, 24, 1, 'S');
+
+  let locY = cy + 5;
+  setColor(pdf, THEME.primary);
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('LOCAL DO SINISTRO', colOneX + 10, locY + 3);
+
+  locY += 8;
+  setColor(pdf, THEME.text);
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text(`${data.city} / ${data.state}`, colOneX + 10, locY + 3);
+
+  locY += 5;
+  setColor(pdf, THEME.secondaryText);
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'normal');
+  const coordsCoords = data.coordinates_lat ? `${data.coordinates_lat}, ${data.coordinates_lng}` : 'Sem coordenadas';
+  pdf.text(coordsCoords, colOneX + 10, locY + 3);
 
   // Card: VEÍCULO / ALVO
   drawCard(pdf, colTwoX, y, colWidth, cardH, 'VEÍCULO / ALVO');
@@ -599,11 +626,10 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       kmEnd: number | null,
       yPos: number,
       title: string,
-      showLocation: boolean,
       arrival: string | null = null,
       departure: string | null = null
     ): number => {
-      const height = showLocation ? 65 : 55;
+      const height = 55;
       drawCard(pdf, margin, yPos, agentCardW, height, title);
 
       let cardY = yPos + 16;
@@ -621,7 +647,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       cardY += 10;
 
       // Row 2: Location (City/State & Coords) - Conditional
-      if (showLocation) {
+      if (false) { // location removed
         const col1W = (agentCardW / 2) - 5;
         const col2W = (agentCardW / 2) - 5;
         const col2X = margin + 6 + col1W + 10;
@@ -733,7 +759,6 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
         data.km_end,
         y,
         'AGENTE PRINCIPAL',
-        true, // showLocation
         data.main_agent_arrival,
         data.main_agent_departure
       );
@@ -752,7 +777,6 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
         data.support_agent_1_km_end,
         y,
         'APOIO 01',
-        false, // showLocation
         data.support_agent_1_arrival,
         data.support_agent_1_departure
       );
@@ -769,7 +793,6 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
         data.support_agent_2_km_end,
         y,
         'APOIO 02',
-        false, // showLocation
         data.support_agent_2_arrival,
         data.support_agent_2_departure
       );
