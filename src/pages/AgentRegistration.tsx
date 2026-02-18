@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { Search, Loader2, CheckCircle2, Shield } from 'lucide-react';
+import { toast } from 'sonner';
 import {
     Form,
     FormControl,
@@ -46,6 +47,8 @@ const registrationSchema = z.object({
     bank_account: z.string().max(30).optional(),
     bank_account_type: z.string().optional(),
     notes: z.string().max(1000).optional(),
+    latitude: z.number().nullable().optional(),
+    longitude: z.number().nullable().optional(),
 });
 
 type RegistrationFormData = z.infer<typeof registrationSchema>;
@@ -78,6 +81,8 @@ export default function AgentRegistration() {
             bank_account: '',
             bank_account_type: '',
             notes: '',
+            latitude: null,
+            longitude: null,
         },
     });
 
@@ -93,9 +98,30 @@ export default function AgentRegistration() {
             if (!data.erro) {
                 const address = `${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}`;
                 form.setValue('address', address);
+
+                // Geocoding with Nominatim
+                try {
+                    const fullAddress = `${address}, Brasil`;
+                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}`);
+                    const geoData = await geoResponse.json();
+
+                    if (geoData && geoData.length > 0) {
+                        form.setValue('latitude', parseFloat(geoData[0].lat));
+                        form.setValue('longitude', parseFloat(geoData[0].lon));
+                        toast.success('Endereço e coordenadas encontrados!');
+                    } else {
+                        toast.info('Endereço encontrado (sem coordenadas automáticas).');
+                    }
+                } catch (geoError) {
+                    console.error('Erro na geocoficação:', geoError);
+                    // Non-blocking error
+                }
+            } else {
+                toast.error('CEP não encontrado.');
             }
         } catch (error) {
             console.error('Erro ao buscar CEP:', error);
+            toast.error('Erro ao buscar CEP.');
         } finally {
             setIsCepLoading(false);
         }
@@ -125,13 +151,15 @@ export default function AgentRegistration() {
                 bank_account: data.bank_account || null,
                 bank_account_type: data.bank_account_type && data.bank_account_type !== 'none' ? data.bank_account_type : null,
                 notes: data.notes || null,
+                latitude: data.latitude || null,
+                longitude: data.longitude || null,
             } as any);
 
             if (error) throw error;
             setIsSuccess(true);
         } catch (error) {
             console.error('Erro ao enviar cadastro:', error);
-            alert('Erro ao enviar cadastro. Tente novamente.');
+            toast.error('Erro ao enviar cadastro. Tente novamente.');
         } finally {
             setIsLoading(false);
         }
