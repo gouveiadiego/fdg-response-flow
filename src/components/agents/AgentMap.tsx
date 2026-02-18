@@ -40,6 +40,12 @@ interface Agent {
     performance_level: string;
     latitude: number | null;
     longitude: number | null;
+    address: string | null;
+    has_alarm_skill: boolean;
+    has_investigation_skill: boolean;
+    has_preservation_skill: boolean;
+    has_logistics_skill: boolean;
+    has_auditing_skill: boolean;
     distance?: number;
 }
 
@@ -78,7 +84,7 @@ export function AgentMap({ onSelect }: AgentMapProps) {
         try {
             const { data, error } = await supabase
                 .from('agents')
-                .select('id, name, phone, is_armed, performance_level, latitude, longitude')
+                .select('id, name, phone, is_armed, performance_level, latitude, longitude, address, has_alarm_skill, has_investigation_skill, has_preservation_skill, has_logistics_skill, has_auditing_skill')
                 .not('latitude', 'is', null)
                 .not('longitude', 'is', null)
                 .eq('status', 'ativo');
@@ -282,11 +288,42 @@ export function AgentMap({ onSelect }: AgentMapProps) {
                                 <Phone className="h-3 w-3" />
                                 <span>{agent.phone}</span>
                             </div>
-                            <div className="flex gap-1">
+                            {agent.address && (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <MapPin className="h-3 w-3" />
+                                    <span className="truncate">{agent.address}</span>
+                                </div>
+                            )}
+                            <div className="flex flex-wrap gap-1">
                                 {agent.is_armed && (
                                     <Badge variant="destructive" className="h-4 px-1 text-[9px]">
-                                        <Shield className="h-2 w-2 mr-1" />
-                                        Armado
+                                        <Shield className="h-2 w-2 mr-0.5" />
+                                        ARM
+                                    </Badge>
+                                )}
+                                {agent.has_alarm_skill && (
+                                    <Badge variant="outline" className="h-4 px-1 text-[9px] text-amber-600 border-amber-200 bg-amber-50">
+                                        ALR
+                                    </Badge>
+                                )}
+                                {agent.has_investigation_skill && (
+                                    <Badge variant="outline" className="h-4 px-1 text-[9px] text-violet-600 border-violet-200 bg-violet-50">
+                                        AVR
+                                    </Badge>
+                                )}
+                                {agent.has_preservation_skill && (
+                                    <Badge variant="outline" className="h-4 px-1 text-[9px] text-cyan-600 border-cyan-200 bg-cyan-50">
+                                        PRE
+                                    </Badge>
+                                )}
+                                {agent.has_logistics_skill && (
+                                    <Badge variant="outline" className="h-4 px-1 text-[9px] text-teal-600 border-teal-200 bg-teal-50">
+                                        LOG
+                                    </Badge>
+                                )}
+                                {agent.has_auditing_skill && (
+                                    <Badge variant="outline" className="h-4 px-1 text-[9px] text-orange-600 border-orange-200 bg-orange-50">
+                                        AUD
                                     </Badge>
                                 )}
                                 <Badge variant="outline" className={`h-4 px-1 text-[9px] ${agent.performance_level === 'otimo' ? 'text-emerald-600 border-emerald-200' :
