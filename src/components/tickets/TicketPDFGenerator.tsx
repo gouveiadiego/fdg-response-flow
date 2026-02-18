@@ -477,10 +477,14 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   setColor(pdf, THEME.primary);
   // Service Type Large - Use label or fallback to raw
   const serviceLabel = serviceTypeLabels[data.service_type.toLowerCase()] || data.service_type;
+  setColor(pdf, THEME.secondaryText);
+  pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('TIPO DE ATENDIMENTO', margin + 8, summaryY + 7);
   setColor(pdf, THEME.primary);
   pdf.setFontSize(14);
   pdf.setFont('helvetica', 'bold');
-  pdf.text(serviceLabel.toUpperCase(), margin + 8, summaryY + 10);
+  pdf.text(serviceLabel.toUpperCase(), margin + 8, summaryY + 14);
 
   // Status Badge
   const statusColor = data.status === 'finalizado' ? THEME.success : (data.status === 'em_andamento' ? THEME.primary : THEME.warning);
@@ -541,34 +545,35 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   let cy = y + 16;
   cy = drawField(pdf, 'Cliente', data.client.name, colOneX + 6, cy, colWidth - 10);
   cy = drawField(pdf, 'Telefone', data.client.contact_phone || '-', colOneX + 6, cy, colWidth - 10);
-  // Highlighted Local do Sinistro
+  // Highlighted Local do Sinistro - Minimalist style
   cy += 4;
-  setColor(pdf, { r: 255, g: 255, b: 255 }); // White bg for contrast
-  // Or maybe user wants border only? "algum contorno ou que chame atenção"
-  // Let's use a subtle background + border
-  setColor(pdf, { r: 254, g: 242, b: 242 }); // Light red/orange bg
-  drawRoundedRect(pdf, colOneX + 6, cy, colWidth - 12, 24, 1, 'F');
-  setColor(pdf, THEME.border);
-  drawRoundedRect(pdf, colOneX + 6, cy, colWidth - 12, 24, 1, 'S');
+  // Clean gray background
+  setColor(pdf, { r: 245, g: 245, b: 247 });
+  drawRoundedRect(pdf, colOneX + 6, cy, colWidth - 12, 24, 2, 'F');
+  // Left accent line
+  setColor(pdf, THEME.primary);
+  pdf.rect(colOneX + 6, cy, 1.5, 24, 'F');
 
   let locY = cy + 5;
   setColor(pdf, THEME.primary);
   pdf.setFontSize(7);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('LOCAL DO SINISTRO', colOneX + 10, locY + 3);
+  pdf.text('LOCAL DO SINISTRO', colOneX + 12, locY + 3);
 
   locY += 8;
   setColor(pdf, THEME.text);
   pdf.setFontSize(9);
   pdf.setFont('helvetica', 'bold');
-  pdf.text(`${data.city} / ${data.state}`, colOneX + 10, locY + 3);
+  pdf.text(`${data.city} / ${data.state}`, colOneX + 12, locY + 3);
 
-  locY += 5;
+  locY += 6;
   setColor(pdf, THEME.secondaryText);
   pdf.setFontSize(7);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('COORDENADAS', colOneX + 12, locY + 2);
   pdf.setFont('helvetica', 'normal');
   const coordsCoords = data.coordinates_lat ? `${data.coordinates_lat}, ${data.coordinates_lng}` : 'Sem coordenadas';
-  pdf.text(coordsCoords, colOneX + 10, locY + 3);
+  pdf.text(coordsCoords, colOneX + 12 + pdf.getTextWidth('COORDENADAS '), locY + 2);
 
   // Card: VEÍCULO / ALVO
   drawCard(pdf, colTwoX, y, colWidth, cardH, 'VEÍCULO / ALVO');
