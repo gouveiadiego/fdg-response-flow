@@ -278,6 +278,12 @@ export type Database = {
           toll_cost: number | null
           total_cost: number | null
           updated_at: string
+          main_agent_payment_status: string
+          main_agent_paid_at: string | null
+          support_agent_1_payment_status: string
+          support_agent_1_paid_at: string | null
+          support_agent_2_payment_status: string
+          support_agent_2_paid_at: string | null
           vehicle_id: string
         }
         Insert: {
@@ -324,6 +330,12 @@ export type Database = {
           toll_cost?: number | null
           total_cost?: number | null
           updated_at?: string
+          main_agent_payment_status?: string
+          main_agent_paid_at?: string | null
+          support_agent_1_payment_status?: string
+          support_agent_1_paid_at?: string | null
+          support_agent_2_payment_status?: string
+          support_agent_2_paid_at?: string | null
           vehicle_id: string
         }
         Update: {
@@ -370,6 +382,12 @@ export type Database = {
           toll_cost?: number | null
           total_cost?: number | null
           updated_at?: string
+          main_agent_payment_status?: string
+          main_agent_paid_at?: string | null
+          support_agent_1_payment_status?: string
+          support_agent_1_paid_at?: string | null
+          support_agent_2_payment_status?: string
+          support_agent_2_paid_at?: string | null
           vehicle_id?: string
         }
         Relationships: [

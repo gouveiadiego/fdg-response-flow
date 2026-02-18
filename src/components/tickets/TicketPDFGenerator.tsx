@@ -66,6 +66,11 @@ interface TicketPDFData {
   support_agent_1?: {
     name: string;
     is_armed: boolean | null;
+    pix_key?: string | null;
+    bank_name?: string | null;
+    bank_agency?: string | null;
+    bank_account?: string | null;
+    bank_account_type?: string | null;
   } | null;
   support_agent_1_arrival: string | null;
   support_agent_1_departure: string | null;
@@ -77,6 +82,11 @@ interface TicketPDFData {
   support_agent_2?: {
     name: string;
     is_armed: boolean | null;
+    pix_key?: string | null;
+    bank_name?: string | null;
+    bank_agency?: string | null;
+    bank_account?: string | null;
+    bank_account_type?: string | null;
   } | null;
   support_agent_2_arrival: string | null;
   support_agent_2_departure: string | null;

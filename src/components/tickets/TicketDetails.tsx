@@ -77,10 +77,16 @@ interface TicketFull {
   support_agent_2_toll_cost: number | null;
   support_agent_2_food_cost: number | null;
   support_agent_2_other_costs: number | null;
+  main_agent_payment_status: string;
+  main_agent_paid_at: string | null;
+  support_agent_1_payment_status: string;
+  support_agent_1_paid_at: string | null;
+  support_agent_2_payment_status: string;
+  support_agent_2_paid_at: string | null;
   clients: { name: string; document: string; contact_phone: string | null };
   main_agent: { name: string; is_armed: boolean | null; pix_key: string | null; bank_name: string | null; bank_agency: string | null; bank_account: string | null; bank_account_type: string | null; vehicle_plate: string | null };
-  support_agent_1: { name: string; is_armed: boolean | null } | null;
-  support_agent_2: { name: string; is_armed: boolean | null } | null;
+  support_agent_1: { name: string; is_armed: boolean | null; pix_key: string | null; bank_name: string | null; bank_agency: string | null; bank_account: string | null; bank_account_type: string | null } | null;
+  support_agent_2: { name: string; is_armed: boolean | null; pix_key: string | null; bank_name: string | null; bank_agency: string | null; bank_account: string | null; bank_account_type: string | null } | null;
   vehicles: {
     description: string;
     tractor_plate: string | null;
@@ -161,8 +167,8 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
           *,
           clients (name, document, contact_phone),
           main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type, vehicle_plate),
-          support_agent_1:agents!tickets_support_agent_1_id_fkey (name, is_armed),
-          support_agent_2:agents!tickets_support_agent_2_id_fkey (name, is_armed),
+          support_agent_1:agents!tickets_support_agent_1_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type),
+          support_agent_2:agents!tickets_support_agent_2_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type),
           vehicles (
             description, 
             tractor_plate, 
@@ -251,8 +257,8 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
           *,
           clients (name, document, contact_phone),
           main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type, vehicle_plate),
-          support_agent_1:agents!tickets_support_agent_1_id_fkey (name, is_armed),
-          support_agent_2:agents!tickets_support_agent_2_id_fkey (name, is_armed),
+          support_agent_1:agents!tickets_support_agent_1_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type),
+          support_agent_2:agents!tickets_support_agent_2_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type),
           vehicles (
             description, 
             tractor_plate, 
@@ -326,6 +332,11 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
         support_agent_1: (freshTicket as any).support_agent_1 ? {
           name: (freshTicket as any).support_agent_1.name,
           is_armed: (freshTicket as any).support_agent_1.is_armed,
+          pix_key: (freshTicket as any).support_agent_1.pix_key,
+          bank_name: (freshTicket as any).support_agent_1.bank_name,
+          bank_agency: (freshTicket as any).support_agent_1.bank_agency,
+          bank_account: (freshTicket as any).support_agent_1.bank_account,
+          bank_account_type: (freshTicket as any).support_agent_1.bank_account_type,
         } : null,
         support_agent_1_arrival: (freshTicket as any).support_agent_1_arrival,
         support_agent_1_departure: (freshTicket as any).support_agent_1_departure,
@@ -337,6 +348,11 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
         support_agent_2: (freshTicket as any).support_agent_2 ? {
           name: (freshTicket as any).support_agent_2.name,
           is_armed: (freshTicket as any).support_agent_2.is_armed,
+          pix_key: (freshTicket as any).support_agent_2.pix_key,
+          bank_name: (freshTicket as any).support_agent_2.bank_name,
+          bank_agency: (freshTicket as any).support_agent_2.bank_agency,
+          bank_account: (freshTicket as any).support_agent_2.bank_account,
+          bank_account_type: (freshTicket as any).support_agent_2.bank_account_type,
         } : null,
         support_agent_2_arrival: (freshTicket as any).support_agent_2_arrival,
         support_agent_2_departure: (freshTicket as any).support_agent_2_departure,
@@ -624,6 +640,33 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                         </span>
                       </div>
                     </div>
+                    {/* Costs Grid */}
+                    <div className="grid grid-cols-4 gap-2 border-t pt-2 border-dashed">
+                      <div className="text-center">
+                        <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Pedágio</span>
+                        <span className="text-xs font-semibold">
+                          {ticket.toll_cost ? ticket.toll_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                        </span>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Alimentação</span>
+                        <span className="text-xs font-semibold">
+                          {ticket.food_cost ? ticket.food_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                        </span>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Outros</span>
+                        <span className="text-xs font-semibold">
+                          {ticket.other_costs ? ticket.other_costs.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                        </span>
+                      </div>
+                      <div className="text-center bg-muted/20 rounded">
+                        <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Total</span>
+                        <span className="text-xs font-bold">
+                          {((ticket.toll_cost || 0) + (ticket.food_cost || 0) + (ticket.other_costs || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Support Agent 1 */}
@@ -686,6 +729,33 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                               const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
                               return `${hours}h ${minutes}m`;
                             })()}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Costs Grid */}
+                      <div className="grid grid-cols-4 gap-2 border-t pt-2 border-dashed">
+                        <div className="text-center">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Pedágio</span>
+                          <span className="text-xs font-semibold">
+                            {ticket.support_agent_1_toll_cost ? ticket.support_agent_1_toll_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                          </span>
+                        </div>
+                        <div className="text-center">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Alimentação</span>
+                          <span className="text-xs font-semibold">
+                            {ticket.support_agent_1_food_cost ? ticket.support_agent_1_food_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                          </span>
+                        </div>
+                        <div className="text-center">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Outros</span>
+                          <span className="text-xs font-semibold">
+                            {ticket.support_agent_1_other_costs ? ticket.support_agent_1_other_costs.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                          </span>
+                        </div>
+                        <div className="text-center bg-muted/20 rounded">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Total</span>
+                          <span className="text-xs font-bold">
+                            {((ticket.support_agent_1_toll_cost || 0) + (ticket.support_agent_1_food_cost || 0) + (ticket.support_agent_1_other_costs || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </span>
                         </div>
                       </div>
@@ -752,6 +822,33 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                               const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
                               return `${hours}h ${minutes}m`;
                             })()}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Costs Grid */}
+                      <div className="grid grid-cols-4 gap-2 border-t pt-2 border-dashed">
+                        <div className="text-center">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Pedágio</span>
+                          <span className="text-xs font-semibold">
+                            {ticket.support_agent_2_toll_cost ? ticket.support_agent_2_toll_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                          </span>
+                        </div>
+                        <div className="text-center">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Alimentação</span>
+                          <span className="text-xs font-semibold">
+                            {ticket.support_agent_2_food_cost ? ticket.support_agent_2_food_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                          </span>
+                        </div>
+                        <div className="text-center">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Outros</span>
+                          <span className="text-xs font-semibold">
+                            {ticket.support_agent_2_other_costs ? ticket.support_agent_2_other_costs.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                          </span>
+                        </div>
+                        <div className="text-center bg-muted/20 rounded">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Total</span>
+                          <span className="text-xs font-bold">
+                            {((ticket.support_agent_2_toll_cost || 0) + (ticket.support_agent_2_food_cost || 0) + (ticket.support_agent_2_other_costs || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </span>
                         </div>
                       </div>

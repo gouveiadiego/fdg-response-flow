@@ -1,4 +1,4 @@
-import { Home, Users, UserCheck, FileText, LogOut, Truck, ClipboardList, TrendingUp } from 'lucide-react';
+import { Home, Users, UserCheck, FileText, LogOut, Truck, ClipboardList, TrendingUp, DollarSign } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,6 +24,7 @@ const menuItems = [
   { title: 'Veículos', url: '/vehicles', icon: Truck },
   { title: 'Agentes', url: '/agents', icon: UserCheck },
   { title: 'Operadores', url: '/operators', icon: Users },
+  { title: 'Financeiro', url: '/financeiro', icon: DollarSign },
   { title: 'Planos', url: '/plans', icon: ClipboardList },
 ];
 
