@@ -264,11 +264,10 @@ export default function AgentRegistration() {
                                                     </FormControl>
                                                     <Button
                                                         type="button"
-                                                        variant="outline"
                                                         size="icon"
                                                         onClick={handleCepLookup}
                                                         disabled={isCepLoading}
-                                                        className="border-white/20 text-white hover:bg-white/10"
+                                                        className="bg-amber-500 hover:bg-amber-600 text-white border-0"
                                                     >
                                                         {isCepLoading ? (
                                                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -345,7 +344,7 @@ export default function AgentRegistration() {
                                 <div className="space-y-4 pt-4 border-t border-white/10">
                                     <h3 className="text-sm font-semibold text-amber-400 uppercase tracking-wider">Habilidades e Especialidades</h3>
 
-                                    <div className="space-y-3 bg-white/5 rounded-lg p-4">
+                                    <div className="space-y-3 bg-black/20 rounded-lg p-4 border border-white/5">
                                         <FormField
                                             control={form.control}
                                             name="is_armed"
@@ -356,7 +355,11 @@ export default function AgentRegistration() {
                                                         <p className="text-xs text-white/40">Porta arma de fogo</p>
                                                     </div>
                                                     <FormControl>
-                                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                        <Switch
+                                                            checked={field.value}
+                                                            onCheckedChange={field.onChange}
+                                                            className="data-[state=checked]:bg-amber-500"
+                                                        />
                                                     </FormControl>
                                                 </FormItem>
                                             )}
@@ -372,7 +375,11 @@ export default function AgentRegistration() {
                                                         <p className="text-xs text-white/40">Atendimento de alarmes</p>
                                                     </div>
                                                     <FormControl>
-                                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                        <Switch
+                                                            checked={field.value}
+                                                            onCheckedChange={field.onChange}
+                                                            className="data-[state=checked]:bg-amber-500"
+                                                        />
                                                     </FormControl>
                                                 </FormItem>
                                             )}
@@ -388,7 +395,11 @@ export default function AgentRegistration() {
                                                         <p className="text-xs text-white/40">Averiguação de ocorrências</p>
                                                     </div>
                                                     <FormControl>
-                                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                        <Switch
+                                                            checked={field.value}
+                                                            onCheckedChange={field.onChange}
+                                                            className="data-[state=checked]:bg-amber-500"
+                                                        />
                                                     </FormControl>
                                                 </FormItem>
                                             )}
@@ -404,7 +415,11 @@ export default function AgentRegistration() {
                                                         <p className="text-xs text-white/40">Preservação de local</p>
                                                     </div>
                                                     <FormControl>
-                                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                        <Switch
+                                                            checked={field.value}
+                                                            onCheckedChange={field.onChange}
+                                                            className="data-[state=checked]:bg-amber-500"
+                                                        />
                                                     </FormControl>
                                                 </FormItem>
                                             )}
@@ -420,7 +435,11 @@ export default function AgentRegistration() {
                                                         <p className="text-xs text-white/40">Escolta e acompanhamento</p>
                                                     </div>
                                                     <FormControl>
-                                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                        <Switch
+                                                            checked={field.value}
+                                                            onCheckedChange={field.onChange}
+                                                            className="data-[state=checked]:bg-amber-500"
+                                                        />
                                                     </FormControl>
                                                 </FormItem>
                                             )}
@@ -436,7 +455,11 @@ export default function AgentRegistration() {
                                                         <p className="text-xs text-white/40">Levantamento de informações</p>
                                                     </div>
                                                     <FormControl>
-                                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                        <Switch
+                                                            checked={field.value}
+                                                            onCheckedChange={field.onChange}
+                                                            className="data-[state=checked]:bg-amber-500"
+                                                        />
                                                     </FormControl>
                                                 </FormItem>
                                             )}
