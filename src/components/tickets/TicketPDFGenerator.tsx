@@ -465,62 +465,45 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   let y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg);
 
   // Summary Banner (Floating Card) with Status
-  const summaryH = 25;
+  const summaryH = 22;
   const summaryY = y;
 
-  // Draw Status Badge style card
+  // Draw card background
   drawShadowRect(pdf, margin, summaryY, contentWidth, summaryH, 3);
   setColor(pdf, THEME.white);
   drawRoundedRect(pdf, margin, summaryY, contentWidth, summaryH, 3, 'F');
 
-  // Service Type Large
+  // Left accent bar
   setColor(pdf, THEME.primary);
-  // Service Type Large - Use label or fallback to raw
+  drawRoundedRect(pdf, margin, summaryY, 2.5, summaryH, 1.5, 'F');
+
+  // — Left column: TIPO DE ATENDIMENTO —
   const serviceLabel = serviceTypeLabels[data.service_type.toLowerCase()] || data.service_type;
   setColor(pdf, THEME.secondaryText);
-  pdf.setFontSize(7);
+  pdf.setFontSize(6.5);
   pdf.setFont('helvetica', 'normal');
   pdf.text('TIPO DE ATENDIMENTO', margin + 8, summaryY + 7);
   setColor(pdf, THEME.primary);
-  pdf.setFontSize(14);
+  pdf.setFontSize(13);
   pdf.setFont('helvetica', 'bold');
   pdf.text(serviceLabel.toUpperCase(), margin + 8, summaryY + 14);
 
-  // Status Badge
-  const statusColor = data.status === 'finalizado' ? THEME.success : (data.status === 'em_andamento' ? THEME.primary : THEME.warning);
-  setColor(pdf, statusColor);
-  drawRoundedRect(pdf, pageWidth - margin - 40, summaryY + 5, 30, 8, 2, 'F');
-  setColor(pdf, THEME.white);
-  pdf.setFontSize(7);
+  // — Right column: OPERADOR —
+  const operatorX = pageWidth / 2 + 10;
+  setColor(pdf, THEME.secondaryText);
+  pdf.setFontSize(6.5);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('OPERADOR', operatorX, summaryY + 7);
+  setColor(pdf, THEME.text);
+  pdf.setFontSize(10);
   pdf.setFont('helvetica', 'bold');
-  pdf.text(data.status.toUpperCase(), pageWidth - margin - 25, summaryY + 9.5, { align: 'center' });
-
-  // Quick Info Row inside Summary Card
-  const infoY = summaryY + 18;
-  const colW = contentWidth / 4;
-
-  // Function to draw mini stats
-  const drawMiniStat = (label: string, val: string, xPos: number) => {
-    setColor(pdf, THEME.secondaryText);
-    pdf.setFontSize(7);
-    pdf.text(label, xPos, infoY);
-    setColor(pdf, THEME.text);
-    pdf.setFontSize(8.5); // Slightly smaller to fit operator name
-    pdf.setFont('helvetica', 'bold');
-
-    // Check if value is too long
-    const valText = val || '-';
-    if (pdf.getTextWidth(valText) > colW - 5) {
-      pdf.setFontSize(7);
-    }
-    pdf.text(valText, xPos, infoY + 4);
-    pdf.setFontSize(9); // Reset
-  };
-
-  const protocolText = data.operator_name || 'N/A';
-  drawMiniStat('OPERADOR', protocolText, margin + 8);
+  pdf.text(data.operator_name || 'N/A', operatorX, summaryY + 14);
 
   y += summaryH + 10;
+
+
+
+
 
   // Two Columns Layout
   const colOneX = margin;
