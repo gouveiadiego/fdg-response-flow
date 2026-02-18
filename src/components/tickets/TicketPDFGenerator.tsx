@@ -602,6 +602,24 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
 
   if (hasMainData || hasS1Data || hasS2Data) {
 
+    // Calculate total height needed for ALL agent cards to keep them together
+    const singleCardH = 42;
+    const cardGap = 4;
+    const titleH = 10;
+    const summaryBlockH = 22;
+    let totalAgentSectionH = titleH + singleCardH + cardGap; // title + main agent
+    if (hasS1Data) totalAgentSectionH += singleCardH + cardGap;
+    if (hasS2Data) totalAgentSectionH += singleCardH + cardGap;
+    totalAgentSectionH += summaryBlockH + 10; // summary card + margin
+
+    // Force page break if section doesn't fit, so everything stays together
+    if (y + totalAgentSectionH > pageHeight - (margin + 10)) {
+      pdf.addPage();
+      setColor(pdf, THEME.background);
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+      y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg);
+    }
+
     // Removed "DETALHES DA OPERAÇÃO" card as requested - merging into agent cards
 
     // Section Title
@@ -725,10 +743,6 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
 
     // Draw agent cards
     if (hasMainData) {
-      const height = 42;
-      if (await checkPageBreak(height + 10)) {
-        // y updated in checkPageBreak
-      }
       y = drawAgentDetailCard(
         data.agent.is_armed,
         data.km_start,
@@ -743,10 +757,6 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
     const supportHeight = 42;
 
     if (hasS1Data && data.support_agent_1) {
-      // S1: Show Location = false
-      if (await checkPageBreak(supportHeight + 10)) {
-        // y updated
-      }
       y = drawAgentDetailCard(
         data.support_agent_1.is_armed,
         data.support_agent_1_km_start,
@@ -759,10 +769,6 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
     }
 
     if (hasS2Data && data.support_agent_2) {
-      // S2: Show Location = false
-      if (await checkPageBreak(supportHeight + 10)) {
-        // y updated
-      }
       y = drawAgentDetailCard(
         data.support_agent_2.is_armed,
         data.support_agent_2_km_start,
@@ -776,9 +782,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
 
     // Operation Summary
     const summaryCardH = 22;
-    if (await checkPageBreak(summaryCardH + 20)) {
-      // y updated
-    }
+
 
     const totalTeamKm = calculateTotalTeamKm(data);
 
