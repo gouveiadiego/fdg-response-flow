@@ -525,20 +525,13 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
 
   const cardH = 75;
 
-  // Card: SOLICITANTE
-  drawCard(pdf, colOneX, y, colWidth, cardH, 'DADOS DO SOLICITANTE');
-  // ... (content of Solicitante) ...
-
-  // ... (content of Veículo) ...
-
-  // (Note: I need to target the drawAgentDetailCard function first to remove costs, then the calling logic)
-
 
   // Card: SOLICITANTE
   drawCard(pdf, colOneX, y, colWidth, cardH, 'DADOS DO SOLICITANTE');
   let cy = y + 16;
   cy = drawField(pdf, 'Cliente', data.client.name, colOneX + 6, cy, colWidth - 10);
   cy = drawField(pdf, 'Telefone', data.client.contact_phone || '-', colOneX + 6, cy, colWidth - 10);
+  cy = drawField(pdf, 'Local do Sinistro', `${data.city} / ${data.state}`, colOneX + 6, cy, colWidth - 10);
 
   // Card: VEÍCULO / ALVO
   drawCard(pdf, colTwoX, y, colWidth, cardH, 'VEÍCULO / ALVO');
