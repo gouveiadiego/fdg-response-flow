@@ -214,6 +214,23 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
   const kmEnd = form.watch('km_end') || 0;
   const kmRodado = kmEnd >= kmStart && kmStart > 0 ? kmEnd - kmStart : 0;
 
+  // Duration calculations
+  const mainArrival = form.watch('main_agent_arrival') || '';
+  const mainDeparture = form.watch('main_agent_departure') || '';
+  const s1Arrival = form.watch('support_agent_1_arrival') || '';
+  const s1Departure = form.watch('support_agent_1_departure') || '';
+  const s2Arrival = form.watch('support_agent_2_arrival') || '';
+  const s2Departure = form.watch('support_agent_2_departure') || '';
+
+  const calcDuration = (arrival: string, departure: string): string => {
+    if (!arrival || !departure) return '-';
+    const diff = new Date(departure).getTime() - new Date(arrival).getTime();
+    if (diff <= 0) return '-';
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+  };
+
   // Support 1 Calculations
   const s1Toll = form.watch('support_agent_1_toll_cost') || 0;
   const s1Food = form.watch('support_agent_1_food_cost') || 0;
@@ -837,7 +854,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
                       <FormField
                         control={form.control}
                         name="main_agent_arrival"
@@ -862,6 +879,12 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                           </FormItem>
                         )}
                       />
+                      <div className="space-y-2">
+                        <Label className="text-xs">Tempo</Label>
+                        <div className="h-9 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold text-primary">
+                          {calcDuration(mainArrival, mainDeparture)}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
@@ -1075,6 +1098,12 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                             </FormItem>
                           )}
                         />
+                        <div className="space-y-2">
+                          <Label className="text-xs">Tempo</Label>
+                          <div className="h-9 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold text-primary">
+                            {calcDuration(s1Arrival, s1Departure)}
+                          </div>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -1282,6 +1311,12 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                             </FormItem>
                           )}
                         />
+                        <div className="space-y-2">
+                          <Label className="text-xs">Tempo</Label>
+                          <div className="h-9 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold text-primary">
+                            {calcDuration(s2Arrival, s2Departure)}
+                          </div>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
