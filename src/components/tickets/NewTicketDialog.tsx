@@ -500,6 +500,25 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
     else if (activeTab === 'agente') setActiveTab('cliente');
   };
 
+  const onInvalid = (errors: any) => {
+    console.error('Erros de validação:', errors);
+    toast.error('Por favor, verifique os campos obrigatórios preenchidos incorretamente.');
+
+    if (errors.client_id || errors.vehicle_id || errors.plan_id || errors.service_type || errors.city || errors.state) {
+      setActiveTab('cliente');
+      return;
+    }
+
+    if (errors.main_agent_id || errors.support_agents || errors.operator_id) {
+      setActiveTab('agente');
+      return;
+    }
+
+    if (errors.detailed_report) {
+      setActiveTab('fotos');
+    }
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -512,7 +531,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
+            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="cliente">Cliente</TabsTrigger>

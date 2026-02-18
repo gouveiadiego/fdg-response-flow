@@ -646,11 +646,16 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
                 console.error('Form validation errors:', errors);
-                const firstError = Object.values(errors)[0];
-                if (firstError?.message) {
-                  toast.error(`Erro de validação: ${firstError.message}`);
-                } else {
-                  toast.error('Verifique os campos obrigatórios');
+                toast.error('Por favor, verifique os campos obrigatórios preenchidos incorretamente.');
+
+                if (errors.status || errors.client_id || errors.vehicle_id || errors.plan_id || errors.service_type || errors.city || errors.state) {
+                  setActiveTab('cliente');
+                  return;
+                }
+
+                if (errors.main_agent_id || errors.support_agents || errors.operator_id || errors.detailed_report) {
+                  setActiveTab('agente');
+                  return;
                 }
               })} className="space-y-4 pr-4">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
