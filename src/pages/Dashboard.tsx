@@ -62,7 +62,17 @@ const Dashboard = () => {
     try {
       const { data: tickets, error: ticketsError } = await supabase
         .from('tickets')
-        .select('*, clients(name)');
+        .select(`
+          *,
+          clients(name),
+          ticket_support_agents(
+            agent_id,
+            toll_cost,
+            food_cost,
+            other_costs,
+            payment_status
+          )
+        `);
 
       const [clientsResult, agentsResult] = await Promise.all([
         supabase.from('clients').select('*', { count: 'exact', head: true }),
@@ -100,10 +110,6 @@ const Dashboard = () => {
       // Process Payment Stats
 
       // 1. Pending Payments (ALL TIME, finalizado status)
-      // We need to look at ALL tickets for pending status, not just the filtered ones
-      // However, for performance we might rely on the initial 'tickets' fetch which is unrestricted?
-      // Yes, 'tickets' contains all tickets.
-
       const allTickets = tickets || [];
       const pendingTickets = allTickets.filter(t => t.status === 'finalizado');
 
@@ -117,22 +123,20 @@ const Dashboard = () => {
           pendingValue += cost;
           pendingAgents.add(t.main_agent_id);
         }
-        // Support 1
-        if (t.support_agent_1_id && (t.support_agent_1_payment_status === 'pendente' || !t.support_agent_1_payment_status)) {
-          const cost = (Number(t.support_agent_1_toll_cost) || 0) + (Number(t.support_agent_1_food_cost) || 0) + (Number(t.support_agent_1_other_costs) || 0);
-          pendingValue += cost;
-          pendingAgents.add(t.support_agent_1_id);
-        }
-        // Support 2
-        if (t.support_agent_2_id && (t.support_agent_2_payment_status === 'pendente' || !t.support_agent_2_payment_status)) {
-          const cost = (Number(t.support_agent_2_toll_cost) || 0) + (Number(t.support_agent_2_food_cost) || 0) + (Number(t.support_agent_2_other_costs) || 0);
-          pendingValue += cost;
-          pendingAgents.add(t.support_agent_2_id);
+
+        // Dynamic Support Agents
+        if (t.ticket_support_agents && t.ticket_support_agents.length > 0) {
+          t.ticket_support_agents.forEach((sa: any) => {
+            if (sa.payment_status === 'pendente' || !sa.payment_status) {
+              const cost = (Number(sa.toll_cost) || 0) + (Number(sa.food_cost) || 0) + (Number(sa.other_costs) || 0);
+              pendingValue += cost;
+              pendingAgents.add(sa.agent_id);
+            }
+          });
         }
       });
 
       // 2. Paid Payments (FILTERED by date range)
-      // We look at 'filteredTickets' which are already filtered by the selected date range
       const paidTickets = filteredTickets.filter(t => t.status === 'finalizado');
 
       let paidValue = 0;
@@ -141,22 +145,20 @@ const Dashboard = () => {
       paidTickets.forEach(t => {
         // Main Agent
         if (t.main_agent_id && t.main_agent_payment_status === 'pago') {
-          // Ideally we should use the exact paid amount if stored, but we recalc from costs
           const cost = (Number(t.toll_cost) || 0) + (Number(t.food_cost) || 0) + (Number(t.other_costs) || 0);
           paidValue += cost;
           paidAgents.add(t.main_agent_id);
         }
-        // Support 1
-        if (t.support_agent_1_id && t.support_agent_1_payment_status === 'pago') {
-          const cost = (Number(t.support_agent_1_toll_cost) || 0) + (Number(t.support_agent_1_food_cost) || 0) + (Number(t.support_agent_1_other_costs) || 0);
-          paidValue += cost;
-          paidAgents.add(t.support_agent_1_id);
-        }
-        // Support 2
-        if (t.support_agent_2_id && t.support_agent_2_payment_status === 'pago') {
-          const cost = (Number(t.support_agent_2_toll_cost) || 0) + (Number(t.support_agent_2_food_cost) || 0) + (Number(t.support_agent_2_other_costs) || 0);
-          paidValue += cost;
-          paidAgents.add(t.support_agent_2_id);
+
+        // Dynamic Support Agents
+        if (t.ticket_support_agents && t.ticket_support_agents.length > 0) {
+          t.ticket_support_agents.forEach((sa: any) => {
+            if (sa.payment_status === 'pago') {
+              const cost = (Number(sa.toll_cost) || 0) + (Number(sa.food_cost) || 0) + (Number(sa.other_costs) || 0);
+              paidValue += cost;
+              paidAgents.add(sa.agent_id);
+            }
+          });
         }
       });
 

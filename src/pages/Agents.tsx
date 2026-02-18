@@ -130,29 +130,16 @@ const Agents = () => {
         return;
       }
 
-      // Check for tickets as support agent 1
-      const { count: support1Count, error: support1Error } = await supabase
-        .from('tickets')
+      // Check for tickets as support agent (dynamic)
+      const { count: supportCount, error: supportError } = await supabase
+        .from('ticket_support_agents')
         .select('id', { count: 'exact', head: true })
-        .eq('support_agent_1_id', agentToDelete);
+        .eq('agent_id', agentToDelete);
 
-      if (support1Error) throw support1Error;
+      if (supportError) throw supportError;
 
-      if (support1Count && support1Count > 0) {
-        toast.error(`Não é possível excluir: Agente está como suporte 1 em ${support1Count} chamado(s).`);
-        return;
-      }
-
-      // Check for tickets as support agent 2
-      const { count: support2Count, error: support2Error } = await supabase
-        .from('tickets')
-        .select('id', { count: 'exact', head: true })
-        .eq('support_agent_2_id', agentToDelete);
-
-      if (support2Error) throw support2Error;
-
-      if (support2Count && support2Count > 0) {
-        toast.error(`Não é possível excluir: Agente está como suporte 2 em ${support2Count} chamado(s).`);
+      if (supportCount && supportCount > 0) {
+        toast.error(`Não é possível excluir: Agente está como apoio em ${supportCount} chamado(s).`);
         return;
       }
 

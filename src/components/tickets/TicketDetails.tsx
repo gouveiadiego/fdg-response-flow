@@ -85,8 +85,27 @@ interface TicketFull {
   support_agent_2_paid_at: string | null;
   clients: { name: string; document: string; contact_phone: string | null };
   main_agent: { name: string; is_armed: boolean | null; pix_key: string | null; bank_name: string | null; bank_agency: string | null; bank_account: string | null; bank_account_type: string | null; vehicle_plate: string | null };
-  support_agent_1: { name: string; is_armed: boolean | null; pix_key: string | null; bank_name: string | null; bank_agency: string | null; bank_account: string | null; bank_account_type: string | null } | null;
-  support_agent_2: { name: string; is_armed: boolean | null; pix_key: string | null; bank_name: string | null; bank_agency: string | null; bank_account: string | null; bank_account_type: string | null } | null;
+  ticket_support_agents: {
+    id: string;
+    agent: {
+      name: string;
+      is_armed: boolean | null;
+      pix_key: string | null;
+      bank_name: string | null;
+      bank_agency: string | null;
+      bank_account: string | null;
+      bank_account_type: string | null;
+    };
+    arrival: string | null;
+    departure: string | null;
+    km_start: number | null;
+    km_end: number | null;
+    toll_cost: number | null;
+    food_cost: number | null;
+    other_costs: number | null;
+    payment_status: string | null;
+    paid_at: string | null;
+  }[];
   vehicles: {
     description: string;
     tractor_plate: string | null;
@@ -100,7 +119,7 @@ interface TicketFull {
     trailer3_body_type: string | null;
   };
   plans: { name: string };
-  operators: { name: string } | null;
+  operators?: { name: string } | null;
 }
 
 interface TicketPhoto {
@@ -129,6 +148,7 @@ const serviceTypeLabels: Record<string, string> = {
   averiguacao: 'Averiguação',
   preservacao: 'Preservação',
   acompanhamento_logistico: 'Acompanhamento Logístico',
+  sindicancia: 'Sindicância',
 };
 
 const bodyTypeLabels: Record<string, string> = {
@@ -167,8 +187,10 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
           *,
           clients (name, document, contact_phone),
           main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type, vehicle_plate),
-          support_agent_1:agents!tickets_support_agent_1_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type),
-          support_agent_2:agents!tickets_support_agent_2_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type),
+          ticket_support_agents (
+            *,
+            agent:agents (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
+          ),
           vehicles (
             description, 
             tractor_plate, 
@@ -257,8 +279,10 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
           *,
           clients (name, document, contact_phone),
           main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type, vehicle_plate),
-          support_agent_1:agents!tickets_support_agent_1_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type),
-          support_agent_2:agents!tickets_support_agent_2_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type),
+          ticket_support_agents (
+            *,
+            agent:agents (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
+          ),
           vehicles (
             description, 
             tractor_plate, 
@@ -280,17 +304,6 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
       if (ticketError) throw ticketError;
       if (!freshTicket) throw new Error('Ticket not found');
 
-      // Fetch operator name from profiles
-      let operatorName: string | null = null;
-      if (freshTicket.created_by_user_id) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('name')
-          .eq('user_id', freshTicket.created_by_user_id)
-          .maybeSingle();
-        operatorName = profile?.name || null;
-      }
-
       // Fetch fresh photos
       const { data: freshPhotos, error: photosError } = await supabase
         .from('ticket_photos')
@@ -302,7 +315,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
 
       const pdfData: TicketPDFData = {
         code: freshTicket.code || null,
-        operator_name: (freshTicket as any).operators?.name || operatorName,
+        operator_name: (freshTicket as any).operators?.name || null,
         status: freshTicket.status,
         city: freshTicket.city,
         state: freshTicket.state,
@@ -329,38 +342,24 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
         },
         main_agent_arrival: (freshTicket as any).main_agent_arrival,
         main_agent_departure: (freshTicket as any).main_agent_departure,
-        support_agent_1: (freshTicket as any).support_agent_1 ? {
-          name: (freshTicket as any).support_agent_1.name,
-          is_armed: (freshTicket as any).support_agent_1.is_armed,
-          pix_key: (freshTicket as any).support_agent_1.pix_key,
-          bank_name: (freshTicket as any).support_agent_1.bank_name,
-          bank_agency: (freshTicket as any).support_agent_1.bank_agency,
-          bank_account: (freshTicket as any).support_agent_1.bank_account,
-          bank_account_type: (freshTicket as any).support_agent_1.bank_account_type,
-        } : null,
-        support_agent_1_arrival: (freshTicket as any).support_agent_1_arrival,
-        support_agent_1_departure: (freshTicket as any).support_agent_1_departure,
-        support_agent_1_km_start: (freshTicket as any).support_agent_1_km_start,
-        support_agent_1_km_end: (freshTicket as any).support_agent_1_km_end,
-        support_agent_1_toll_cost: (freshTicket as any).support_agent_1_toll_cost,
-        support_agent_1_food_cost: (freshTicket as any).support_agent_1_food_cost,
-        support_agent_1_other_costs: (freshTicket as any).support_agent_1_other_costs,
-        support_agent_2: (freshTicket as any).support_agent_2 ? {
-          name: (freshTicket as any).support_agent_2.name,
-          is_armed: (freshTicket as any).support_agent_2.is_armed,
-          pix_key: (freshTicket as any).support_agent_2.pix_key,
-          bank_name: (freshTicket as any).support_agent_2.bank_name,
-          bank_agency: (freshTicket as any).support_agent_2.bank_agency,
-          bank_account: (freshTicket as any).support_agent_2.bank_account,
-          bank_account_type: (freshTicket as any).support_agent_2.bank_account_type,
-        } : null,
-        support_agent_2_arrival: (freshTicket as any).support_agent_2_arrival,
-        support_agent_2_departure: (freshTicket as any).support_agent_2_departure,
-        support_agent_2_km_start: (freshTicket as any).support_agent_2_km_start,
-        support_agent_2_km_end: (freshTicket as any).support_agent_2_km_end,
-        support_agent_2_toll_cost: (freshTicket as any).support_agent_2_toll_cost,
-        support_agent_2_food_cost: (freshTicket as any).support_agent_2_food_cost,
-        support_agent_2_other_costs: (freshTicket as any).support_agent_2_other_costs,
+        ticket_support_agents: (freshTicket as any).ticket_support_agents?.map((sa: any) => ({
+          agent: {
+            name: sa.agent?.name || '',
+            is_armed: sa.agent?.is_armed || null,
+            pix_key: sa.agent?.pix_key,
+            bank_name: sa.agent?.bank_name,
+            bank_agency: sa.agent?.bank_agency,
+            bank_account: sa.agent?.bank_account,
+            bank_account_type: sa.agent?.bank_account_type,
+          },
+          arrival: sa.arrival,
+          departure: sa.departure,
+          km_start: sa.km_start,
+          km_end: sa.km_end,
+          toll_cost: sa.toll_cost,
+          food_cost: sa.food_cost,
+          other_costs: sa.other_costs,
+        })) || null,
         vehicle: {
           description: (freshTicket as any).vehicles?.description || '',
           tractor_plate: (freshTicket as any).vehicles?.tractor_plate || null,
@@ -379,14 +378,15 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
         photos: (freshPhotos || []).map(p => ({
           file_url: p.file_url,
           caption: p.caption,
-        })),
+          created_at: p.created_at
+        }))
       };
 
       await generateTicketPDF(pdfData);
-      toast.success('PDF gerado com sucesso!');
+      toast.success('PDF do chamado gerado com sucesso!');
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
-      toast.error('Erro ao gerar PDF');
+      toast.error('Erro ao gerar PDF do chamado');
     } finally {
       setGeneratingPDF(false);
     }
@@ -524,26 +524,16 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                       </div>
                     )}
                   </div>
-                  {ticket.support_agent_1 && (
-                    <div className="pt-1 border-t border-border">
-                      <p className="text-sm font-medium">{ticket.support_agent_1.name}</p>
+                  {ticket.ticket_support_agents?.map((supportAgent, index) => (
+                    <div key={supportAgent.id} className="pt-1 border-t border-border">
+                      <p className="text-sm font-medium">{supportAgent.agent?.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        Apoio 1 {ticket.support_agent_1.is_armed ? '(Armado)' : '(Desarmado)'}
-                        {ticket.support_agent_1_arrival && ` • Chegada: ${format(new Date(ticket.support_agent_1_arrival), 'HH:mm')}`}
-                        {ticket.support_agent_1_departure && ` • Saída: ${format(new Date(ticket.support_agent_1_departure), 'HH:mm')}`}
+                        Apoio {index + 1} {supportAgent.agent?.is_armed ? '(Armado)' : '(Desarmado)'}
+                        {supportAgent.arrival && ` • Chegada: ${format(new Date(supportAgent.arrival), 'HH:mm')}`}
+                        {supportAgent.departure && ` • Saída: ${format(new Date(supportAgent.departure), 'HH:mm')}`}
                       </p>
                     </div>
-                  )}
-                  {ticket.support_agent_2 && (
-                    <div className="pt-1 border-t border-border">
-                      <p className="text-sm font-medium">{ticket.support_agent_2.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Apoio 2 {ticket.support_agent_2.is_armed ? '(Armado)' : '(Desarmado)'}
-                        {ticket.support_agent_2_arrival && ` • Chegada: ${format(new Date(ticket.support_agent_2_arrival), 'HH:mm')}`}
-                        {ticket.support_agent_2_departure && ` • Saída: ${format(new Date(ticket.support_agent_2_departure), 'HH:mm')}`}
-                      </p>
-                    </div>
-                  )}
+                  ))}
                 </CardContent>
               </Card>
 
@@ -669,37 +659,37 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                     </div>
                   </div>
 
-                  {/* Support Agent 1 */}
-                  {ticket.support_agent_1 && (
-                    <div className="bg-card border rounded-md p-3 shadow-sm">
+                  {/* Support Agents */}
+                  {ticket.ticket_support_agents?.map((supportAgent, index) => (
+                    <div key={supportAgent.id} className="bg-card border rounded-md p-3 shadow-sm">
                       <div className="flex items-center justify-between mb-3 border-b pb-2 border-dashed">
                         <div className="flex items-center gap-2">
                           <div className="bg-muted p-1 rounded">
                             <Users className="h-3.5 w-3.5 text-muted-foreground" />
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-foreground">{ticket.support_agent_1.name}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase">Apoio 1</p>
+                            <p className="text-xs font-bold text-foreground">{supportAgent.agent?.name}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase">Apoio {index + 1}</p>
                           </div>
                         </div>
-                        <Badge variant={ticket.support_agent_1?.is_armed ? "secondary" : "outline"} className="text-[10px] h-5 px-1.5 font-normal">
-                          {ticket.support_agent_1.is_armed ? 'Armado' : 'Desarmado'}
+                        <Badge variant={supportAgent.agent?.is_armed ? "secondary" : "outline"} className="text-[10px] h-5 px-1.5 font-normal">
+                          {supportAgent.agent?.is_armed ? 'Armado' : 'Desarmado'}
                         </Badge>
                       </div>
                       <div className="grid grid-cols-3 gap-2 mb-2">
                         <div className="bg-muted/30 rounded p-2 text-center">
                           <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">KM Inicial</span>
-                          <span className="text-xs font-semibold">{ticket.support_agent_1_km_start ?? '-'}</span>
+                          <span className="text-xs font-semibold">{supportAgent.km_start ?? '-'}</span>
                         </div>
                         <div className="bg-muted/30 rounded p-2 text-center">
                           <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">KM Final</span>
-                          <span className="text-xs font-semibold">{ticket.support_agent_1_km_end ?? '-'}</span>
+                          <span className="text-xs font-semibold">{supportAgent.km_end ?? '-'}</span>
                         </div>
                         <div className="bg-muted/50 rounded p-2 text-center border border-muted">
                           <span className="text-[10px] text-muted-foreground uppercase block mb-0.5 font-medium">Rodado</span>
                           <span className="text-xs font-bold">
-                            {ticket.support_agent_1_km_start && ticket.support_agent_1_km_end
-                              ? `${Number(ticket.support_agent_1_km_end) - Number(ticket.support_agent_1_km_start)} km`
+                            {supportAgent.km_start && supportAgent.km_end
+                              ? `${Number(supportAgent.km_end) - Number(supportAgent.km_start)} km`
                               : '-'}
                           </span>
                         </div>
@@ -708,22 +698,22 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                         <div className="text-center">
                           <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Chegada</span>
                           <span className="text-xs font-semibold">
-                            {ticket.support_agent_1_arrival ? format(new Date(ticket.support_agent_1_arrival), 'HH:mm') : '-'}
+                            {supportAgent.arrival ? format(new Date(supportAgent.arrival), 'HH:mm') : '-'}
                           </span>
                         </div>
                         <div className="text-center">
                           <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Saída</span>
                           <span className="text-xs font-semibold">
-                            {ticket.support_agent_1_departure ? format(new Date(ticket.support_agent_1_departure), 'HH:mm') : '-'}
+                            {supportAgent.departure ? format(new Date(supportAgent.departure), 'HH:mm') : '-'}
                           </span>
                         </div>
                         <div className="text-center bg-muted/20 rounded">
                           <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Tempo</span>
                           <span className="text-xs font-bold">
                             {(() => {
-                              if (!ticket.support_agent_1_arrival || !ticket.support_agent_1_departure) return '-';
-                              const start = new Date(ticket.support_agent_1_arrival);
-                              const end = new Date(ticket.support_agent_1_departure);
+                              if (!supportAgent.arrival || !supportAgent.departure) return '-';
+                              const start = new Date(supportAgent.arrival);
+                              const end = new Date(supportAgent.departure);
                               const diff = end.getTime() - start.getTime();
                               const hours = Math.floor(diff / (1000 * 60 * 60));
                               const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -737,168 +727,77 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                         <div className="text-center">
                           <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Pedágio</span>
                           <span className="text-xs font-semibold">
-                            {ticket.support_agent_1_toll_cost ? ticket.support_agent_1_toll_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                            {supportAgent.toll_cost ? supportAgent.toll_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
                           </span>
                         </div>
                         <div className="text-center">
                           <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Alimentação</span>
                           <span className="text-xs font-semibold">
-                            {ticket.support_agent_1_food_cost ? ticket.support_agent_1_food_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                            {supportAgent.food_cost ? supportAgent.food_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
                           </span>
                         </div>
                         <div className="text-center">
                           <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Outros</span>
                           <span className="text-xs font-semibold">
-                            {ticket.support_agent_1_other_costs ? ticket.support_agent_1_other_costs.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                            {supportAgent.other_costs ? supportAgent.other_costs.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
                           </span>
                         </div>
                         <div className="text-center bg-muted/20 rounded">
                           <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Total</span>
                           <span className="text-xs font-bold">
-                            {((ticket.support_agent_1_toll_cost || 0) + (ticket.support_agent_1_food_cost || 0) + (ticket.support_agent_1_other_costs || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            {((supportAgent.toll_cost || 0) + (supportAgent.food_cost || 0) + (supportAgent.other_costs || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </span>
                         </div>
                       </div>
                     </div>
-                  )}
+                  ))}
+                </div>
 
-                  {/* Support Agent 2 */}
-                  {ticket.support_agent_2 && (
-                    <div className="bg-card border rounded-md p-3 shadow-sm">
-                      <div className="flex items-center justify-between mb-3 border-b pb-2 border-dashed">
-                        <div className="flex items-center gap-2">
-                          <div className="bg-muted p-1 rounded">
-                            <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-foreground">{ticket.support_agent_2.name}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase">Apoio 2</p>
-                          </div>
-                        </div>
-                        <Badge variant={ticket.support_agent_2?.is_armed ? "secondary" : "outline"} className="text-[10px] h-5 px-1.5 font-normal">
-                          {ticket.support_agent_2.is_armed ? 'Armado' : 'Desarmado'}
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 mb-2">
-                        <div className="bg-muted/30 rounded p-2 text-center">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">KM Inicial</span>
-                          <span className="text-xs font-semibold">{ticket.support_agent_2_km_start ?? '-'}</span>
-                        </div>
-                        <div className="bg-muted/30 rounded p-2 text-center">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">KM Final</span>
-                          <span className="text-xs font-semibold">{ticket.support_agent_2_km_end ?? '-'}</span>
-                        </div>
-                        <div className="bg-muted/50 rounded p-2 text-center border border-muted">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5 font-medium">Rodado</span>
-                          <span className="text-xs font-bold">
-                            {ticket.support_agent_2_km_start && ticket.support_agent_2_km_end
-                              ? `${Number(ticket.support_agent_2_km_end) - Number(ticket.support_agent_2_km_start)} km`
-                              : '-'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 border-t pt-2 border-dashed">
-                        <div className="text-center">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Chegada</span>
-                          <span className="text-xs font-semibold">
-                            {ticket.support_agent_2_arrival ? format(new Date(ticket.support_agent_2_arrival), 'HH:mm') : '-'}
-                          </span>
-                        </div>
-                        <div className="text-center">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Saída</span>
-                          <span className="text-xs font-semibold">
-                            {ticket.support_agent_2_departure ? format(new Date(ticket.support_agent_2_departure), 'HH:mm') : '-'}
-                          </span>
-                        </div>
-                        <div className="text-center bg-muted/20 rounded">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Tempo</span>
-                          <span className="text-xs font-bold">
-                            {(() => {
-                              if (!ticket.support_agent_2_arrival || !ticket.support_agent_2_departure) return '-';
-                              const start = new Date(ticket.support_agent_2_arrival);
-                              const end = new Date(ticket.support_agent_2_departure);
-                              const diff = end.getTime() - start.getTime();
-                              const hours = Math.floor(diff / (1000 * 60 * 60));
-                              const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                              return `${hours}h ${minutes}m`;
-                            })()}
-                          </span>
-                        </div>
-                      </div>
-                      {/* Costs Grid */}
-                      <div className="grid grid-cols-4 gap-2 border-t pt-2 border-dashed">
-                        <div className="text-center">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Pedágio</span>
-                          <span className="text-xs font-semibold">
-                            {ticket.support_agent_2_toll_cost ? ticket.support_agent_2_toll_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
-                          </span>
-                        </div>
-                        <div className="text-center">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Alimentação</span>
-                          <span className="text-xs font-semibold">
-                            {ticket.support_agent_2_food_cost ? ticket.support_agent_2_food_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
-                          </span>
-                        </div>
-                        <div className="text-center">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Outros</span>
-                          <span className="text-xs font-semibold">
-                            {ticket.support_agent_2_other_costs ? ticket.support_agent_2_other_costs.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
-                          </span>
-                        </div>
-                        <div className="text-center bg-muted/20 rounded">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Total</span>
-                          <span className="text-xs font-bold">
-                            {((ticket.support_agent_2_toll_cost || 0) + (ticket.support_agent_2_food_cost || 0) + (ticket.support_agent_2_other_costs || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </span>
-                        </div>
-                      </div>
+                {/* Operational Summary */}
+                < div className="mt-2 text-sm space-y-2" >
+                  <div className="bg-secondary/5 rounded-lg p-3 border border-secondary/20 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider">KM Total (Equipe)</span>
+                      <p className="text-xs text-muted-foreground mt-0.5">Soma de todos os veículos</p>
                     </div>
-                  )}
-
-                  {/* Operational Summary */}
-                  <div className="mt-2 text-sm space-y-2">
-                    <div className="bg-secondary/5 rounded-lg p-3 border border-secondary/20 flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider">KM Total (Equipe)</span>
-                        <p className="text-xs text-muted-foreground mt-0.5">Soma de todos os veículos</p>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-lg font-bold text-primary tracking-tight">
-                          {(() => {
-                            const mainKm = (ticket.km_start && ticket.km_end) ? Number(ticket.km_end) - Number(ticket.km_start) : 0;
-                            const s1Km = (ticket.support_agent_1_km_start && ticket.support_agent_1_km_end) ? Number(ticket.support_agent_1_km_end) - Number(ticket.support_agent_1_km_start) : 0;
-                            const s2Km = (ticket.support_agent_2_km_start && ticket.support_agent_2_km_end) ? Number(ticket.support_agent_2_km_end) - Number(ticket.support_agent_2_km_start) : 0;
-                            return `${mainKm + s1Km + s2Km} km`;
-                          })()}
-                        </span>
-                      </div>
+                    <div className="text-right">
+                      <span className="text-lg font-bold text-primary tracking-tight">
+                        {(() => {
+                          const mainKm = (ticket.km_start && ticket.km_end) ? Number(ticket.km_end) - Number(ticket.km_start) : 0;
+                          const supportKm = ticket.ticket_support_agents?.reduce((acc, agent) => {
+                            const km = (agent.km_start && agent.km_end) ? Number(agent.km_end) - Number(agent.km_start) : 0;
+                            return acc + km;
+                          }, 0) || 0;
+                          return `${mainKm + supportKm} km`;
+                        })()}
+                      </span>
                     </div>
+                  </div>
 
-                    <div className="bg-secondary/10 rounded-lg p-3 border border-secondary/20 flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider">Tempo Total de Operação</span>
-                        <p className="text-xs text-muted-foreground mt-0.5">Soma das horas de todos os agentes</p>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xl font-bold text-foreground tracking-tight">
-                          {(() => {
-                            let totalDiff = 0;
-                            if (ticket.main_agent_arrival && ticket.main_agent_departure) {
-                              totalDiff += new Date(ticket.main_agent_departure).getTime() - new Date(ticket.main_agent_arrival).getTime();
-                            }
-                            if (ticket.support_agent_1_arrival && ticket.support_agent_1_departure) {
-                              totalDiff += new Date(ticket.support_agent_1_departure).getTime() - new Date(ticket.support_agent_1_arrival).getTime();
-                            }
-                            if (ticket.support_agent_2_arrival && ticket.support_agent_2_departure) {
-                              totalDiff += new Date(ticket.support_agent_2_departure).getTime() - new Date(ticket.support_agent_2_arrival).getTime();
-                            }
+                  <div className="bg-secondary/10 rounded-lg p-3 border border-secondary/20 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider">Tempo Total de Operação</span>
+                      <p className="text-xs text-muted-foreground mt-0.5">Soma das horas de todos os agentes</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xl font-bold text-foreground tracking-tight">
+                        {(() => {
+                          let totalDiff = 0;
+                          if (ticket.main_agent_arrival && ticket.main_agent_departure) {
+                            totalDiff += new Date(ticket.main_agent_departure).getTime() - new Date(ticket.main_agent_arrival).getTime();
+                          }
 
-                            const hours = Math.floor(totalDiff / (1000 * 60 * 60));
-                            const minutes = Math.floor((totalDiff % (1000 * 60 * 60)) / (1000 * 60));
-                            return totalDiff > 0 ? `${hours}h ${minutes}m` : '-';
-                          })()}
-                        </span>
-                      </div>
+                          ticket.ticket_support_agents?.forEach(agent => {
+                            if (agent.arrival && agent.departure) {
+                              totalDiff += new Date(agent.departure).getTime() - new Date(agent.arrival).getTime();
+                            }
+                          });
+
+                          const hours = Math.floor(totalDiff / (1000 * 60 * 60));
+                          const minutes = Math.floor((totalDiff % (1000 * 60 * 60)) / (1000 * 60));
+                          return totalDiff > 0 ? `${hours}h ${minutes}m` : '-';
+                        })()}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1031,7 +930,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       <AddPhotosDialog
         ticketId={ticketId || ''}

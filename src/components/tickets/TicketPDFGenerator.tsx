@@ -63,38 +63,24 @@ interface TicketPDFData {
   };
   main_agent_arrival: string | null;
   main_agent_departure: string | null;
-  support_agent_1?: {
-    name: string;
-    is_armed: boolean | null;
-    pix_key?: string | null;
-    bank_name?: string | null;
-    bank_agency?: string | null;
-    bank_account?: string | null;
-    bank_account_type?: string | null;
-  } | null;
-  support_agent_1_arrival: string | null;
-  support_agent_1_departure: string | null;
-  support_agent_1_km_start: number | null;
-  support_agent_1_km_end: number | null;
-  support_agent_1_toll_cost: number | null;
-  support_agent_1_food_cost: number | null;
-  support_agent_1_other_costs: number | null;
-  support_agent_2?: {
-    name: string;
-    is_armed: boolean | null;
-    pix_key?: string | null;
-    bank_name?: string | null;
-    bank_agency?: string | null;
-    bank_account?: string | null;
-    bank_account_type?: string | null;
-  } | null;
-  support_agent_2_arrival: string | null;
-  support_agent_2_departure: string | null;
-  support_agent_2_km_start: number | null;
-  support_agent_2_km_end: number | null;
-  support_agent_2_toll_cost: number | null;
-  support_agent_2_food_cost: number | null;
-  support_agent_2_other_costs: number | null;
+  ticket_support_agents?: {
+    agent: {
+      name: string;
+      is_armed: boolean | null;
+      pix_key?: string | null;
+      bank_name?: string | null;
+      bank_agency?: string | null;
+      bank_account?: string | null;
+      bank_account_type?: string | null;
+    };
+    arrival: string | null;
+    departure: string | null;
+    km_start: number | null;
+    km_end: number | null;
+    toll_cost: number | null;
+    food_cost: number | null;
+    other_costs: number | null;
+  }[] | null;
   vehicle: {
     description: string;
     tractor_plate: string | null;
@@ -157,13 +143,12 @@ const calculateEfetivoMobilizado = (data: TicketPDFData): string => {
     if (data.agent.is_armed) armados++;
     else desarmados++;
   }
-  if (data.support_agent_1) {
-    if (data.support_agent_1.is_armed) armados++;
-    else desarmados++;
-  }
-  if (data.support_agent_2) {
-    if (data.support_agent_2.is_armed) armados++;
-    else desarmados++;
+
+  if (data.ticket_support_agents) {
+    data.ticket_support_agents.forEach(supportAgent => {
+      if (supportAgent.agent && supportAgent.agent.is_armed) armados++;
+      else desarmados++;
+    });
   }
 
   const parts: string[] = [];
@@ -186,16 +171,28 @@ const calculateAgentCosts = (toll: number | null, food: number | null, other: nu
 
 const calculateTotalTeamKm = (data: TicketPDFData): number => {
   const mainKm = calculateAgentKm(data.km_start, data.km_end);
-  const s1Km = calculateAgentKm(data.support_agent_1_km_start, data.support_agent_1_km_end);
-  const s2Km = calculateAgentKm(data.support_agent_2_km_start, data.support_agent_2_km_end);
-  return mainKm + s1Km + s2Km;
+  let supportKm = 0;
+
+  if (data.ticket_support_agents) {
+    supportKm = data.ticket_support_agents.reduce((acc, agent) => {
+      return acc + calculateAgentKm(agent.km_start, agent.km_end);
+    }, 0);
+  }
+
+  return mainKm + supportKm;
 };
 
 const calculateTotalOperationCost = (data: TicketPDFData): number => {
   const mainCost = calculateAgentCosts(data.toll_cost, data.food_cost, data.other_costs);
-  const s1Cost = calculateAgentCosts(data.support_agent_1_toll_cost, data.support_agent_1_food_cost, data.support_agent_1_other_costs);
-  const s2Cost = calculateAgentCosts(data.support_agent_2_toll_cost, data.support_agent_2_food_cost, data.support_agent_2_other_costs);
-  return mainCost + s1Cost + s2Cost;
+  let supportCost = 0;
+
+  if (data.ticket_support_agents) {
+    supportCost = data.ticket_support_agents.reduce((acc, agent) => {
+      return acc + calculateAgentCosts(agent.toll_cost, agent.food_cost, agent.other_costs);
+    }, 0);
+  }
+
+  return mainCost + supportCost;
 };
 
 // Graphics & Icons
@@ -597,10 +594,9 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   // ==================== DETALHAMENTO POR AGENTE (UNIFIED) ====================
   // Only show this section if there's any KM or cost data
   const hasMainData = true; // Main agent always exists
-  const hasS1Data = !!data.support_agent_1;
-  const hasS2Data = !!data.support_agent_2;
+  const hasSupportData = data.ticket_support_agents && data.ticket_support_agents.length > 0;
 
-  if (hasMainData || hasS1Data || hasS2Data) {
+  if (hasMainData || hasSupportData) {
 
     // Calculate total height needed for ALL agent cards to keep them together
     const singleCardH = 42;
@@ -608,8 +604,11 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
     const titleH = 10;
     const summaryBlockH = 22;
     let totalAgentSectionH = titleH + singleCardH + cardGap; // title + main agent
-    if (hasS1Data) totalAgentSectionH += singleCardH + cardGap;
-    if (hasS2Data) totalAgentSectionH += singleCardH + cardGap;
+
+    if (data.ticket_support_agents) {
+      totalAgentSectionH += data.ticket_support_agents.length * (singleCardH + cardGap);
+    }
+
     totalAgentSectionH += summaryBlockH + 10; // summary card + margin
 
     // Force page break if section doesn't fit, so everything stays together
@@ -754,35 +753,22 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       );
     }
 
-    const supportHeight = 42;
-
-    if (hasS1Data && data.support_agent_1) {
-      y = drawAgentDetailCard(
-        data.support_agent_1.is_armed,
-        data.support_agent_1_km_start,
-        data.support_agent_1_km_end,
-        y,
-        'APOIO 01',
-        data.support_agent_1_arrival,
-        data.support_agent_1_departure
-      );
-    }
-
-    if (hasS2Data && data.support_agent_2) {
-      y = drawAgentDetailCard(
-        data.support_agent_2.is_armed,
-        data.support_agent_2_km_start,
-        data.support_agent_2_km_end,
-        y,
-        'APOIO 02',
-        data.support_agent_2_arrival,
-        data.support_agent_2_departure
-      );
+    if (data.ticket_support_agents) {
+      data.ticket_support_agents.forEach((supportAgent, index) => {
+        y = drawAgentDetailCard(
+          supportAgent.agent.is_armed,
+          supportAgent.km_start,
+          supportAgent.km_end,
+          y,
+          `APOIO ${String(index + 1).padStart(2, '0')}`,
+          supportAgent.arrival,
+          supportAgent.departure
+        );
+      });
     }
 
     // Operation Summary
     const summaryCardH = 22;
-
 
     const totalTeamKm = calculateTotalTeamKm(data);
 
@@ -812,13 +798,14 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
     if (data.main_agent_arrival && data.main_agent_departure) {
       totalMinutes += (new Date(data.main_agent_departure).getTime() - new Date(data.main_agent_arrival).getTime()) / 60000;
     }
-    // S1
-    if (data.support_agent_1_arrival && data.support_agent_1_departure) {
-      totalMinutes += (new Date(data.support_agent_1_departure).getTime() - new Date(data.support_agent_1_arrival).getTime()) / 60000;
-    }
-    // S2
-    if (data.support_agent_2_arrival && data.support_agent_2_departure) {
-      totalMinutes += (new Date(data.support_agent_2_departure).getTime() - new Date(data.support_agent_2_arrival).getTime()) / 60000;
+
+    // Support Agents
+    if (data.ticket_support_agents) {
+      data.ticket_support_agents.forEach(agent => {
+        if (agent.arrival && agent.departure) {
+          totalMinutes += (new Date(agent.departure).getTime() - new Date(agent.arrival).getTime()) / 60000;
+        }
+      });
     }
 
     const teamHours = Math.floor(totalMinutes / 60);

@@ -264,6 +264,30 @@ export type Database = {
         }
         Relationships: []
       }
+      system_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -326,6 +350,67 @@ export type Database = {
           },
         ]
       }
+      ticket_support_agents: {
+        Row: {
+          id: string
+          ticket_id: string
+          agent_id: string
+          arrival: string | null
+          departure: string | null
+          km_start: number | null
+          km_end: number | null
+          toll_cost: number | null
+          food_cost: number | null
+          other_costs: number | null
+          is_paid: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          ticket_id: string
+          agent_id: string
+          arrival?: string | null
+          departure?: string | null
+          km_start?: number | null
+          km_end?: number | null
+          toll_cost?: number | null
+          food_cost?: number | null
+          other_costs?: number | null
+          is_paid?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          ticket_id?: string
+          agent_id?: string
+          arrival?: string | null
+          departure?: string | null
+          km_start?: number | null
+          km_end?: number | null
+          toll_cost?: number | null
+          food_cost?: number | null
+          other_costs?: number | null
+          is_paid?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_support_agents_agent_id_fkey"
+            columns: ["agent_id"]
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_support_agents_ticket_id_fkey"
+            columns: ["ticket_id"]
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       tickets: {
         Row: {
           city: string
@@ -352,31 +437,11 @@ export type Database = {
           state: string
           status: Database["public"]["Enums"]["ticket_status"]
           summary: string | null
-          support_agent_1_arrival: string | null
-          support_agent_1_departure: string | null
-          support_agent_1_food_cost: number | null
-          support_agent_1_id: string | null
-          support_agent_1_km_end: number | null
-          support_agent_1_km_start: number | null
-          support_agent_1_other_costs: number | null
-          support_agent_1_toll_cost: number | null
-          support_agent_2_arrival: string | null
-          support_agent_2_departure: string | null
-          support_agent_2_food_cost: number | null
-          support_agent_2_id: string | null
-          support_agent_2_km_end: number | null
-          support_agent_2_km_start: number | null
-          support_agent_2_other_costs: number | null
-          support_agent_2_toll_cost: number | null
           toll_cost: number | null
           total_cost: number | null
           updated_at: string
           main_agent_payment_status: string
           main_agent_paid_at: string | null
-          support_agent_1_payment_status: string
-          support_agent_1_paid_at: string | null
-          support_agent_2_payment_status: string
-          support_agent_2_paid_at: string | null
           vehicle_id: string
         }
         Insert: {
@@ -404,31 +469,11 @@ export type Database = {
           state: string
           status?: Database["public"]["Enums"]["ticket_status"]
           summary?: string | null
-          support_agent_1_arrival?: string | null
-          support_agent_1_departure?: string | null
-          support_agent_1_food_cost?: number | null
-          support_agent_1_id?: string | null
-          support_agent_1_km_end?: number | null
-          support_agent_1_km_start?: number | null
-          support_agent_1_other_costs?: number | null
-          support_agent_1_toll_cost?: number | null
-          support_agent_2_arrival?: string | null
-          support_agent_2_departure?: string | null
-          support_agent_2_food_cost?: number | null
-          support_agent_2_id?: string | null
-          support_agent_2_km_end?: number | null
-          support_agent_2_km_start?: number | null
-          support_agent_2_other_costs?: number | null
-          support_agent_2_toll_cost?: number | null
           toll_cost?: number | null
           total_cost?: number | null
           updated_at?: string
           main_agent_payment_status?: string
           main_agent_paid_at?: string | null
-          support_agent_1_payment_status?: string
-          support_agent_1_paid_at?: string | null
-          support_agent_2_payment_status?: string
-          support_agent_2_paid_at?: string | null
           vehicle_id: string
         }
         Update: {
@@ -456,31 +501,11 @@ export type Database = {
           state?: string
           status?: Database["public"]["Enums"]["ticket_status"]
           summary?: string | null
-          support_agent_1_arrival?: string | null
-          support_agent_1_departure?: string | null
-          support_agent_1_food_cost?: number | null
-          support_agent_1_id?: string | null
-          support_agent_1_km_end?: number | null
-          support_agent_1_km_start?: number | null
-          support_agent_1_other_costs?: number | null
-          support_agent_1_toll_cost?: number | null
-          support_agent_2_arrival?: string | null
-          support_agent_2_departure?: string | null
-          support_agent_2_food_cost?: number | null
-          support_agent_2_id?: string | null
-          support_agent_2_km_end?: number | null
-          support_agent_2_km_start?: number | null
-          support_agent_2_other_costs?: number | null
-          support_agent_2_toll_cost?: number | null
           toll_cost?: number | null
           total_cost?: number | null
           updated_at?: string
           main_agent_payment_status?: string
           main_agent_paid_at?: string | null
-          support_agent_1_payment_status?: string
-          support_agent_1_paid_at?: string | null
-          support_agent_2_payment_status?: string
-          support_agent_2_paid_at?: string | null
           vehicle_id?: string
         }
         Relationships: [
@@ -506,26 +531,12 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "tickets_support_agent_1_id_fkey"
-            columns: ["support_agent_1_id"]
-            isOneToOne: false
-            referencedRelation: "agents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tickets_support_agent_2_id_fkey"
-            columns: ["support_agent_2_id"]
-            isOneToOne: false
-            referencedRelation: "agents"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "tickets_vehicle_id_fkey"
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       user_roles: {
@@ -699,6 +710,7 @@ export type Database = {
       | "averiguacao"
       | "preservacao"
       | "acompanhamento_logistico"
+      | "sindicancia"
       ticket_status: "aberto" | "em_andamento" | "finalizado" | "cancelado"
     }
     CompositeTypes: {

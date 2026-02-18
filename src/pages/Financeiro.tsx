@@ -59,16 +59,15 @@ const Financeiro = () => {
                 .select(`
           id, code, start_datetime, status,
           toll_cost, food_cost, other_costs,
-          support_agent_1_toll_cost, support_agent_1_food_cost, support_agent_1_other_costs,
-          support_agent_2_toll_cost, support_agent_2_food_cost, support_agent_2_other_costs,
           main_agent_payment_status, main_agent_paid_at,
-          support_agent_1_payment_status, support_agent_1_paid_at,
-          support_agent_2_payment_status, support_agent_2_paid_at,
-          support_agent_1_id, support_agent_2_id,
           clients (name),
           main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type),
-          support_agent_1:agents!tickets_support_agent_1_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type),
-          support_agent_2:agents!tickets_support_agent_2_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
+          ticket_support_agents (
+            agent_id,
+            toll_cost, food_cost, other_costs,
+            payment_status, paid_at,
+            agent:agents (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
+          )
         `)
                 .eq('status', 'finalizado')
                 .order('start_datetime', { ascending: false });
@@ -102,63 +101,39 @@ const Financeiro = () => {
                         otherCosts: other,
                         totalCost: toll + food + other,
                         paymentStatus: ticket.main_agent_payment_status || 'pendente',
-                        paidAt: ticket.main_agent_paid_at,
+                        paidAt: ticket.main_agent_paid_at
                     });
                 }
 
-                // Support 1
-                if (ticket.support_agent_1 && ticket.support_agent_1_id) {
-                    const toll = Number(ticket.support_agent_1_toll_cost) || 0;
-                    const food = Number(ticket.support_agent_1_food_cost) || 0;
-                    const other = Number(ticket.support_agent_1_other_costs) || 0;
-                    paymentItems.push({
-                        ticketId: ticket.id,
-                        ticketCode: ticket.code || '-',
-                        clientName: ticket.clients?.name || '-',
-                        startDatetime: ticket.start_datetime,
-                        agentName: ticket.support_agent_1.name,
-                        agentRole: 'apoio_1',
-                        agentRoleLabel: 'Apoio 1',
-                        isArmed: ticket.support_agent_1.is_armed,
-                        pixKey: ticket.support_agent_1.pix_key,
-                        bankName: ticket.support_agent_1.bank_name,
-                        bankAgency: ticket.support_agent_1.bank_agency,
-                        bankAccount: ticket.support_agent_1.bank_account,
-                        bankAccountType: ticket.support_agent_1.bank_account_type,
-                        tollCost: toll,
-                        foodCost: food,
-                        otherCosts: other,
-                        totalCost: toll + food + other,
-                        paymentStatus: ticket.support_agent_1_payment_status || 'pendente',
-                        paidAt: ticket.support_agent_1_paid_at,
-                    });
-                }
-
-                // Support 2
-                if (ticket.support_agent_2 && ticket.support_agent_2_id) {
-                    const toll = Number(ticket.support_agent_2_toll_cost) || 0;
-                    const food = Number(ticket.support_agent_2_food_cost) || 0;
-                    const other = Number(ticket.support_agent_2_other_costs) || 0;
-                    paymentItems.push({
-                        ticketId: ticket.id,
-                        ticketCode: ticket.code || '-',
-                        clientName: ticket.clients?.name || '-',
-                        startDatetime: ticket.start_datetime,
-                        agentName: ticket.support_agent_2.name,
-                        agentRole: 'apoio_2',
-                        agentRoleLabel: 'Apoio 2',
-                        isArmed: ticket.support_agent_2.is_armed,
-                        pixKey: ticket.support_agent_2.pix_key,
-                        bankName: ticket.support_agent_2.bank_name,
-                        bankAgency: ticket.support_agent_2.bank_agency,
-                        bankAccount: ticket.support_agent_2.bank_account,
-                        bankAccountType: ticket.support_agent_2.bank_account_type,
-                        tollCost: toll,
-                        foodCost: food,
-                        otherCosts: other,
-                        totalCost: toll + food + other,
-                        paymentStatus: ticket.support_agent_2_payment_status || 'pendente',
-                        paidAt: ticket.support_agent_2_paid_at,
+                // Dynamic Support Agents
+                if (ticket.ticket_support_agents && ticket.ticket_support_agents.length > 0) {
+                    ticket.ticket_support_agents.forEach((sa: any, index: number) => {
+                        if (sa.agent) {
+                            const toll = Number(sa.toll_cost) || 0;
+                            const food = Number(sa.food_cost) || 0;
+                            const other = Number(sa.other_costs) || 0;
+                            paymentItems.push({
+                                ticketId: ticket.id,
+                                ticketCode: ticket.code || '-',
+                                clientName: ticket.clients?.name || '-',
+                                startDatetime: ticket.start_datetime,
+                                agentName: sa.agent.name,
+                                agentRole: 'apoio_1', // Using fixed role for styling or maybe dynamic? 'apoio_1' is used for badge color logic likely.
+                                agentRoleLabel: `Apoio ${index + 1}`,
+                                isArmed: sa.agent.is_armed,
+                                pixKey: sa.agent.pix_key,
+                                bankName: sa.agent.bank_name,
+                                bankAgency: sa.agent.bank_agency,
+                                bankAccount: sa.agent.bank_account,
+                                bankAccountType: sa.agent.bank_account_type,
+                                tollCost: toll,
+                                foodCost: food,
+                                otherCosts: other,
+                                totalCost: toll + food + other,
+                                paymentStatus: sa.payment_status || 'pendente',
+                                paidAt: sa.paid_at
+                            });
+                        }
                     });
                 }
             });
@@ -166,7 +141,8 @@ const Financeiro = () => {
             setItems(paymentItems);
         } catch (error) {
             console.error('Erro ao buscar pagamentos:', error);
-            toast.error('Erro ao carregar dados financeiros');
+            const msg = error instanceof Error ? error.message : 'Erro desconhecido';
+            toast.error(`Erro ao carregar pagamentos: ${msg}`);
         } finally {
             setLoading(false);
         }

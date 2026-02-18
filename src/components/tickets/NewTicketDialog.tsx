@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,26 +56,20 @@ const ticketSchema = z.object({
   client_id: z.string().min(1, 'Selecione um cliente'),
   vehicle_id: z.string().min(1, 'Selecione um veículo'),
   plan_id: z.string().min(1, 'Selecione um plano'),
-  service_type: z.enum(['alarme', 'averiguacao', 'preservacao', 'acompanhamento_logistico']),
+  service_type: z.enum(['alarme', 'averiguacao', 'preservacao', 'acompanhamento_logistico', 'sindicancia']),
   main_agent_id: z.string().min(1, 'Selecione um agente'),
   main_agent_arrival: z.string().optional(),
   main_agent_departure: z.string().optional(),
-  support_agent_1_id: z.string().optional(),
-  support_agent_1_arrival: z.string().optional(),
-  support_agent_1_departure: z.string().optional(),
-  support_agent_1_km_start: z.number().optional(),
-  support_agent_1_km_end: z.number().optional(),
-  support_agent_1_toll_cost: z.number().optional(),
-  support_agent_1_food_cost: z.number().optional(),
-  support_agent_1_other_costs: z.number().optional(),
-  support_agent_2_id: z.string().optional(),
-  support_agent_2_arrival: z.string().optional(),
-  support_agent_2_departure: z.string().optional(),
-  support_agent_2_km_start: z.number().optional(),
-  support_agent_2_km_end: z.number().optional(),
-  support_agent_2_toll_cost: z.number().optional(),
-  support_agent_2_food_cost: z.number().optional(),
-  support_agent_2_other_costs: z.number().optional(),
+  support_agents: z.array(z.object({
+    agent_id: z.string().min(1, 'Selecione um agente'),
+    arrival: z.string().optional(),
+    departure: z.string().optional(),
+    km_start: z.number().optional(),
+    km_end: z.number().optional(),
+    toll_cost: z.number().optional(),
+    food_cost: z.number().optional(),
+    other_costs: z.number().optional(),
+  })).optional(),
   city: z.string().min(1, 'Informe a cidade'),
   state: z.string().min(2, 'Informe o estado').max(2),
   start_datetime: z.string().min(1, 'Informe a data/hora inicial'),
@@ -141,6 +135,7 @@ const SERVICE_TYPE_LABELS = {
   averiguacao: 'Averiguação',
   preservacao: 'Preservação',
   acompanhamento_logistico: 'Acompanhamento Logístico',
+  sindicancia: 'Sindicância',
 };
 
 export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId }: NewTicketDialogProps) {
@@ -167,60 +162,22 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
       vehicle_id: '',
       plan_id: '',
       service_type: 'acompanhamento_logistico',
-      main_agent_id: '',
-      support_agent_1_id: '',
-      support_agent_1_arrival: '',
-      support_agent_1_departure: '',
-      support_agent_1_km_start: undefined,
-      support_agent_1_km_end: undefined,
-      support_agent_1_toll_cost: 0,
-      support_agent_1_food_cost: 0,
-      support_agent_1_other_costs: 0,
-      support_agent_2_id: '',
-      support_agent_2_arrival: '',
-      support_agent_2_departure: '',
-      support_agent_2_km_start: undefined,
-      support_agent_2_km_end: undefined,
-      support_agent_2_toll_cost: 0,
-      support_agent_2_food_cost: 0,
-      support_agent_2_other_costs: 0,
-      city: '',
-      state: '',
-      start_datetime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-      end_datetime: '',
-      coordinates_lat: undefined,
-      coordinates_lng: undefined,
-      km_start: undefined,
-      km_end: undefined,
-      toll_cost: 0,
-      food_cost: 0,
-      other_costs: 0,
-      summary: '',
-
-      detailed_report: '',
       operator_id: '',
+      support_agents: [],
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "support_agents",
   });
 
   const selectedClientId = form.watch('client_id');
   const selectedVehicleId = form.watch('vehicle_id');
+  const coordLat = form.watch('coordinates_lat');
+  const coordLng = form.watch('coordinates_lng');
 
-  // Main Agent Calculations
-  const tollCost = form.watch('toll_cost') || 0;
-  const foodCost = form.watch('food_cost') || 0;
-  const otherCosts = form.watch('other_costs') || 0;
-  const totalCost = tollCost + foodCost + otherCosts;
-  const kmStart = form.watch('km_start') || 0;
-  const kmEnd = form.watch('km_end') || 0;
-  const kmRodado = kmEnd >= kmStart && kmStart > 0 ? kmEnd - kmStart : 0;
-
-  // Duration calculations
-  const mainArrival = form.watch('main_agent_arrival') || '';
-  const mainDeparture = form.watch('main_agent_departure') || '';
-  const s1Arrival = form.watch('support_agent_1_arrival') || '';
-  const s1Departure = form.watch('support_agent_1_departure') || '';
-  const s2Arrival = form.watch('support_agent_2_arrival') || '';
-  const s2Departure = form.watch('support_agent_2_departure') || '';
+  const selectedVehicle = filteredVehicles.find(v => v.id === selectedVehicleId);
 
   const calcDuration = (arrival: string, departure: string): string => {
     if (!arrival || !departure) return '-';
@@ -231,32 +188,40 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
     return `${hours}h ${minutes}m`;
   };
 
-  // Support 1 Calculations
-  const s1Toll = form.watch('support_agent_1_toll_cost') || 0;
-  const s1Food = form.watch('support_agent_1_food_cost') || 0;
-  const s1Other = form.watch('support_agent_1_other_costs') || 0;
-  const s1TotalCost = s1Toll + s1Food + s1Other;
-  const s1KmStart = form.watch('support_agent_1_km_start') || 0;
-  const s1KmEnd = form.watch('support_agent_1_km_end') || 0;
-  const s1KmRodado = s1KmEnd >= s1KmStart && s1KmStart > 0 ? s1KmEnd - s1KmStart : 0;
+  const mainArrival = form.watch('main_agent_arrival') || '';
+  const mainDeparture = form.watch('main_agent_departure') || '';
 
-  // Support 2 Calculations
-  const s2Toll = form.watch('support_agent_2_toll_cost') || 0;
-  const s2Food = form.watch('support_agent_2_food_cost') || 0;
-  const s2Other = form.watch('support_agent_2_other_costs') || 0;
-  const s2TotalCost = s2Toll + s2Food + s2Other;
-  const s2KmStart = form.watch('support_agent_2_km_start') || 0;
-  const s2KmEnd = form.watch('support_agent_2_km_end') || 0;
-  const s2KmRodado = s2KmEnd >= s2KmStart && s2KmStart > 0 ? s2KmEnd - s2KmStart : 0;
+  // Main Agent Calculations
+  const tollCost = form.watch('toll_cost') || 0;
+  const foodCost = form.watch('food_cost') || 0;
+  const otherCosts = form.watch('other_costs') || 0;
+  const totalCost = tollCost + foodCost + otherCosts;
+  const kmStart = form.watch('km_start') || 0;
+  const kmEnd = form.watch('km_end') || 0;
+  const kmRodado = kmEnd >= kmStart && kmStart > 0 ? kmEnd - kmStart : 0;
+
+  // Support Agents Calculations
+  const supportAgents = form.watch('support_agents') || [];
+
+  const supportAgentsStats = supportAgents.reduce((acc, agent) => {
+    const kmS = agent.km_start || 0;
+    const kmE = agent.km_end || 0;
+    const kmR = kmE >= kmS && kmS > 0 ? kmE - kmS : 0;
+
+    const toll = agent.toll_cost || 0;
+    const food = agent.food_cost || 0;
+    const other = agent.other_costs || 0;
+    const total = toll + food + other;
+
+    return {
+      km: acc.km + kmR,
+      cost: acc.cost + total
+    };
+  }, { km: 0, cost: 0 });
 
   // Global Totals
-  const totalKmGeral = kmRodado + s1KmRodado + s2KmRodado;
-  const totalCustoGeral = totalCost + s1TotalCost + s2TotalCost;
-
-  const coordLat = form.watch('coordinates_lat');
-  const coordLng = form.watch('coordinates_lng');
-
-  const selectedVehicle = filteredVehicles.find(v => v.id === selectedVehicleId);
+  const totalKmGeral = kmRodado + supportAgentsStats.km;
+  const totalCustoGeral = totalCost + supportAgentsStats.cost;
 
   useEffect(() => {
     if (open) {
@@ -438,22 +403,6 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
           main_agent_id: data.main_agent_id,
           main_agent_arrival: data.main_agent_arrival || null,
           main_agent_departure: data.main_agent_departure || null,
-          support_agent_1_id: data.support_agent_1_id && data.support_agent_1_id !== 'none' ? data.support_agent_1_id : null,
-          support_agent_1_arrival: data.support_agent_1_arrival || null,
-          support_agent_1_departure: data.support_agent_1_departure || null,
-          support_agent_1_km_start: data.support_agent_1_km_start || null,
-          support_agent_1_km_end: data.support_agent_1_km_end || null,
-          support_agent_1_toll_cost: data.support_agent_1_toll_cost || null,
-          support_agent_1_food_cost: data.support_agent_1_food_cost || null,
-          support_agent_1_other_costs: data.support_agent_1_other_costs || null,
-          support_agent_2_id: data.support_agent_2_id && data.support_agent_2_id !== 'none' ? data.support_agent_2_id : null,
-          support_agent_2_arrival: data.support_agent_2_arrival || null,
-          support_agent_2_departure: data.support_agent_2_departure || null,
-          support_agent_2_km_start: data.support_agent_2_km_start || null,
-          support_agent_2_km_end: data.support_agent_2_km_end || null,
-          support_agent_2_toll_cost: data.support_agent_2_toll_cost || null,
-          support_agent_2_food_cost: data.support_agent_2_food_cost || null,
-          support_agent_2_other_costs: data.support_agent_2_other_costs || null,
           city: data.city,
           state: data.state,
           start_datetime: data.start_datetime,
@@ -473,6 +422,29 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
         })
         .select()
         .single();
+
+      if (ticketError) throw ticketError;
+
+      // Insert support agents
+      if (data.support_agents && data.support_agents.length > 0) {
+        const supportAgentsData = data.support_agents.map(agent => ({
+          ticket_id: ticket.id,
+          agent_id: agent.agent_id,
+          arrival: agent.arrival || null,
+          departure: agent.departure || null,
+          km_start: agent.km_start || null,
+          km_end: agent.km_end || null,
+          toll_cost: agent.toll_cost || null,
+          food_cost: agent.food_cost || null,
+          other_costs: agent.other_costs || null,
+        }));
+
+        const { error: supportAgentsError } = await supabase
+          .from('ticket_support_agents')
+          .insert(supportAgentsData);
+
+        if (supportAgentsError) throw supportAgentsError;
+      }
 
       if (ticketError) throw ticketError;
 
@@ -1005,433 +977,205 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
 
                   {/* Seção Apoios */}
                   <div className="space-y-4">
-                    <h4 className="font-bold text-sm border-b pb-2 text-muted-foreground">AGENTE(S) DE APOIO</h4>
-
-                    {/* Apoio 1 */}
-                    <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
-                      <h5 className="font-bold text-xs text-muted-foreground uppercase tracking-wider">Apoio Secundário (1)</h5>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <FormField
-                          control={form.control}
-                          name="support_agent_1_id"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel className="text-xs">Agente</FormLabel>
-                              <Popover open={openSupport1} onOpenChange={setOpenSupport1}>
-                                <PopoverTrigger asChild>
-                                  <FormControl>
-                                    <Button
-                                      variant="outline"
-                                      role="combobox"
-                                      aria-expanded={openSupport1}
-                                      className={cn(
-                                        "w-full justify-between font-normal h-9 text-xs",
-                                        !field.value && "text-muted-foreground"
-                                      )}
-                                    >
-                                      {field.value && field.value !== "none"
-                                        ? agents.find((agent) => agent.id === field.value)?.name
-                                        : "Selecione"}
-                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                  </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                                  <Command>
-                                    <CommandInput placeholder="Pesquisar..." />
-                                    <CommandList>
-                                      <CommandEmpty>Não encontrado.</CommandEmpty>
-                                      <CommandGroup>
-                                        <CommandItem
-                                          value="none"
-                                          onSelect={() => {
-                                            form.setValue("support_agent_1_id", "");
-                                            setOpenSupport1(false);
-                                          }}
-                                        >
-                                          <Check
-                                            className={cn(
-                                              "mr-2 h-4 w-4",
-                                              !field.value || field.value === "none" ? "opacity-100" : "opacity-0"
-                                            )}
-                                          />
-                                          Nenhum
-                                        </CommandItem>
-                                        {agents.map((agent) => (
-                                          <CommandItem
-                                            key={agent.id}
-                                            value={agent.name}
-                                            onSelect={() => {
-                                              form.setValue("support_agent_1_id", agent.id);
-                                              setOpenSupport1(false);
-                                            }}
-                                          >
-                                            <Check
-                                              className={cn(
-                                                "mr-2 h-4 w-4",
-                                                agent.id === field.value ? "opacity-100" : "opacity-0"
-                                              )}
-                                            />
-                                            {agent.name}
-                                          </CommandItem>
-                                        ))}
-                                      </CommandGroup>
-                                    </CommandList>
-                                  </Command>
-                                </PopoverContent>
-                              </Popover>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="support_agent_1_arrival"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Chegada</FormLabel>
-                              <FormControl>
-                                <Input type="datetime-local" className="h-9 text-xs" {...field} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="support_agent_1_departure"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Saída</FormLabel>
-                              <FormControl>
-                                <Input type="datetime-local" className="h-9 text-xs" {...field} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <div className="space-y-2">
-                          <Label className="text-xs">Tempo</Label>
-                          <div className="h-9 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold text-primary">
-                            {calcDuration(s1Arrival, s1Departure)}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <FormField
-                          control={form.control}
-                          name="support_agent_1_km_start"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">KM Inicial</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  className="h-8 text-xs"
-                                  {...field}
-                                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="support_agent_1_km_end"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">KM Final</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  className="h-8 text-xs"
-                                  {...field}
-                                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <div className="space-y-2">
-                          <Label className="text-xs">KM Rodado</Label>
-                          <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold">
-                            {s1KmRodado} km
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-t pt-3 mt-3">
-                        <FormField
-                          control={form.control}
-                          name="support_agent_1_toll_cost"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Pedágio (R$)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  className="h-8 text-xs"
-                                  {...field}
-                                  onChange={(e) => field.onChange(Number(e.target.value))}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="support_agent_1_food_cost"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Alimentação (R$)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  className="h-8 text-xs"
-                                  {...field}
-                                  onChange={(e) => field.onChange(Number(e.target.value))}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="support_agent_1_other_costs"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Outros (R$)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  className="h-8 text-xs"
-                                  {...field}
-                                  onChange={(e) => field.onChange(Number(e.target.value))}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <div className="space-y-2">
-                          <Label className="text-xs">Total Apoio 1</Label>
-                          <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold">
-                            {s1TotalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </div>
-                        </div>
-                      </div>
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <h4 className="font-bold text-sm text-muted-foreground">AGENTE(S) DE APOIO</h4>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => append({
+                          agent_id: '',
+                          arrival: '',
+                          departure: '',
+                          km_start: 0,
+                          km_end: 0,
+                          toll_cost: 0,
+                          food_cost: 0,
+                          other_costs: 0
+                        })}
+                      >
+                        + Adicionar Apoio
+                      </Button>
                     </div>
 
-                    {/* Apoio 2 */}
-                    <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
-                      <h5 className="font-bold text-xs text-muted-foreground uppercase tracking-wider">Apoio Terceiro (2)</h5>
+                    {fields.map((field, index) => (
+                      <div key={field.id} className="space-y-4 p-4 border rounded-lg bg-muted/20 relative">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-2 right-2 hover:text-destructive"
+                          onClick={() => remove(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <FormField
-                          control={form.control}
-                          name="support_agent_2_id"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel className="text-xs">Agente</FormLabel>
-                              <Popover open={openSupport2} onOpenChange={setOpenSupport2}>
-                                <PopoverTrigger asChild>
+                        <h5 className="font-bold text-xs text-muted-foreground uppercase tracking-wider">Apoio {index + 1}</h5>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <FormField
+                            control={form.control}
+                            name={`support_agents.${index}.agent_id`}
+                            render={({ field: agentField }) => (
+                              <FormItem className="flex flex-col">
+                                <FormLabel className="text-xs">Agente</FormLabel>
+                                <Select onValueChange={agentField.onChange} value={agentField.value}>
                                   <FormControl>
-                                    <Button
-                                      variant="outline"
-                                      role="combobox"
-                                      aria-expanded={openSupport2}
-                                      className={cn(
-                                        "w-full justify-between font-normal h-9 text-xs",
-                                        !field.value && "text-muted-foreground"
-                                      )}
-                                    >
-                                      {field.value && field.value !== "none"
-                                        ? agents.find((agent) => agent.id === field.value)?.name
-                                        : "Selecione"}
-                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
+                                    <SelectTrigger className="h-9 text-xs">
+                                      <SelectValue placeholder="Selecione" />
+                                    </SelectTrigger>
                                   </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                                  <Command>
-                                    <CommandInput placeholder="Pesquisar..." />
-                                    <CommandList>
-                                      <CommandEmpty>Não encontrado.</CommandEmpty>
-                                      <CommandGroup>
-                                        <CommandItem
-                                          value="none"
-                                          onSelect={() => {
-                                            form.setValue("support_agent_2_id", "");
-                                            setOpenSupport2(false);
-                                          }}
-                                        >
-                                          <Check
-                                            className={cn(
-                                              "mr-2 h-4 w-4",
-                                              !field.value || field.value === "none" ? "opacity-100" : "opacity-0"
-                                            )}
-                                          />
-                                          Nenhum
-                                        </CommandItem>
-                                        {agents.map((agent) => (
-                                          <CommandItem
-                                            key={agent.id}
-                                            value={agent.name}
-                                            onSelect={() => {
-                                              form.setValue("support_agent_2_id", agent.id);
-                                              setOpenSupport2(false);
-                                            }}
-                                          >
-                                            <Check
-                                              className={cn(
-                                                "mr-2 h-4 w-4",
-                                                agent.id === field.value ? "opacity-100" : "opacity-0"
-                                              )}
-                                            />
-                                            {agent.name}
-                                          </CommandItem>
-                                        ))}
-                                      </CommandGroup>
-                                    </CommandList>
-                                  </Command>
-                                </PopoverContent>
-                              </Popover>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="support_agent_2_arrival"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Chegada</FormLabel>
-                              <FormControl>
-                                <Input type="datetime-local" className="h-9 text-xs" {...field} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="support_agent_2_departure"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Saída</FormLabel>
-                              <FormControl>
-                                <Input type="datetime-local" className="h-9 text-xs" {...field} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <div className="space-y-2">
-                          <Label className="text-xs">Tempo</Label>
-                          <div className="h-9 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold text-primary">
-                            {calcDuration(s2Arrival, s2Departure)}
-                          </div>
+                                  <SelectContent>
+                                    {agents.map((agent) => (
+                                      <SelectItem key={agent.id} value={agent.id}>
+                                        {agent.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`support_agents.${index}.arrival`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Chegada</FormLabel>
+                                <FormControl>
+                                  <Input type="datetime-local" className="h-9 text-xs" {...field} />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`support_agents.${index}.departure`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Saída</FormLabel>
+                                <FormControl>
+                                  <Input type="datetime-local" className="h-9 text-xs" {...field} />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
                         </div>
-                      </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <FormField
-                          control={form.control}
-                          name="support_agent_2_km_start"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">KM Inicial</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  className="h-8 text-xs"
-                                  {...field}
-                                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="support_agent_2_km_end"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">KM Final</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  className="h-8 text-xs"
-                                  {...field}
-                                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <div className="space-y-2">
-                          <Label className="text-xs">KM Rodado</Label>
-                          <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold">
-                            {s2KmRodado} km
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <FormField
+                            control={form.control}
+                            name={`support_agents.${index}.km_start`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">KM Inicial</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    className="h-8 text-xs"
+                                    {...field}
+                                    onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`support_agents.${index}.km_end`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">KM Final</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    className="h-8 text-xs"
+                                    {...field}
+                                    onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          <div className="space-y-2">
+                            <Label className="text-xs">KM Rodado</Label>
+                            <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold">
+                              {(() => {
+                                const start = form.watch(`support_agents.${index}.km_start`) || 0;
+                                const end = form.watch(`support_agents.${index}.km_end`) || 0;
+                                return (end >= start && start > 0 ? end - start : 0) + ' km';
+                              })()}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-t pt-3 mt-3">
-                        <FormField
-                          control={form.control}
-                          name="support_agent_2_toll_cost"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Pedágio (R$)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  className="h-8 text-xs"
-                                  {...field}
-                                  onChange={(e) => field.onChange(Number(e.target.value))}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="support_agent_2_food_cost"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Alimentação (R$)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  className="h-8 text-xs"
-                                  {...field}
-                                  onChange={(e) => field.onChange(Number(e.target.value))}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="support_agent_2_other_costs"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">Outros (R$)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  className="h-8 text-xs"
-                                  {...field}
-                                  onChange={(e) => field.onChange(Number(e.target.value))}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <div className="space-y-2">
-                          <Label className="text-xs">Total Apoio 2</Label>
-                          <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold">
-                            {s2TotalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-t pt-3 mt-3">
+                          <FormField
+                            control={form.control}
+                            name={`support_agents.${index}.toll_cost`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Pedágio (R$)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    className="h-8 text-xs"
+                                    {...field}
+                                    onChange={(e) => field.onChange(Number(e.target.value))}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`support_agents.${index}.food_cost`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Alimentação (R$)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    className="h-8 text-xs"
+                                    {...field}
+                                    onChange={(e) => field.onChange(Number(e.target.value))}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`support_agents.${index}.other_costs`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-xs">Outros (R$)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    className="h-8 text-xs"
+                                    {...field}
+                                    onChange={(e) => field.onChange(Number(e.target.value))}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          <div className="space-y-2">
+                            <Label className="text-xs">Total Apoio {index + 1}</Label>
+                            <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold">
+                              {(() => {
+                                const toll = form.watch(`support_agents.${index}.toll_cost`) || 0;
+                                const food = form.watch(`support_agents.${index}.food_cost`) || 0;
+                                const other = form.watch(`support_agents.${index}.other_costs`) || 0;
+                                return (toll + food + other).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                              })()}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
 
                   {/* Resumo Geral da Operação */}
