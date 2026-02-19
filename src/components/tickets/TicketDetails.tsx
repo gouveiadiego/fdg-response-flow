@@ -304,7 +304,10 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
         .select('*')
         .eq('ticket_id', ticketId);
 
-      if (supportError) throw supportError;
+      if (supportError) {
+        console.error('Error fetching support agents (ignoring for PDF):', supportError);
+        // Do not throw, just treat as empty to allow PDF generation
+      }
 
       // Manually fetch agent details if we have support agents
       let freshSupportAgents: any[] = [];
@@ -332,7 +335,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
         });
       }
 
-      if (supportError) throw supportError;
+
 
       // Assign support agents manually
       (freshTicket as any).ticket_support_agents = freshSupportAgents || [];
