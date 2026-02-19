@@ -169,7 +169,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
           *,
           clients (name, document, contact_phone),
           main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type, vehicle_plate),
-          ticket_support_agents:ticket_support_agents!ticket_support_agents_ticket_id_fkey (
+          ticket_support_agents (
             *,
             agent:agents (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
           ),
@@ -194,7 +194,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
       setTicket(data as unknown as TicketFull);
     } catch (error) {
       console.error('Erro ao buscar detalhes:', error);
-      toast.error('Erro ao carregar detalhes do chamado');
+      toast.error(`Erro ao carregar detalhes: ${(error as any).message || 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
     }
@@ -261,7 +261,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
           *,
           clients (name, document, contact_phone),
           main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type, vehicle_plate),
-          ticket_support_agents:ticket_support_agents!ticket_support_agents_ticket_id_fkey (
+          ticket_support_agents (
             *,
             agent:agents (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
           ),

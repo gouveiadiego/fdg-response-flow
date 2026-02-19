@@ -279,7 +279,7 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
         .from('tickets')
         .select(`
           *,
-          ticket_support_agents!ticket_support_agents_ticket_id_fkey (
+          ticket_support_agents (
             id,
             agent_id,
             arrival,
