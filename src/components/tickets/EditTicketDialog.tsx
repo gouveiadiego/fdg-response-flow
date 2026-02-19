@@ -580,9 +580,15 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
             other_costs: agent.other_costs || 0,
           }));
 
-          const toUpdate = agentsToUpsert.filter(a => a.id);
-          const toInsert = agentsToUpsert.filter(a => !a.id).map(a => {
-            const { id, ...rest } = a;
+          // Helper to check if string is valid UUID
+          const isValidUUID = (uuid: string) => {
+            const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            return regex.test(uuid);
+          };
+
+          const toUpdate = agentsToUpsert.filter(a => a.id && isValidUUID(a.id));
+          const toInsert = agentsToUpsert.filter(a => !a.id || !isValidUUID(a.id)).map(a => {
+            const { id, ...rest } = a; // Drop invalid/temp ID
             return rest;
           });
 
