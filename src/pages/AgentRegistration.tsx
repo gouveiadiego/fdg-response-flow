@@ -28,7 +28,7 @@ import {
 
 const registrationSchema = z.object({
     name: z.string().min(1, 'Nome é obrigatório').max(255),
-    document: z.string().min(1, 'CPF é obrigatório').max(20),
+    document: z.string().max(20).optional().or(z.literal('')),
     phone: z.string().min(1, 'Telefone é obrigatório').max(20),
     email: z.string().email('E-mail inválido').optional().or(z.literal('')),
     address: z.string().max(500).optional(),
@@ -132,7 +132,7 @@ export default function AgentRegistration() {
         try {
             const { error } = await supabase.from('agent_registrations' as any).insert({
                 name: data.name,
-                document: data.document,
+                document: data.document || null,
                 phone: data.phone,
                 email: data.email || null,
                 address: data.address || null,
@@ -236,7 +236,7 @@ export default function AgentRegistration() {
                                         name="document"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-white/80">CPF *</FormLabel>
+                                                <FormLabel className="text-white/80">CPF</FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="000.000.000-00" {...field} className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
                                                 </FormControl>

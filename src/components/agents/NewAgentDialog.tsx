@@ -36,7 +36,7 @@ import {
 
 const agentSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(255),
-  document: z.string().min(1, 'Documento é obrigatório').max(20),
+  document: z.string().max(20).optional().or(z.literal('')),
   phone: z.string().min(1, 'Telefone é obrigatório').max(20),
   email: z.string().email('E-mail inválido').optional().or(z.literal('')),
   address: z.string().max(500).optional(),
@@ -139,7 +139,7 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
     try {
       const { error } = await supabase.from('agents').insert({
         name: data.name,
-        document: data.document,
+        document: data.document || null,
         phone: data.phone,
         email: data.email || null,
         address: data.address || null,
@@ -208,7 +208,7 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
                 name="document"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>CPF *</FormLabel>
+                    <FormLabel>CPF</FormLabel>
                     <FormControl>
                       <Input placeholder="000.000.000-00" {...field} />
                     </FormControl>
