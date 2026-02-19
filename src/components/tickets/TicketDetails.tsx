@@ -63,26 +63,8 @@ interface TicketFull {
   service_type: string;
   main_agent_arrival: string | null;
   main_agent_departure: string | null;
-  support_agent_1_arrival: string | null;
-  support_agent_1_departure: string | null;
-  support_agent_1_km_start: number | null;
-  support_agent_1_km_end: number | null;
-  support_agent_1_toll_cost: number | null;
-  support_agent_1_food_cost: number | null;
-  support_agent_1_other_costs: number | null;
-  support_agent_2_arrival: string | null;
-  support_agent_2_departure: string | null;
-  support_agent_2_km_start: number | null;
-  support_agent_2_km_end: number | null;
-  support_agent_2_toll_cost: number | null;
-  support_agent_2_food_cost: number | null;
-  support_agent_2_other_costs: number | null;
   main_agent_payment_status: string;
   main_agent_paid_at: string | null;
-  support_agent_1_payment_status: string;
-  support_agent_1_paid_at: string | null;
-  support_agent_2_payment_status: string;
-  support_agent_2_paid_at: string | null;
   clients: { name: string; document: string; contact_phone: string | null };
   main_agent: { name: string; is_armed: boolean | null; pix_key: string | null; bank_name: string | null; bank_agency: string | null; bank_account: string | null; bank_account_type: string | null; vehicle_plate: string | null };
   ticket_support_agents: {
@@ -187,7 +169,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
           *,
           clients (name, document, contact_phone),
           main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type, vehicle_plate),
-          ticket_support_agents (
+          ticket_support_agents:ticket_support_agents!ticket_support_agents_ticket_id_fkey (
             *,
             agent:agents (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
           ),
@@ -279,7 +261,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
           *,
           clients (name, document, contact_phone),
           main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type, vehicle_plate),
-          ticket_support_agents (
+          ticket_support_agents:ticket_support_agents!ticket_support_agents_ticket_id_fkey (
             *,
             agent:agents (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
           ),
