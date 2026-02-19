@@ -561,69 +561,75 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
 
       if (ticketError) throw ticketError;
 
-      // 2. Sync Support Agents
+      // 2. Sync Support Agents (Wrapped in try/catch to allow partial success)
+      try {
+        // A. Upsert existing/new agents
+        const formAgentIds: string[] = [];
 
-      // A. Upsert existing/new agents
-      const formAgentIds: string[] = [];
+        if (data.support_agents && data.support_agents.length > 0) {
+          const agentsToUpsert = data.support_agents.map(agent => ({
+            id: agent.id,
+            ticket_id: ticketId,
+            agent_id: agent.agent_id,
+            arrival: agent.arrival || null,
+            departure: agent.departure || null,
+            km_start: agent.km_start || null,
+            km_end: agent.km_end || null,
+            toll_cost: agent.toll_cost || 0,
+            food_cost: agent.food_cost || 0,
+            other_costs: agent.other_costs || 0,
+          }));
 
-      if (data.support_agents && data.support_agents.length > 0) {
-        const agentsToUpsert = data.support_agents.map(agent => ({
-          id: agent.id,
-          ticket_id: ticketId,
-          agent_id: agent.agent_id,
-          arrival: agent.arrival || null,
-          departure: agent.departure || null,
-          km_start: agent.km_start || null,
-          km_end: agent.km_end || null,
-          toll_cost: agent.toll_cost || 0,
-          food_cost: agent.food_cost || 0,
-          other_costs: agent.other_costs || 0,
-        }));
+          const toUpdate = agentsToUpsert.filter(a => a.id);
+          const toInsert = agentsToUpsert.filter(a => !a.id).map(a => {
+            const { id, ...rest } = a;
+            return rest;
+          });
 
-        const toUpdate = agentsToUpsert.filter(a => a.id);
-        const toInsert = agentsToUpsert.filter(a => !a.id).map(a => {
-          const { id, ...rest } = a;
-          return rest;
-        });
+          if (toUpdate.length > 0) {
+            for (const item of toUpdate) {
+              // Keep track of IDs we are updating/keeping
+              if (item.id) formAgentIds.push(item.id);
 
-        if (toUpdate.length > 0) {
-          for (const item of toUpdate) {
-            // Keep track of IDs we are updating/keeping
-            if (item.id) formAgentIds.push(item.id);
+              const { error } = await supabase
+                .from('ticket_support_agents')
+                .update(item)
+                .eq('id', item.id);
+              if (error) throw error;
+            }
+          }
 
-            const { error } = await supabase
+          if (toInsert.length > 0) {
+            const { data: inserted, error } = await supabase
               .from('ticket_support_agents')
-              .update(item)
-              .eq('id', item.id);
+              .insert(toInsert)
+              .select('id');
             if (error) throw error;
+
+            // Add newly inserted IDs to list of IDs to keep (though strictly not needed for delete logic if we do delete first? No, we delete missing IDs).
+            // Actually, we delete IDs that are NOT in formAgentIds (which are the ones present in the form).
+            // Newly inserted ones didn't have IDs in form, so they are not in formAgentIds. 
+            // But they are new rows, so they won't be deleted by "delete existing rows not in formAgentIds".
+            // The delete query targets EXISTING rows.
           }
         }
 
-        if (toInsert.length > 0) {
-          const { data: inserted, error } = await supabase
-            .from('ticket_support_agents')
-            .insert(toInsert)
-            .select('id');
-          if (error) throw error;
+        // B. Delete removed agents
+        // We want to delete any row in DB for this ticket that is NOT in formAgentIds.
+        let query = supabase.from('ticket_support_agents').delete().eq('ticket_id', ticketId);
 
-          // Add newly inserted IDs to list of IDs to keep (though strictly not needed for delete logic if we do delete first? No, we delete missing IDs).
-          // Actually, we delete IDs that are NOT in formAgentIds (which are the ones present in the form).
-          // Newly inserted ones didn't have IDs in form, so they are not in formAgentIds. 
-          // But they are new rows, so they won't be deleted by "delete existing rows not in formAgentIds".
-          // The delete query targets EXISTING rows.
+        if (formAgentIds.length > 0) {
+          query = query.not('id', 'in', `(${formAgentIds.join(',')})`);
         }
+
+        const { error: deleteError } = await query;
+        if (deleteError) throw deleteError;
+
+      } catch (agentError) {
+        console.error('Erro ao sincronizar agentes de apoio:', agentError);
+        toast.warning('Chamado salvo, mas houve erro ao atualizar agentes de apoio (tabela indisponível).');
+        // Do not throw, continue to success
       }
-
-      // B. Delete removed agents
-      // We want to delete any row in DB for this ticket that is NOT in formAgentIds.
-      let query = supabase.from('ticket_support_agents').delete().eq('ticket_id', ticketId);
-
-      if (formAgentIds.length > 0) {
-        query = query.not('id', 'in', `(${formAgentIds.join(',')})`);
-      }
-
-      const { error: deleteError } = await query;
-      if (deleteError) throw deleteError;
 
       // Upload new photos
       if (newPhotoGroups.length > 0) {
