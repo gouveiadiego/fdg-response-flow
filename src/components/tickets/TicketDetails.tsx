@@ -169,9 +169,9 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
           *,
           clients (name, document, contact_phone),
           main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type, vehicle_plate),
-          ticket_support_agents (
+          ticket_support_agents:ticket_support_agents!ticket_support_agents_ticket_id_fkey (
             *,
-            agent:agents (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
+            agent:agents!ticket_support_agents_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
           ),
           vehicles (
             description, 
@@ -261,9 +261,9 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
           *,
           clients (name, document, contact_phone),
           main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type, vehicle_plate),
-          ticket_support_agents (
+          ticket_support_agents:ticket_support_agents!ticket_support_agents_ticket_id_fkey (
             *,
-            agent:agents (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
+            agent:agents!ticket_support_agents_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
           ),
           vehicles (
             description, 
