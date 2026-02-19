@@ -95,6 +95,33 @@ export function AgentRegistrationReview({ onAgentApproved }: AgentRegistrationRe
     const handleApprove = async (reg: AgentRegistration) => {
         setApproving(reg.id);
         try {
+            let finalLat = reg.latitude;
+            let finalLng = reg.longitude;
+
+            // Se não tiver coordenadas, tenta buscar pelo endereço
+            if ((!finalLat || !finalLng) && reg.address) {
+                try {
+                    const fullAddress = `${reg.address}, Brasil`;
+                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}`);
+                    const geoData = await geoResponse.json();
+
+                    if (geoData && geoData.length > 0) {
+                        finalLat = parseFloat(geoData[0].lat);
+                        finalLng = parseFloat(geoData[0].lon);
+                        toast.info('Coordenadas obtidas automaticamente pelo endereço.');
+
+                        // Atualizar o registro original também para manter histórico
+                        await supabase
+                            .from('agent_registrations' as any)
+                            .update({ latitude: finalLat, longitude: finalLng } as any)
+                            .eq('id', reg.id);
+                    }
+                } catch (error) {
+                    console.error('Erro na geocodificação automática:', error);
+                    toast.warning('Não foi possível obter coordenadas automáticas. O agente pode não aparecer no mapa.');
+                }
+            }
+
             // 1. Create agent from registration data
             const { error: agentError } = await supabase.from('agents').insert({
                 name: reg.name,
@@ -117,8 +144,8 @@ export function AgentRegistrationReview({ onAgentApproved }: AgentRegistrationRe
                 bank_account: reg.bank_account,
                 bank_account_type: reg.bank_account_type,
                 notes: reg.notes,
-                latitude: reg.latitude,
-                longitude: reg.longitude,
+                latitude: finalLat,
+                longitude: finalLng,
                 status: 'ativo',
                 performance_level: 'bom',
             });
