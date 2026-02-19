@@ -303,7 +303,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
         .from('ticket_support_agents')
         .select(`
           *,
-          agent:agents!ticket_support_agents_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
+          agent:agents (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
         `)
         .eq('ticket_id', ticketId);
 
