@@ -426,25 +426,30 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
 
       if (ticketError) throw ticketError;
 
-      // Insert support agents
+      // Insert support agents (Wrapped in try/catch to allow partial success)
       if (data.support_agents && data.support_agents.length > 0) {
-        const supportAgentsData = data.support_agents.map(agent => ({
-          ticket_id: ticket.id,
-          agent_id: agent.agent_id,
-          arrival: agent.arrival || null,
-          departure: agent.departure || null,
-          km_start: agent.km_start || null,
-          km_end: agent.km_end || null,
-          toll_cost: agent.toll_cost || null,
-          food_cost: agent.food_cost || null,
-          other_costs: agent.other_costs || null,
-        }));
+        try {
+          const supportAgentsData = data.support_agents.map(agent => ({
+            ticket_id: ticket.id,
+            agent_id: agent.agent_id,
+            arrival: agent.arrival || null,
+            departure: agent.departure || null,
+            km_start: agent.km_start || null,
+            km_end: agent.km_end || null,
+            toll_cost: agent.toll_cost || null,
+            food_cost: agent.food_cost || null,
+            other_costs: agent.other_costs || null,
+          }));
 
-        const { error: supportAgentsError } = await supabase
-          .from('ticket_support_agents')
-          .insert(supportAgentsData);
+          const { error: supportAgentsError } = await supabase
+            .from('ticket_support_agents')
+            .insert(supportAgentsData);
 
-        if (supportAgentsError) throw supportAgentsError;
+          if (supportAgentsError) throw supportAgentsError;
+        } catch (agentError) {
+          console.error('Erro ao vincular agentes de apoio:', agentError);
+          toast.warning('Chamado criado, mas houve erro ao vincular agentes de apoio (tabela indisponível).');
+        }
       }
 
       if (ticketError) throw ticketError;
