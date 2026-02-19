@@ -169,10 +169,6 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
           *,
           clients (name, document, contact_phone),
           main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type, vehicle_plate),
-          ticket_support_agents:ticket_support_agents!ticket_support_agents_ticket_id_fkey (
-            *,
-            agent:agents!ticket_support_agents_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
-          ),
           vehicles (
             description, 
             tractor_plate, 
@@ -191,7 +187,27 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
         .maybeSingle();
 
       if (error) throw error;
-      setTicket(data as unknown as TicketFull);
+
+      // Fetch support agents separately to avoid relationship issues
+      const { data: supportAgents, error: supportAgentsError } = await supabase
+        .from('ticket_support_agents')
+        .select(`
+          *,
+          agent:agents (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
+        `)
+        .eq('ticket_id', ticketId);
+
+      if (supportAgentsError) {
+        console.error('Erro ao buscar agentes de apoio:', supportAgentsError);
+        // We continue even if support agents fail, just logging it
+      }
+
+      const fullTicket = {
+        ...data,
+        ticket_support_agents: supportAgents || []
+      };
+
+      setTicket(fullTicket as unknown as TicketFull);
     } catch (error) {
       console.error('Erro ao buscar detalhes:', error);
       toast.error(`Erro ao carregar detalhes: ${(error as any).message || 'Erro desconhecido'}`);
@@ -261,10 +277,6 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
           *,
           clients (name, document, contact_phone),
           main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type, vehicle_plate),
-          ticket_support_agents:ticket_support_agents!ticket_support_agents_ticket_id_fkey (
-            *,
-            agent:agents!ticket_support_agents_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
-          ),
           vehicles (
             description, 
             tractor_plate, 
@@ -285,6 +297,20 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
 
       if (ticketError) throw ticketError;
       if (!freshTicket) throw new Error('Ticket not found');
+
+      // Fetch support agents separately
+      const { data: freshSupportAgents, error: supportError } = await supabase
+        .from('ticket_support_agents')
+        .select(`
+          *,
+          agent:agents (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
+        `)
+        .eq('ticket_id', ticketId);
+
+      if (supportError) throw supportError;
+
+      // Assign support agents manually
+      (freshTicket as any).ticket_support_agents = freshSupportAgents || [];
 
       // Fetch fresh photos
       const { data: freshPhotos, error: photosError } = await supabase

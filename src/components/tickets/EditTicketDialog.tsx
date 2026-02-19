@@ -278,8 +278,17 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
       const { data, error } = await supabase
         .from('tickets')
         .select(`
-          *,
-          ticket_support_agents:ticket_support_agents!ticket_support_agents_ticket_id_fkey (
+          *
+        `)
+        .eq('id', ticketId)
+        .single();
+
+      if (error) throw error;
+
+      // Fetch support agents separately
+      const { data: supportAgentsData, error: agentsError } = await supabase
+        .from('ticket_support_agents')
+        .select(`
             id,
             agent_id,
             arrival,
@@ -289,16 +298,18 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
             toll_cost,
             food_cost,
             other_costs
-          )
         `)
-        .eq('id', ticketId)
-        .single();
+        .eq('ticket_id', ticketId);
 
-      if (error) throw error;
+      if (agentsError) {
+        console.error('Error fetching support agents:', agentsError);
+        // Don't throw here, let the main ticket data load at least
+      }
 
       if (data) {
         const ticket = data as any;
-        const supportAgents = ticket.ticket_support_agents?.map((sa: any) => ({
+        // Construct array from separate query result
+        const supportAgents = (supportAgentsData || [])?.map((sa: any) => ({
           id: sa.id,
           agent_id: sa.agent_id,
           arrival: sa.arrival ? new Date(sa.arrival).toISOString().slice(0, 16) : '',
