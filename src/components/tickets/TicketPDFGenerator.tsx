@@ -538,7 +538,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   setColor(pdf, THEME.primary);
   pdf.setFontSize(7);
   pdf.setFont('helvetica', 'bold');
-  pdf.text('LOCAL DO SINISTRO', colOneX + 12, locY + 3);
+  pdf.text('LOCAL DO EVENTO', colOneX + 12, locY + 3);
 
   locY += 8;
   setColor(pdf, THEME.text);

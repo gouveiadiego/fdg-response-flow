@@ -306,14 +306,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
 
       if (supportError) {
         console.error('Error fetching support agents (ignoring for PDF):', supportError);
-        toast.error(`Erro ao buscar agentes: ${(supportError as any).message || 'Desconhecido'}`);
-      } else if (rawSupportAgents?.length === 0) {
-        // Debug info
-        console.log('PDF: Nenhum agente de apoio encontrado para este chamado (Count: 0).');
-        toast.info('PDF: Nenhum agente de apoio extra encontrado neste chamado.');
-      } else {
-        console.log(`PDF: Encontrados ${rawSupportAgents?.length} agentes de apoio.`);
-        toast.success(`PDF: Incluindo ${rawSupportAgents?.length} agentes de apoio.`);
+        // Do not throw, just treat as empty to allow PDF generation
       }
 
       // Manually fetch agent details if we have support agents
