@@ -298,14 +298,39 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
       if (ticketError) throw ticketError;
       if (!freshTicket) throw new Error('Ticket not found');
 
-      // Fetch support agents separately
-      const { data: freshSupportAgents, error: supportError } = await supabase
+      // Fetch support agents separately (raw data first to avoid join issues)
+      const { data: rawSupportAgents, error: supportError } = await supabase
         .from('ticket_support_agents')
-        .select(`
-          *,
-          agent:agents (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
-        `)
+        .select('*')
         .eq('ticket_id', ticketId);
+
+      if (supportError) throw supportError;
+
+      // Manually fetch agent details if we have support agents
+      let freshSupportAgents: any[] = [];
+
+      if (rawSupportAgents && rawSupportAgents.length > 0) {
+        const agentIds = rawSupportAgents.map(sa => sa.agent_id);
+
+        const { data: agentsData, error: agentsError } = await supabase
+          .from('agents')
+          .select('id, name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type')
+          .in('id', agentIds);
+
+        if (agentsError) {
+          console.error('Error fetching agents for PDF:', agentsError);
+          // Continue without agent details if this fails, better than crashing
+        }
+
+        // Merge data
+        freshSupportAgents = rawSupportAgents.map(sa => {
+          const agent = agentsData?.find(a => a.id === sa.agent_id);
+          return {
+            ...sa,
+            agent: agent || { name: 'Agente Indisponível' }
+          };
+        });
+      }
 
       if (supportError) throw supportError;
 
