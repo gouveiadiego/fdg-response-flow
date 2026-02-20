@@ -5,6 +5,7 @@ import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { Search, Loader2, CheckCircle2, Shield } from 'lucide-react';
 import { toast } from 'sonner';
+import { geocodeAddress } from '@/utils/geocoding';
 import {
     Form,
     FormControl,
@@ -99,22 +100,22 @@ export default function AgentRegistration() {
                 const address = `${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}`;
                 form.setValue('address', address);
 
-                // Geocoding with Nominatim
+                // Geocoding with fallback
                 try {
                     const fullAddress = `${address}, Brasil`;
-                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}`);
-                    const geoData = await geoResponse.json();
+                    const fallbackAddress = `${data.localidade}, ${data.uf}, Brasil`;
+                    const coords = await geocodeAddress(fullAddress, fallbackAddress);
 
-                    if (geoData && geoData.length > 0) {
-                        form.setValue('latitude', parseFloat(geoData[0].lat));
-                        form.setValue('longitude', parseFloat(geoData[0].lon));
+                    if (coords) {
+                        form.setValue('latitude', coords.lat);
+                        form.setValue('longitude', coords.lon);
                         toast.success('Endereço e coordenadas encontrados!');
                     } else {
-                        toast.info('Endereço encontrado (sem coordenadas automáticas).');
+                        toast.info('Endereço encontrado, mas não foi possível obter as coordenadas automaticamente.');
                     }
                 } catch (geoError) {
-                    console.error('Erro na geocoficação:', geoError);
-                    // Non-blocking error
+                    console.error('Erro na geocodificação:', geoError);
+                    toast.info('Endereço encontrado (sem coordenadas automáticas).');
                 }
             } else {
                 toast.error('CEP não encontrado.');

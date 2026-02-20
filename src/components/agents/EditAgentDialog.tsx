@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Search, Loader2 } from 'lucide-react';
 import { useCepLookup } from '@/hooks/useCepLookup';
+import { geocodeAddress } from '@/utils/geocoding';
 import {
   Dialog,
   DialogContent,
@@ -167,15 +168,15 @@ export function EditAgentDialog({ agentId, open, onOpenChange, onSuccess }: Edit
     if (result) {
       form.setValue('address', result.address);
 
-      // Geocoding with Nominatim
+      // Geocoding with fallback
       try {
         const fullAddress = `${result.address}, ${result.city}, ${result.state}, BR`;
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}`);
-        const data = await response.json();
+        const fallbackAddress = `${result.city}, ${result.state}, BR`;
+        const coords = await geocodeAddress(fullAddress, fallbackAddress);
 
-        if (data && data.length > 0) {
-          form.setValue('latitude', parseFloat(data[0].lat));
-          form.setValue('longitude', parseFloat(data[0].lon));
+        if (coords) {
+          form.setValue('latitude', coords.lat);
+          form.setValue('longitude', coords.lon);
           toast.success('Endereço e coordenadas encontrados!');
         } else {
           toast.success('Endereço encontrado, mas não foi possível obter as coordenadas automaticamente.');

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { geocodeAddress } from '@/utils/geocoding';
 import { format } from 'date-fns';
 import {
     CheckCircle2,
@@ -102,12 +103,21 @@ export function AgentRegistrationReview({ onAgentApproved }: AgentRegistrationRe
             if ((!finalLat || !finalLng) && reg.address) {
                 try {
                     const fullAddress = `${reg.address}, Brasil`;
-                    const geoResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}`);
-                    const geoData = await geoResponse.json();
 
-                    if (geoData && geoData.length > 0) {
-                        finalLat = parseFloat(geoData[0].lat);
-                        finalLng = parseFloat(geoData[0].lon);
+                    let fallbackAddress;
+                    if (reg.address.includes(' - ')) {
+                        const parts = reg.address.split(',');
+                        if (parts.length >= 2) {
+                            const lastPart = parts[parts.length - 1].trim();
+                            fallbackAddress = `${lastPart}, Brasil`;
+                        }
+                    }
+
+                    const coords = await geocodeAddress(fullAddress, fallbackAddress);
+
+                    if (coords) {
+                        finalLat = coords.lat;
+                        finalLng = coords.lon;
                         toast.info('Coordenadas obtidas automaticamente pelo endereço.');
 
                         // Atualizar o registro original também para manter histórico
