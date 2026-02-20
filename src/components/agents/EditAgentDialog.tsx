@@ -37,7 +37,7 @@ import {
 
 const agentSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(255),
-  document: z.string().min(1, 'Documento é obrigatório').max(20),
+  document: z.string().max(20).optional().nullable(),
   phone: z.string().min(1, 'Telefone é obrigatório').max(20),
   email: z.string().email('E-mail inválido').optional().or(z.literal('')),
   address: z.string().max(500).optional(),
@@ -128,7 +128,7 @@ export function EditAgentDialog({ agentId, open, onOpenChange, onSuccess }: Edit
       if (data) {
         form.reset({
           name: data.name,
-          document: data.document,
+          document: data.document || '',
           phone: data.phone,
           email: data.email || '',
           address: data.address || '',
@@ -311,7 +311,7 @@ export function EditAgentDialog({ agentId, open, onOpenChange, onSuccess }: Edit
                 name="document"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>CPF *</FormLabel>
+                    <FormLabel>CPF</FormLabel>
                     <FormControl>
                       <Input placeholder="000.000.000-00" {...field} />
                     </FormControl>
