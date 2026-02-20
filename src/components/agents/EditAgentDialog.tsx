@@ -73,7 +73,9 @@ interface EditAgentDialogProps {
 
 export function EditAgentDialog({ agentId, open, onOpenChange, onSuccess }: EditAgentDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const { lookupCep, isLoading: isCepLoading } = useCepLookup();
+  const [isCepLoading, setIsCepLoading] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const { lookupCep } = useCepLookup();
 
   const form = useForm<AgentFormData>({
     resolver: zodResolver(agentSchema),
@@ -185,6 +187,49 @@ export function EditAgentDialog({ agentId, open, onOpenChange, onSuccess }: Edit
         console.error('Erro ao buscar coordenadas:', error);
         toast.success('Endereço encontrado!');
       }
+    }
+  };
+
+  const handleManualGeocode = async () => {
+    const address = form.getValues('address');
+    if (!address) {
+      toast.error('Digite um endereço para buscar as coordenadas');
+      return;
+    }
+
+    setIsGeocoding(true);
+    try {
+      const fullAddress = `${address}, Brasil`;
+      let fallbackAddress;
+
+      if (address.includes(' - ')) {
+        const parts = address.split(',');
+        if (parts.length >= 2) {
+          const lastPart = parts[parts.length - 1].trim();
+          fallbackAddress = `${lastPart}, Brasil`;
+        }
+      } else {
+        // Simple fallback if no standard format
+        const parts = address.split(',');
+        if (parts.length > 0) {
+          fallbackAddress = `${parts[parts.length - 1].trim()}, Brasil`;
+        }
+      }
+
+      const coords = await geocodeAddress(fullAddress, fallbackAddress);
+
+      if (coords) {
+        form.setValue('latitude', coords.lat);
+        form.setValue('longitude', coords.lon);
+        toast.success('Coordenadas encontradas pelo endereço!');
+      } else {
+        toast.error('Não foi possível encontrar coordenadas para este endereço no mapa.');
+      }
+    } catch (error) {
+      console.error('Erro na geocoficação manual:', error);
+      toast.error('Erro ao buscar coordenadas.');
+    } finally {
+      setIsGeocoding(false);
     }
   };
 
@@ -347,6 +392,21 @@ export function EditAgentDialog({ agentId, open, onOpenChange, onSuccess }: Edit
                   </FormItem>
                 )}
               />
+
+              <div className="flex items-center justify-between">
+                <FormLabel className="text-muted-foreground">Coordenadas Geográficas</FormLabel>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleManualGeocode}
+                  disabled={isGeocoding}
+                  className="h-8 text-xs"
+                >
+                  {isGeocoding ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Search className="mr-2 h-3 w-3" />}
+                  Buscar pelo Endereço
+                </Button>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
