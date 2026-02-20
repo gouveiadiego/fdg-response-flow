@@ -5,7 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, UserCheck, Phone, Mail, Shield, ShieldOff, Trash2, Car, Bike, Bell, Eye, Lock, Truck, ClipboardCheck, Map as MapIcon, List, Link2, UserPlus } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Plus, Search, UserCheck, Phone, Mail, Shield, ShieldOff, Trash2, Car, Bike, Bell, Eye, Lock, Truck, ClipboardCheck, Map as MapIcon, List, Link2, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { NewAgentDialog } from '@/components/agents/NewAgentDialog';
 import { EditAgentDialog } from '@/components/agents/EditAgentDialog';
@@ -41,6 +49,10 @@ const Agents = () => {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   const skillsList = [
     { id: 'is_armed', label: 'Armado', icon: Shield },
@@ -185,6 +197,12 @@ const Agents = () => {
     return matchesSearch && matchesSkills;
   });
 
+  const totalPages = Math.ceil(filteredAgents.length / itemsPerPage);
+  const paginatedAgents = filteredAgents.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -247,7 +265,10 @@ const Agents = () => {
               <Input
                 placeholder="Buscar agente por nome..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1); // Reset to first page on search
+                }}
                 className="pl-9"
               />
             </div>
@@ -262,7 +283,10 @@ const Agents = () => {
                     variant={isSelected ? "default" : "outline"}
                     size="sm"
                     className="h-8 text-xs gap-1.5"
-                    onClick={() => toggleSkill(skill.id)}
+                    onClick={() => {
+                      toggleSkill(skill.id);
+                      setCurrentPage(1); // Reset to first page on filter
+                    }}
                   >
                     <Icon className="h-3.5 w-3.5" />
                     {skill.label}
@@ -301,122 +325,184 @@ const Agents = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredAgents.map((agent) => (
-                <Card key={agent.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <UserCheck className="h-5 w-5 text-primary" />
-                        <span className="truncate">{agent.name}</span>
-                      </CardTitle>
-                      <div className="flex flex-wrap gap-1 justify-end max-w-[150px]">
-                        {agent.is_armed && (
-                          <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">
-                            <Shield className="h-2.5 w-2.5 mr-0.5" />
-                            Armado
-                          </Badge>
-                        )}
-                        {agent.has_alarm_skill && (
-                          <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-amber-500/10 text-amber-600 border-amber-200">
-                            <Bell className="h-2.5 w-2.5 mr-0.5" />
-                            Alarme
-                          </Badge>
-                        )}
-                        {agent.has_investigation_skill && (
-                          <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-blue-500/10 text-blue-600 border-blue-200">
-                            <Eye className="h-2.5 w-2.5 mr-0.5" />
-                            Averig.
-                          </Badge>
-                        )}
-                        {agent.has_preservation_skill && (
-                          <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-purple-500/10 text-purple-600 border-purple-200">
-                            <Lock className="h-2.5 w-2.5 mr-0.5" />
-                            Preserv.
-                          </Badge>
-                        )}
-                        {agent.has_logistics_skill && (
-                          <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-200">
-                            <Truck className="h-2.5 w-2.5 mr-0.5" />
-                            Logist.
-                          </Badge>
-                        )}
-                        {agent.has_auditing_skill && (
-                          <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-slate-500/10 text-slate-600 border-slate-200">
-                            <ClipboardCheck className="h-2.5 w-2.5 mr-0.5" />
-                            Sindic.
-                          </Badge>
-                        )}
-                      </div>
+            <div className="space-y-4">
+              <div className="rounded-md border bg-card text-card-foreground">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead>Agente</TableHead>
+                      <TableHead>Contato</TableHead>
+                      <TableHead>Veículo</TableHead>
+                      <TableHead>Status / Desempenho</TableHead>
+                      <TableHead>Habilidades</TableHead>
+                      <RoleGuard allowedRoles={['admin', 'operador']}>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </RoleGuard>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedAgents.map((agent) => (
+                      <TableRow key={agent.id}>
+                        {/* Agente Info */}
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium text-primary">{agent.name}</span>
+                            <span className="text-xs text-muted-foreground font-mono">{agent.document || 'Sem CPF'}</span>
+                          </div>
+                        </TableCell>
+
+                        {/* Contato */}
+                        <TableCell>
+                          <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                              <Phone className="h-3 w-3" />
+                              {agent.phone}
+                            </div>
+                            {agent.email && (
+                              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                <Mail className="h-3 w-3" />
+                                <span className="max-w-[150px] truncate" title={agent.email}>{agent.email}</span>
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        {/* Veículo */}
+                        <TableCell>
+                          {agent.vehicle_plate ? (
+                            <div className="flex items-center gap-1.5 text-sm font-medium">
+                              {agent.vehicle_type === 'carro' ? (
+                                <Car className="h-3 w-3" />
+                              ) : agent.vehicle_type === 'moto' ? (
+                                <Bike className="h-3 w-3" />
+                              ) : null}
+                              <span className="uppercase">{agent.vehicle_plate}</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+
+                        {/* Status */}
+                        <TableCell>
+                          <div className="flex flex-col gap-1 items-start">
+                            <Badge variant={agent.status === 'ativo' ? 'default' : 'outline'} className="text-[10px] uppercase">
+                              {agent.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                            {agent.performance_level === 'ruim' && (
+                              <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/20 font-bold uppercase tracking-wider">
+                                Ruim
+                              </Badge>
+                            )}
+                            {agent.performance_level === 'bom' && (
+                              <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-600 border-blue-200 font-bold uppercase tracking-wider">
+                                Bom
+                              </Badge>
+                            )}
+                            {agent.performance_level === 'otimo' && (
+                              <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-200 font-bold uppercase tracking-wider">
+                                Ótimo
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        {/* Habilidades - Compact Icon Row */}
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1 max-w-[150px]">
+                            {agent.is_armed && (
+                              <div className="flex items-center justify-center p-1 bg-destructive/10 text-destructive rounded-md" title="Armado">
+                                <Shield className="h-4 w-4" />
+                              </div>
+                            )}
+                            {agent.has_alarm_skill && (
+                              <div className="flex items-center justify-center p-1 bg-amber-500/10 text-amber-600 rounded-md" title="Alarme">
+                                <Bell className="h-4 w-4" />
+                              </div>
+                            )}
+                            {agent.has_investigation_skill && (
+                              <div className="flex items-center justify-center p-1 bg-blue-500/10 text-blue-600 rounded-md" title="Averiguação">
+                                <Eye className="h-4 w-4" />
+                              </div>
+                            )}
+                            {agent.has_preservation_skill && (
+                              <div className="flex items-center justify-center p-1 bg-purple-500/10 text-purple-600 rounded-md" title="Preservação">
+                                <Lock className="h-4 w-4" />
+                              </div>
+                            )}
+                            {agent.has_logistics_skill && (
+                              <div className="flex items-center justify-center p-1 bg-emerald-500/10 text-emerald-600 rounded-md" title="Logística">
+                                <Truck className="h-4 w-4" />
+                              </div>
+                            )}
+                            {agent.has_auditing_skill && (
+                              <div className="flex items-center justify-center p-1 bg-slate-500/10 text-slate-600 rounded-md" title="Sindicância">
+                                <ClipboardCheck className="h-4 w-4" />
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        {/* Ações */}
+                        <RoleGuard allowedRoles={['admin', 'operador']}>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 text-xs"
+                                onClick={() => handleEdit(agent.id)}
+                              >
+                                Editar
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                onClick={(e) => handleDeleteClick(agent.id, e)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </RoleGuard>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    Mostrando {(currentPage - 1) * itemsPerPage + 1} a {Math.min(currentPage * itemsPerPage, filteredAgents.length)} de {filteredAgents.length} agentes
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="flex items-center justify-center px-4 text-sm font-medium">
+                      Página {currentPage} de {totalPages}
                     </div>
-                    <div className="flex items-center gap-2 mb-1">
-                      {agent.performance_level === 'ruim' && (
-                        <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/20 font-bold uppercase tracking-wider">
-                          Ruim
-                        </Badge>
-                      )}
-                      {agent.performance_level === 'bom' && (
-                        <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-600 border-blue-200 font-bold uppercase tracking-wider">
-                          Bom
-                        </Badge>
-                      )}
-                      {agent.performance_level === 'otimo' && (
-                        <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-200 font-bold uppercase tracking-wider">
-                          Ótimo
-                        </Badge>
-                      )}
-                      <Badge variant={agent.status === 'ativo' ? 'default' : 'outline'} className="text-[10px]">
-                        {agent.status === 'ativo' ? 'Ativo' : 'Inativo'}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CardDescription className="font-mono text-xs">{agent.document}</CardDescription>
-                    </div>
-                    {agent.vehicle_plate && (
-                      <div className="flex items-center gap-2 mt-1 text-xs font-medium text-muted-foreground">
-                        {agent.vehicle_type === 'carro' ? (
-                          <Car className="h-3 w-3" />
-                        ) : agent.vehicle_type === 'moto' ? (
-                          <Bike className="h-3 w-3" />
-                        ) : null}
-                        <span className="uppercase">{agent.vehicle_plate}</span>
-                      </div>
-                    )}
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Phone className="h-4 w-4" />
-                      <span>{agent.phone}</span>
-                    </div>
-                    {agent.email && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail className="h-4 w-4" />
-                        <span className="truncate">{agent.email}</span>
-                      </div>
-                    )}
-                    <RoleGuard allowedRoles={['admin', 'operador']}>
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => handleEdit(agent.id)}
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:bg-destructive/10 hover:text-destructive w-10 px-0"
-                          onClick={(e) => handleDeleteClick(agent.id, e)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </RoleGuard>
-                  </CardContent>
-                </Card>
-              ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </TabsContent>
