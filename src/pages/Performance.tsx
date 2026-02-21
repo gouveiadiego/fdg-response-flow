@@ -357,7 +357,7 @@ const Performance = () => {
                     </div>
 
                     <Card className="shadow-xl border-none overflow-hidden">
-                        <CardHeader className="bg-slate-900 text-white">
+                        <CardHeader className="bg-muted/50 border-b">
                             <CardTitle className="text-lg">Tabela de Ranking Detalhado</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">

@@ -1,5 +1,6 @@
 import { Home, Users, UserCheck, FileText, LogOut, Truck, ClipboardList, TrendingUp, DollarSign } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
+import { ModeToggle } from '@/components/ModeToggle';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -43,17 +44,20 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
       <SidebarContent>
-        <div className="flex items-center gap-3 p-4 border-b border-border">
-          <img src="/logo-fdg-premium.png" alt="Logo" className="h-8 w-auto" />
-          {open && (
-            <div className="flex flex-col">
-              <span className="text-sm font-bold tracking-tight">FDG</span>
-              <span className="text-[10px] leading-none text-muted-foreground flex items-center gap-1">
-                <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
-                Pronta Resposta
-              </span>
-            </div>
-          )}
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center gap-3">
+            <img src="/logo-fdg-premium.png" alt="Logo" className="h-8 w-auto" />
+            {open && (
+              <div className="flex flex-col">
+                <span className="text-sm font-bold tracking-tight">FDG</span>
+                <span className="text-[10px] leading-none text-muted-foreground flex items-center gap-1">
+                  <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
+                  Pronta Resposta
+                </span>
+              </div>
+            )}
+          </div>
+          {open && <ModeToggle />}
         </div>
 
         <SidebarGroup>

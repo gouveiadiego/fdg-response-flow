@@ -168,17 +168,17 @@ export default function AgentRegistration() {
 
     if (isSuccess) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-                <Card className="max-w-md w-full bg-white/10 backdrop-blur-xl border-white/20 text-white">
+            <div className="min-h-screen bg-background flex items-center justify-center p-4 transition-colors">
+                <Card className="max-w-md w-full bg-card border-border">
                     <CardContent className="pt-8 pb-8 text-center space-y-4">
                         <div className="mx-auto w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center">
                             <CheckCircle2 className="h-8 w-8 text-emerald-400" />
                         </div>
-                        <h2 className="text-2xl font-bold">Cadastro Enviado!</h2>
-                        <p className="text-white/70">
+                        <h2 className="text-2xl font-bold text-foreground">Cadastro Enviado!</h2>
+                        <p className="text-muted-foreground">
                             Seus dados foram enviados com sucesso. Aguarde a aprovação da equipe FDG Pronta Resposta.
                         </p>
-                        <p className="text-sm text-white/50">
+                        <p className="text-sm text-muted-foreground/60">
                             Você será contatado após a análise do seu cadastro.
                         </p>
                     </CardContent>
@@ -188,29 +188,28 @@ export default function AgentRegistration() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="min-h-screen bg-background transition-colors">
             {/* Header */}
-            <div className="bg-black/30 backdrop-blur-xl border-b border-white/10">
+            <div className="bg-muted/30 backdrop-blur-xl border-b border-border">
                 <div className="max-w-2xl mx-auto px-4 py-6 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-                        <Shield className="h-6 w-6 text-white" />
+                    <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+                        <Shield className="h-6 w-6 text-primary-foreground" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold text-white">FDG Pronta Resposta</h1>
-                        <p className="text-sm text-white/60">Cadastro de Agente</p>
+                        <h1 className="text-xl font-bold text-foreground">FDG Pronta Resposta</h1>
+                        <p className="text-sm text-muted-foreground">Cadastro de Agente</p>
                     </div>
                 </div>
             </div>
 
             {/* Form */}
             <div className="max-w-2xl mx-auto px-4 py-8">
-                <Card className="bg-white/5 backdrop-blur-xl border-white/10">
+                <Card className="bg-card border-border shadow-xl">
                     <CardContent className="pt-6">
                         <div className="mb-6">
-                            <h2 className="text-lg font-semibold text-white">Preencha seus dados</h2>
-                            <p className="text-sm text-white/50">Os campos com * são obrigatórios</p>
+                            <h2 className="text-lg font-semibold text-foreground">Preencha seus dados</h2>
+                            <p className="text-sm text-muted-foreground">Os campos com * são obrigatórios</p>
                         </div>
-
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
@@ -223,9 +222,9 @@ export default function AgentRegistration() {
                                         name="name"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-white/80">Nome Completo *</FormLabel>
+                                                <FormLabel className="text-foreground/80">Nome Completo *</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Seu nome completo" {...field} className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
+                                                    <Input placeholder="Seu nome completo" {...field} className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 transition-colors" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -237,9 +236,9 @@ export default function AgentRegistration() {
                                         name="document"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-white/80">CPF</FormLabel>
+                                                <FormLabel className="text-foreground/80">CPF</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="000.000.000-00" {...field} className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
+                                                    <Input placeholder="000.000.000-00" {...field} className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 transition-colors" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -252,9 +251,9 @@ export default function AgentRegistration() {
                                             name="phone"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-white/80">Telefone *</FormLabel>
+                                                    <FormLabel className="text-foreground/80">Telefone *</FormLabel>
                                                     <FormControl>
-                                                        <Input placeholder="(00) 00000-0000" {...field} className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
+                                                        <Input placeholder="(00) 00000-0000" {...field} className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 transition-colors" />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -266,9 +265,9 @@ export default function AgentRegistration() {
                                             name="email"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-white/80">E-mail</FormLabel>
+                                                    <FormLabel className="text-foreground/80">E-mail</FormLabel>
                                                     <FormControl>
-                                                        <Input type="email" placeholder="email@exemplo.com" {...field} className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
+                                                        <Input type="email" placeholder="email@exemplo.com" {...field} className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 transition-colors" />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -286,10 +285,10 @@ export default function AgentRegistration() {
                                         name="cep"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-white/80">CEP</FormLabel>
+                                                <FormLabel className="text-foreground/80">CEP</FormLabel>
                                                 <div className="flex gap-2">
                                                     <FormControl>
-                                                        <Input placeholder="00000-000" {...field} className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
+                                                        <Input placeholder="00000-000" {...field} className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 transition-colors" />
                                                     </FormControl>
                                                     <Button
                                                         type="button"
@@ -315,9 +314,9 @@ export default function AgentRegistration() {
                                         name="address"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-white/80">Endereço Completo</FormLabel>
+                                                <FormLabel className="text-foreground/80">Endereço Completo</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Rua, número, bairro, cidade - UF" {...field} className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
+                                                    <Input placeholder="Rua, número, bairro, cidade - UF" {...field} className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 transition-colors" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -335,9 +334,9 @@ export default function AgentRegistration() {
                                             name="vehicle_plate"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-white/80">Placa do Veículo</FormLabel>
+                                                    <FormLabel className="text-foreground/80">Placa do Veículo</FormLabel>
                                                     <FormControl>
-                                                        <Input placeholder="ABC-1234" {...field} className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
+                                                        <Input placeholder="ABC-1234" {...field} className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 transition-colors" />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -349,7 +348,7 @@ export default function AgentRegistration() {
                                             name="vehicle_type"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-white/80">Tipo de Veículo</FormLabel>
+                                                    <FormLabel className="text-foreground/80">Tipo de Veículo</FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                         <FormControl>
                                                             <SelectTrigger className="bg-white/10 border-white/20 text-white">
@@ -373,14 +372,14 @@ export default function AgentRegistration() {
                                 <div className="space-y-4 pt-4 border-t border-white/10">
                                     <h3 className="text-sm font-semibold text-amber-400 uppercase tracking-wider">Habilidades e Especialidades</h3>
 
-                                    <div className="space-y-3 bg-black/20 rounded-lg p-4 border border-white/5">
+                                    <div className="space-y-3 bg-muted/30 rounded-lg p-4 border border-border">
                                         <FormField
                                             control={form.control}
                                             name="is_armed"
                                             render={({ field }) => (
                                                 <FormItem className="flex flex-row items-center justify-between">
                                                     <div className="space-y-0.5">
-                                                        <FormLabel className="text-white/80">Armado</FormLabel>
+                                                        <FormLabel className="text-foreground/80">Armado</FormLabel>
                                                         <p className="text-xs text-white/40">Porta arma de fogo</p>
                                                     </div>
                                                     <FormControl>
@@ -400,7 +399,7 @@ export default function AgentRegistration() {
                                             render={({ field }) => (
                                                 <FormItem className="flex flex-row items-center justify-between">
                                                     <div className="space-y-0.5">
-                                                        <FormLabel className="text-white/80">Alarme</FormLabel>
+                                                        <FormLabel className="text-foreground/80">Alarme</FormLabel>
                                                         <p className="text-xs text-white/40">Atendimento de alarmes</p>
                                                     </div>
                                                     <FormControl>
@@ -420,7 +419,7 @@ export default function AgentRegistration() {
                                             render={({ field }) => (
                                                 <FormItem className="flex flex-row items-center justify-between">
                                                     <div className="space-y-0.5">
-                                                        <FormLabel className="text-white/80">Averiguação</FormLabel>
+                                                        <FormLabel className="text-foreground/80">Averiguação</FormLabel>
                                                         <p className="text-xs text-white/40">Averiguação de ocorrências</p>
                                                     </div>
                                                     <FormControl>
@@ -440,7 +439,7 @@ export default function AgentRegistration() {
                                             render={({ field }) => (
                                                 <FormItem className="flex flex-row items-center justify-between">
                                                     <div className="space-y-0.5">
-                                                        <FormLabel className="text-white/80">Preservação</FormLabel>
+                                                        <FormLabel className="text-foreground/80">Preservação</FormLabel>
                                                         <p className="text-xs text-white/40">Preservação de local</p>
                                                     </div>
                                                     <FormControl>
@@ -460,7 +459,7 @@ export default function AgentRegistration() {
                                             render={({ field }) => (
                                                 <FormItem className="flex flex-row items-center justify-between">
                                                     <div className="space-y-0.5">
-                                                        <FormLabel className="text-white/80">Acompanhamento Logístico</FormLabel>
+                                                        <FormLabel className="text-foreground/80">Acompanhamento Logístico</FormLabel>
                                                         <p className="text-xs text-white/40">Escolta e acompanhamento</p>
                                                     </div>
                                                     <FormControl>
@@ -480,7 +479,7 @@ export default function AgentRegistration() {
                                             render={({ field }) => (
                                                 <FormItem className="flex flex-row items-center justify-between">
                                                     <div className="space-y-0.5">
-                                                        <FormLabel className="text-white/80">Sindicância</FormLabel>
+                                                        <FormLabel className="text-foreground/80">Sindicância</FormLabel>
                                                         <p className="text-xs text-white/40">Levantamento de informações</p>
                                                     </div>
                                                     <FormControl>
@@ -505,7 +504,7 @@ export default function AgentRegistration() {
                                         name="pix_key"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-white/80">Chave PIX</FormLabel>
+                                                <FormLabel className="text-foreground/80">Chave PIX</FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="CPF, E-mail, Telefone ou Chave Aleatória" {...field} className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
                                                 </FormControl>
@@ -520,7 +519,7 @@ export default function AgentRegistration() {
                                             name="bank_name"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-white/80">Banco</FormLabel>
+                                                    <FormLabel className="text-foreground/80">Banco</FormLabel>
                                                     <FormControl>
                                                         <Input placeholder="Nome do banco" {...field} className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
                                                     </FormControl>
@@ -534,7 +533,7 @@ export default function AgentRegistration() {
                                             name="bank_account_type"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-white/80">Tipo de Conta</FormLabel>
+                                                    <FormLabel className="text-foreground/80">Tipo de Conta</FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                         <FormControl>
                                                             <SelectTrigger className="bg-white/10 border-white/20 text-white">
@@ -559,7 +558,7 @@ export default function AgentRegistration() {
                                             name="bank_agency"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-white/80">Agência</FormLabel>
+                                                    <FormLabel className="text-foreground/80">Agência</FormLabel>
                                                     <FormControl>
                                                         <Input placeholder="0000" {...field} className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
                                                     </FormControl>
@@ -573,7 +572,7 @@ export default function AgentRegistration() {
                                             name="bank_account"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-white/80">Conta</FormLabel>
+                                                    <FormLabel className="text-foreground/80">Conta</FormLabel>
                                                     <FormControl>
                                                         <Input placeholder="00000-0" {...field} className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
                                                     </FormControl>
@@ -626,7 +625,7 @@ export default function AgentRegistration() {
                     </CardContent>
                 </Card>
 
-                <p className="text-center text-white/30 text-xs mt-6">
+                <p className="text-center text-muted-foreground/40 text-xs mt-6">
                     FDG Pronta Resposta © {new Date().getFullYear()} — Todos os direitos reservados
                 </p>
             </div>

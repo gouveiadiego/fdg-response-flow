@@ -249,38 +249,38 @@ const Financeiro = () => {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="border-amber-200 bg-amber-50/50">
+                <Card className="border-amber-500/20 bg-amber-500/10 dark:bg-amber-500/5">
                     <CardContent className="flex items-center gap-3 pt-4">
-                        <div className="bg-amber-100 p-2 rounded-lg">
-                            <Clock className="h-5 w-5 text-amber-600" />
+                        <div className="bg-amber-500/20 p-2 rounded-lg">
+                            <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-amber-700">{pendingCount}</p>
-                            <p className="text-xs text-amber-600 font-medium">Pagamentos Pendentes</p>
+                            <p className="text-2xl font-bold text-amber-700 dark:text-amber-500">{pendingCount}</p>
+                            <p className="text-xs text-amber-600/80 dark:text-amber-400/80 font-medium">Pagamentos Pendentes</p>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-emerald-200 bg-emerald-50/50">
+                <Card className="border-emerald-500/20 bg-emerald-500/10 dark:bg-emerald-500/5">
                     <CardContent className="flex items-center gap-3 pt-4">
-                        <div className="bg-emerald-100 p-2 rounded-lg">
-                            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                        <div className="bg-emerald-500/20 p-2 rounded-lg">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-emerald-700">{paidCount}</p>
-                            <p className="text-xs text-emerald-600 font-medium">Pagamentos Realizados</p>
+                            <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-500">{paidCount}</p>
+                            <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80 font-medium">Pagamentos Realizados</p>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-blue-200 bg-blue-50/50">
+                <Card className="border-blue-500/20 bg-blue-500/10 dark:bg-blue-500/5">
                     <CardContent className="flex items-center gap-3 pt-4">
-                        <div className="bg-blue-100 p-2 rounded-lg">
-                            <DollarSign className="h-5 w-5 text-blue-600" />
+                        <div className="bg-blue-500/20 p-2 rounded-lg">
+                            <DollarSign className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-blue-700">
+                            <p className="text-2xl font-bold text-blue-700 dark:text-blue-500">
                                 {pendingTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </p>
-                            <p className="text-xs text-blue-600 font-medium">Total Pendente</p>
+                            <p className="text-xs text-blue-600/80 dark:text-blue-400/80 font-medium">Total Pendente</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -336,8 +336,8 @@ const Financeiro = () => {
                         <Card
                             key={`${item.ticketId}-${item.agentRole}-${idx}`}
                             className={`transition-all hover:shadow-md ${item.paymentStatus === 'pago'
-                                ? 'border-emerald-200 bg-emerald-50/30'
-                                : 'border-amber-200 bg-white'
+                                ? 'border-emerald-500/20 bg-emerald-500/10 dark:bg-emerald-500/5'
+                                : 'border-border bg-card'
                                 }`}
                         >
                             <CardHeader className="pb-2">
