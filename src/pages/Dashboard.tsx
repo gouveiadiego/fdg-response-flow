@@ -222,37 +222,37 @@ const Dashboard = () => {
       title: 'Total de Chamados',
       value: stats.totalTickets,
       icon: FileText,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-50 dark:bg-blue-500/10',
     },
     {
       title: 'Em Aberto',
       value: stats.openTickets,
       icon: Clock,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50',
+      color: 'text-amber-600 dark:text-amber-400',
+      bgColor: 'bg-amber-50 dark:bg-amber-500/10',
     },
     {
       title: 'Finalizados',
       value: stats.completedTickets,
       icon: CheckCircle2,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50',
+      color: 'text-emerald-600 dark:text-emerald-400',
+      bgColor: 'bg-emerald-50 dark:bg-emerald-500/10',
     },
     {
       title: 'Cancelados',
       value: stats.cancelledTickets,
       icon: XCircle,
-      color: 'text-rose-600',
-      bgColor: 'bg-rose-50',
+      color: 'text-rose-600 dark:text-rose-400',
+      bgColor: 'bg-rose-50 dark:bg-rose-500/10',
     },
     {
       title: 'Pagamentos Pendentes',
       value: stats.pendingPaymentValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
       subValue: `${stats.pendingPaymentAgents} agentes a receber`,
       icon: Clock, // Reusing Clock icon or maybe DollarSign?
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50',
+      color: 'text-amber-600 dark:text-amber-400',
+      bgColor: 'bg-amber-50 dark:bg-amber-500/10',
       isCurrency: true,
     },
     {
@@ -260,8 +260,8 @@ const Dashboard = () => {
       value: stats.paidPaymentValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
       subValue: `${stats.paidPaymentAgents} agentes pagos`,
       icon: CheckCircle2,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50',
+      color: 'text-emerald-600 dark:text-emerald-400',
+      bgColor: 'bg-emerald-50 dark:bg-emerald-500/10',
       isCurrency: true,
     },
   ];
@@ -364,7 +364,7 @@ const Dashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-white/50 rounded-xl">
+                <div className="flex items-center justify-between p-4 bg-white/50 dark:bg-background/50 rounded-xl">
                   <div className="flex items-center gap-3">
                     <Users className="h-5 w-5 text-blue-500" />
                     <div>
