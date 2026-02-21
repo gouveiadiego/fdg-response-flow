@@ -47,13 +47,13 @@ All colors MUST be HSL.
 
     --radius: 0.75rem;
 
-    --sidebar-background: 220 26% 14%;
-    --sidebar-foreground: 220 17% 93%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 220 13% 13%;
     --sidebar-primary: 217 91% 35%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 20%;
-    --sidebar-accent-foreground: 220 17% 93%;
-    --sidebar-border: 220 20% 20%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 220 13% 13%;
+    --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217 91% 35%;
     
     --transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
