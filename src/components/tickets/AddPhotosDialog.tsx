@@ -108,12 +108,17 @@ export function AddPhotosDialog({ ticketId, open, onOpenChange, onSuccess }: Add
   const handleUpload = async () => {
     if (!user || totalPhotos === 0) return;
 
+    if (groups.some(group => group.files.length > 0 && !group.caption?.trim())) {
+      toast.error('A legenda é obrigatória para todos os grupos de fotos adicionados.');
+      return;
+    }
+
     setIsUploading(true);
     try {
       for (const group of groups) {
         for (const photo of group.files) {
           const fileName = `${ticketId}/${Date.now()}-${photo.file.name}`;
-          
+
           const { error: uploadError } = await supabase.storage
             .from('ticket-photos')
             .upload(fileName, photo.file);
@@ -137,7 +142,7 @@ export function AddPhotosDialog({ ticketId, open, onOpenChange, onSuccess }: Add
       }
 
       toast.success(`${totalPhotos} foto(s) adicionada(s) com sucesso!`);
-      
+
       groups.forEach(g => g.files.forEach(p => URL.revokeObjectURL(p.preview)));
       setGroups([]);
       onSuccess();
@@ -220,12 +225,12 @@ export function AddPhotosDialog({ ticketId, open, onOpenChange, onSuccess }: Add
                 ))}
               </div>
               <div>
-                <Label htmlFor={`group-caption-${groupIndex}`} className="text-xs">
-                  Descrição do grupo (opcional)
+                <Label htmlFor={`group-caption-${groupIndex}`} className="text-xs font-semibold text-primary">
+                  Descrição do grupo *
                 </Label>
                 <Textarea
                   id={`group-caption-${groupIndex}`}
-                  placeholder="Descreva este grupo de fotos..."
+                  placeholder="Descreva obrigatoriamente este grupo de fotos..."
                   value={group.caption}
                   onChange={(e) => updateGroupCaption(groupIndex, e.target.value)}
                   className="mt-1 resize-none"

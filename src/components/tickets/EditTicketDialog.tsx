@@ -529,6 +529,12 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
 
     if (!validateBusinessRules(data)) return;
 
+    // Validate photo captions before updating
+    if (newPhotoGroups.some(group => group.files.length > 0 && !group.caption?.trim())) {
+      toast.error('A legenda é obrigatória para todos os grupos de fotos adicionados.');
+      return;
+    }
+
     setIsLoading(true);
     try {
       // 1. Update Ticket (Main Info)
@@ -1553,12 +1559,12 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                               ))}
                             </div>
                             <div>
-                              <Label htmlFor={`edit-group-caption-${groupIndex}`} className="text-xs">
-                                Descrição do grupo (opcional)
+                              <Label htmlFor={`edit-group-caption-${groupIndex}`} className="text-xs font-semibold text-primary">
+                                Descrição do grupo *
                               </Label>
                               <Textarea
                                 id={`edit-group-caption-${groupIndex}`}
-                                placeholder="Descreva este grupo de fotos..."
+                                placeholder="Descreva obrigatoriamente este grupo de fotos..."
                                 value={group.caption}
                                 onChange={(e) => updateNewPhotoCaption(groupIndex, e.target.value)}
                                 className="mt-1 resize-none"

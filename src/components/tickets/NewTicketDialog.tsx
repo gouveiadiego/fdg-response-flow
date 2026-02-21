@@ -454,6 +454,13 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
 
       if (ticketError) throw ticketError;
 
+      // Validate photo captions before uploading
+      if (photoGroups.some(group => group.files.length > 0 && !group.caption?.trim())) {
+        toast.error('A legenda é obrigatória para todos os grupos de fotos adicionados.');
+        setIsSubmitting(false);
+        return;
+      }
+
       if (photoGroups.length > 0 && ticket) {
         for (const group of photoGroups) {
           for (const photo of group.files) {
@@ -1320,12 +1327,12 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                             ))}
                           </div>
                           <div>
-                            <Label htmlFor={`group-caption-${groupIndex}`} className="text-xs">
-                              Descrição do grupo (opcional)
+                            <Label htmlFor={`group-caption-${groupIndex}`} className="text-xs font-semibold text-primary">
+                              Descrição do grupo *
                             </Label>
                             <Textarea
                               id={`group-caption-${groupIndex}`}
-                              placeholder="Descreva este grupo de fotos..."
+                              placeholder="Descreva obrigatoriamente este grupo de fotos..."
                               value={group.caption}
                               onChange={(e) => updateGroupCaption(groupIndex, e.target.value)}
                               className="mt-1 resize-none"
