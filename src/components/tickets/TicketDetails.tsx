@@ -564,7 +564,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                     <div key={supportAgent.id} className="pt-1 border-t border-border">
                       <p className="text-sm font-medium">{supportAgent.agent?.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        Apoio {index + 1} {supportAgent.agent?.is_armed ? '(Armado)' : '(Desarmado)'}
+                        {ticket.ticket_support_agents && ticket.ticket_support_agents.length > 1 ? `Agente de Apoio ${index + 1}` : 'Agente de Apoio'} {supportAgent.agent?.is_armed ? '(Armado)' : '(Desarmado)'}
                         {supportAgent.arrival && ` • Chegada: ${format(new Date(supportAgent.arrival), 'HH:mm')}`}
                         {supportAgent.departure && ` • Saída: ${format(new Date(supportAgent.departure), 'HH:mm')}`}
                       </p>
@@ -705,7 +705,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                           </div>
                           <div>
                             <p className="text-xs font-bold text-foreground">{supportAgent.agent?.name}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase">Apoio {index + 1}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase">{ticket.ticket_support_agents && ticket.ticket_support_agents.length > 1 ? `Agente de Apoio ${index + 1}` : 'Agente de Apoio'}</p>
                           </div>
                         </div>
                         <Badge variant={supportAgent.agent?.is_armed ? "secondary" : "outline"} className="text-[10px] h-5 px-1.5 font-normal">

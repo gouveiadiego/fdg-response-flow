@@ -392,6 +392,12 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
 
     if (!validateBusinessRules(data)) return;
 
+    // Validate photo captions before starting submission
+    if (photoGroups.some(group => group.files.length > 0 && !group.caption?.trim())) {
+      toast.error('A legenda é obrigatória para todos os grupos de fotos adicionados.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const { data: ticket, error: ticketError } = await supabase
@@ -453,13 +459,6 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
       }
 
       if (ticketError) throw ticketError;
-
-      // Validate photo captions before uploading
-      if (photoGroups.some(group => group.files.length > 0 && !group.caption?.trim())) {
-        toast.error('A legenda é obrigatória para todos os grupos de fotos adicionados.');
-        setIsSubmitting(false);
-        return;
-      }
 
       if (photoGroups.length > 0 && ticket) {
         for (const group of photoGroups) {

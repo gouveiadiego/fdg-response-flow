@@ -754,13 +754,14 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
     }
 
     if (data.ticket_support_agents) {
+      const isMultipleSupport = data.ticket_support_agents.length > 1;
       data.ticket_support_agents.forEach((supportAgent, index) => {
         y = drawAgentDetailCard(
           supportAgent.agent.is_armed,
           supportAgent.km_start,
           supportAgent.km_end,
           y,
-          `APOIO ${String(index + 1).padStart(2, '0')}`,
+          isMultipleSupport ? `AGENTE DE APOIO ${index + 1}` : 'AGENTE DE APOIO',
           supportAgent.arrival,
           supportAgent.departure
         );

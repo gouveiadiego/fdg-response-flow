@@ -618,11 +618,10 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
               .select('id');
             if (error) throw error;
 
-            // Add newly inserted IDs to list of IDs to keep (though strictly not needed for delete logic if we do delete first? No, we delete missing IDs).
-            // Actually, we delete IDs that are NOT in formAgentIds (which are the ones present in the form).
-            // Newly inserted ones didn't have IDs in form, so they are not in formAgentIds. 
-            // But they are new rows, so they won't be deleted by "delete existing rows not in formAgentIds".
-            // The delete query targets EXISTING rows.
+            // Add freshly inserted IDs to the list so they aren't deleted by the cleanup step
+            if (inserted) {
+              inserted.forEach(row => formAgentIds.push(row.id));
+            }
           }
         }
 
@@ -653,6 +652,7 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
       setNewPhotoGroups([]);
       onOpenChange(false);
       onSuccess();
+
     } catch (error) {
       console.error('Erro ao atualizar chamado:', error);
       const msg = error instanceof Error ? error.message : (error as any)?.message || 'Erro desconhecido';
