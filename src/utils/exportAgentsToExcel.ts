@@ -38,12 +38,46 @@ const bankTypeLabel = (t: string | null) =>
   ({ corrente: 'Conta Corrente', poupanca: 'Conta Poupança' }[t ?? ''] ?? '-');
 
 /**
- * Tenta separar o endereço livre em componentes.
- * Formato esperado (gerado pelo useCepLookup): "Rua X, Bairro, Cidade, UF"
+ * Separa o endereço livre nos seus componentes.
+ * Suporta dois formatos:
+ *   A) "Rua, Bairro, Cidade, UF"       → 4 partes separadas por vírgula
+ *   B) "Rua, Bairro, Cidade - UF"      → última parte contém "Cidade - UF"
+ *   C) "Cidade - UF" ou "Cidade, UF"   → endereço curto sem rua/bairro
  */
+const STATE_REGEX = /^[A-Z]{2}$/;
+const CITY_STATE_DASH = / - ([A-Z]{2})$/;
+
 const parseAddress = (address: string | null) => {
   if (!address) return { rua: '-', bairro: '-', cidade: '-', estado: '-' };
+
   const parts = address.split(',').map((p) => p.trim());
+  const lastPart = parts[parts.length - 1] ?? '';
+
+  // Formato A: última parte é exatamente uma UF (ex: "SP")
+  if (STATE_REGEX.test(lastPart)) {
+    return {
+      rua: parts[0] ?? '-',
+      bairro: parts.length > 3 ? parts[1] ?? '-' : '-',
+      cidade: parts.length > 2 ? parts[parts.length - 2] ?? '-' : parts[0] ?? '-',
+      estado: lastPart,
+    };
+  }
+
+  // Formato B: alguma parte contém "Cidade - UF" (ex: "Presidente Prudente - SP")
+  const dashIdx = parts.findIndex((p) => CITY_STATE_DASH.test(p));
+  if (dashIdx !== -1) {
+    const match = parts[dashIdx].match(CITY_STATE_DASH);
+    const estado = match?.[1] ?? '-';
+    const cidade = parts[dashIdx].replace(CITY_STATE_DASH, '').trim();
+    return {
+      rua: dashIdx > 0 ? parts[0] ?? '-' : '-',
+      bairro: dashIdx > 1 ? parts[dashIdx - 1] ?? '-' : '-',
+      cidade,
+      estado,
+    };
+  }
+
+  // Fallback genérico
   return {
     rua: parts[0] ?? '-',
     bairro: parts[1] ?? '-',
