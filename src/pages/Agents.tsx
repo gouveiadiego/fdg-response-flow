@@ -13,8 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Search, UserCheck, Phone, Mail, Shield, ShieldOff, Trash2, Car, Bike, Bell, Eye, Lock, Truck, ClipboardCheck, Map as MapIcon, List, Link2, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, UserCheck, Phone, Mail, Shield, ShieldOff, Trash2, Car, Bike, Bell, Eye, Lock, Truck, ClipboardCheck, Map as MapIcon, List, Link2, UserPlus, ChevronLeft, ChevronRight, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { exportAgentsToExcel } from '@/utils/exportAgentsToExcel';
 import { NewAgentDialog } from '@/components/agents/NewAgentDialog';
 import { EditAgentDialog } from '@/components/agents/EditAgentDialog';
 import { AgentMap } from '@/components/agents/AgentMap';
@@ -222,7 +223,21 @@ const Agents = () => {
           <p className="text-muted-foreground">Gerencie e localize sua equipe de agentes</p>
         </div>
         <RoleGuard allowedRoles={['admin', 'operador']}>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (agents.length === 0) {
+                  toast.warning('Nenhum agente para exportar.');
+                  return;
+                }
+                exportAgentsToExcel(agents);
+                toast.success(`${agents.length} agente(s) exportado(s) para Excel!`);
+              }}
+            >
+              <FileDown className="h-4 w-4 mr-2" />
+              Exportar Excel
+            </Button>
             <Button variant="outline" onClick={copyRegistrationLink}>
               <Link2 className="h-4 w-4 mr-2" />
               Copiar Link de Cadastro
