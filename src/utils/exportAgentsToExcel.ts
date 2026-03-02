@@ -16,85 +16,147 @@ interface Agent {
   has_preservation_skill: boolean;
   has_logistics_skill: boolean;
   has_auditing_skill: boolean;
+  address: string | null;
+  cep: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  notes: string | null;
+  pix_key: string | null;
+  bank_name: string | null;
+  bank_agency: string | null;
+  bank_account: string | null;
+  bank_account_type: 'corrente' | 'poupanca' | null;
 }
 
-const boolToText = (value: boolean | null | undefined): string => {
-  return value ? 'Sim' : 'Não';
-};
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
-const statusToText = (status: 'ativo' | 'inativo'): string => {
-  return status === 'ativo' ? 'Ativo' : 'Inativo';
-};
+const bool = (v: boolean | null | undefined) => (v ? 'Sim' : 'Não');
 
-const performanceToText = (level: 'ruim' | 'bom' | 'otimo'): string => {
-  const map: Record<string, string> = {
-    ruim: 'Ruim',
-    bom: 'Bom',
-    otimo: 'Ótimo',
+const statusLabel = (s: string) => (s === 'ativo' ? 'Ativo' : 'Inativo');
+
+const performanceLabel = (p: string) =>
+  ({ ruim: 'Ruim', bom: 'Bom', otimo: 'Ótimo' }[p] ?? p);
+
+const vehicleLabel = (v: string | null) =>
+  ({ carro: 'Carro', moto: 'Moto' }[v ?? ''] ?? '-');
+
+const bankAccountTypeLabel = (t: string | null) =>
+  ({ corrente: 'Conta Corrente', poupanca: 'Conta Poupança' }[t ?? ''] ?? '-');
+
+/**
+ * Tenta separar o endereço livre nos seus componentes.
+ * Formato esperado (gerado pelo useCepLookup): "Rua X, Bairro, Cidade, UF"
+ */
+const parseAddress = (address: string | null) => {
+  if (!address) return { rua: '-', bairro: '-', cidade: '-', estado: '-' };
+
+  const parts = address.split(',').map((p) => p.trim());
+
+  return {
+    rua: parts[0] ?? '-',
+    bairro: parts[1] ?? '-',
+    cidade: parts[2] ?? '-',
+    estado: parts[3] ?? '-',
   };
-  return map[level] ?? level;
 };
 
-const vehicleTypeToText = (type: 'carro' | 'moto' | null): string => {
-  if (!type) return '-';
-  return type === 'carro' ? 'Carro' : 'Moto';
-};
+// ─── Sheet builder helpers ───────────────────────────────────────────────────
+
+/** Auto-adjust column widths based on header + content */
+function autoColWidths(
+  rows: Record<string, string | number>[],
+  headers: string[]
+): XLSX.ColInfo[] {
+  return headers.map((header) => {
+    const maxLen = Math.max(
+      header.length,
+      ...rows.map((r) => String(r[header] ?? '').length)
+    );
+    return { wch: maxLen + 2 };
+  });
+}
+
+/** Build a worksheet with bold headers and auto-widths */
+function buildSheet(rows: Record<string, string | number>[]): XLSX.WorkSheet {
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const headers = Object.keys(rows[0] ?? {});
+  ws['!cols'] = autoColWidths(rows, headers);
+  // Bold header row
+  headers.forEach((_, colIndex) => {
+    const cell = XLSX.utils.encode_cell({ r: 0, c: colIndex });
+    if (ws[cell]) {
+      ws[cell].s = { font: { bold: true }, alignment: { horizontal: 'center' } };
+    }
+  });
+  return ws;
+}
+
+// ─── Main export function ────────────────────────────────────────────────────
 
 export const exportAgentsToExcel = (agents: Agent[]): void => {
-  // Map agents to rows with Portuguese headers
-  const rows = agents.map((agent) => ({
-    'Nome': agent.name,
-    'CPF': agent.document || '-',
-    'Telefone': agent.phone,
-    'E-mail': agent.email || '-',
-    'Status': statusToText(agent.status),
-    'Desempenho': performanceToText(agent.performance_level),
-    'Armado': boolToText(agent.is_armed),
-    'Tipo de Veículo': vehicleTypeToText(agent.vehicle_type),
-    'Placa do Veículo': agent.vehicle_plate ? agent.vehicle_plate.toUpperCase() : '-',
-    'Habilidade: Alarme': boolToText(agent.has_alarm_skill),
-    'Habilidade: Averiguação': boolToText(agent.has_investigation_skill),
-    'Habilidade: Preservação': boolToText(agent.has_preservation_skill),
-    'Habilidade: Logística': boolToText(agent.has_logistics_skill),
-    'Habilidade: Sindicância': boolToText(agent.has_auditing_skill),
+  const workbook = XLSX.utils.book_new();
+
+  // ── ABA 1: Dados Gerais ──────────────────────────────────────────────────
+  const dadosGerais = agents.map((a) => ({
+    'Nome': a.name,
+    'CPF': a.document || '-',
+    'Telefone': a.phone,
+    'E-mail': a.email || '-',
+    'Status': statusLabel(a.status),
+    'Desempenho': performanceLabel(a.performance_level),
+    'Armado': bool(a.is_armed),
+    'Tipo de Veículo': vehicleLabel(a.vehicle_type),
+    'Placa do Veículo': a.vehicle_plate ? a.vehicle_plate.toUpperCase() : '-',
+    'Observações': a.notes || '-',
   }));
+  XLSX.utils.book_append_sheet(workbook, buildSheet(dadosGerais), 'Dados Gerais');
 
-  // Create worksheet from rows
-  const worksheet = XLSX.utils.json_to_sheet(rows);
-
-  // Auto-size columns based on content
-  const headers = Object.keys(rows[0] || {});
-  const colWidths = headers.map((header) => {
-    const maxContentLength = Math.max(
-      header.length,
-      ...rows.map((row) => {
-        const val = (row as Record<string, string>)[header] ?? '';
-        return val.toString().length;
-      })
-    );
-    return { wch: maxContentLength + 2 };
-  });
-  worksheet['!cols'] = colWidths;
-
-  // Style header row (bold)
-  headers.forEach((_, colIndex) => {
-    const cellAddress = XLSX.utils.encode_cell({ r: 0, c: colIndex });
-    if (!worksheet[cellAddress]) return;
-    worksheet[cellAddress].s = {
-      font: { bold: true },
-      alignment: { horizontal: 'center' },
+  // ── ABA 2: Endereço e Localização ────────────────────────────────────────
+  const endereco = agents.map((a) => {
+    const { rua, bairro, cidade, estado } = parseAddress(a.address);
+    return {
+      'Nome': a.name,
+      'CEP': a.cep || '-',
+      'Rua / Logradouro': rua,
+      'Bairro': bairro,
+      'Cidade': cidade,
+      'Estado (UF)': estado,
+      'Endereço Completo': a.address || '-',
+      'Latitude': a.latitude ?? '-',
+      'Longitude': a.longitude ?? '-',
+      'Coordenadas (Google Maps)':
+        a.latitude && a.longitude
+          ? `${a.latitude}, ${a.longitude}`
+          : '-',
     };
   });
+  XLSX.utils.book_append_sheet(workbook, buildSheet(endereco), 'Endereço e Localização');
 
-  // Create workbook and append the worksheet
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Agentes');
+  // ── ABA 3: Habilidades ───────────────────────────────────────────────────
+  const habilidades = agents.map((a) => ({
+    'Nome': a.name,
+    'Armado': bool(a.is_armed),
+    'Alarme': bool(a.has_alarm_skill),
+    'Averiguação': bool(a.has_investigation_skill),
+    'Preservação': bool(a.has_preservation_skill),
+    'Logística': bool(a.has_logistics_skill),
+    'Sindicância': bool(a.has_auditing_skill),
+  }));
+  XLSX.utils.book_append_sheet(workbook, buildSheet(habilidades), 'Habilidades');
 
-  // Generate date string for filename
+  // ── ABA 4: Dados Bancários ───────────────────────────────────────────────
+  const bancarios = agents.map((a) => ({
+    'Nome': a.name,
+    'Chave PIX': a.pix_key || '-',
+    'Banco': a.bank_name || '-',
+    'Tipo de Conta': bankAccountTypeLabel(a.bank_account_type),
+    'Agência': a.bank_agency || '-',
+    'Conta': a.bank_account || '-',
+  }));
+  XLSX.utils.book_append_sheet(workbook, buildSheet(bancarios), 'Dados Bancários');
+
+  // ── Download ─────────────────────────────────────────────────────────────
   const now = new Date();
   const datePart = now.toLocaleDateString('pt-BR').replace(/\//g, '-');
-  const filename = `agentes_${datePart}.xlsx`;
-
-  // Trigger download
-  XLSX.writeFile(workbook, filename);
+  XLSX.writeFile(workbook, `agentes_${datePart}.xlsx`);
 };

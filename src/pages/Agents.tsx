@@ -39,6 +39,18 @@ interface Agent {
   has_preservation_skill: boolean;
   has_logistics_skill: boolean;
   has_auditing_skill: boolean;
+  // Location
+  address: string | null;
+  cep: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  // Extras
+  notes: string | null;
+  pix_key: string | null;
+  bank_name: string | null;
+  bank_agency: string | null;
+  bank_account: string | null;
+  bank_account_type: 'corrente' | 'poupanca' | null;
 }
 
 const Agents = () => {
@@ -97,10 +109,12 @@ const Agents = () => {
       const { data, error } = await supabase
         .from('agents')
         .select(`
-          id, name, document, phone, email, status, is_armed, 
+          id, name, document, phone, email, status, is_armed,
           performance_level, vehicle_type, vehicle_plate,
-          has_alarm_skill, has_investigation_skill, has_preservation_skill, 
-          has_logistics_skill, has_auditing_skill
+          has_alarm_skill, has_investigation_skill, has_preservation_skill,
+          has_logistics_skill, has_auditing_skill,
+          address, cep, latitude, longitude,
+          notes, pix_key, bank_name, bank_agency, bank_account, bank_account_type
         `)
         .order('name');
 
