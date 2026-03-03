@@ -439,7 +439,7 @@ export default function AgentRegistration() {
                                                     <FormLabel className="text-foreground/80">Tipo de Veículo</FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                         <FormControl>
-                                                            <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                                                            <SelectTrigger className="bg-background border-border text-foreground">
                                                                 <SelectValue placeholder="Selecione..." />
                                                             </SelectTrigger>
                                                         </FormControl>
@@ -594,7 +594,7 @@ export default function AgentRegistration() {
                                             <FormItem>
                                                 <FormLabel className="text-foreground/80">Chave PIX</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="CPF, E-mail, Telefone ou Chave Aleatória" {...field} className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
+                                                    <Input placeholder="CPF, E-mail, Telefone ou Chave Aleatória" {...field} className="bg-background border-border text-foreground placeholder:text-muted-foreground/50" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -609,7 +609,7 @@ export default function AgentRegistration() {
                                                 <FormItem>
                                                     <FormLabel className="text-foreground/80">Banco</FormLabel>
                                                     <FormControl>
-                                                        <Input placeholder="Nome do banco" {...field} className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
+                                                        <Input placeholder="Nome do banco" {...field} className="bg-background border-border text-foreground placeholder:text-muted-foreground/50" />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -624,7 +624,7 @@ export default function AgentRegistration() {
                                                     <FormLabel className="text-foreground/80">Tipo de Conta</FormLabel>
                                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                         <FormControl>
-                                                            <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                                                            <SelectTrigger className="bg-background border-border text-foreground">
                                                                 <SelectValue placeholder="Selecione..." />
                                                             </SelectTrigger>
                                                         </FormControl>
