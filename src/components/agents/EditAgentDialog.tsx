@@ -230,7 +230,7 @@ export function EditAgentDialog({ agentId, open, onOpenChange, onSuccess }: Edit
         has_auditing_skill: data.has_auditing_skill,
         latitude: data.latitude || null,
         longitude: data.longitude || null,
-      }).eq('id', agentId);
+      } as any).eq('id', agentId);
 
       if (error) throw error;
       toast.success('Agente atualizado com sucesso!');

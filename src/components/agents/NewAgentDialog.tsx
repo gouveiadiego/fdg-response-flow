@@ -205,7 +205,7 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
         has_auditing_skill: data.has_auditing_skill,
         latitude: data.latitude || null,
         longitude: data.longitude || null,
-      });
+      } as any);
 
       if (error) throw error;
 
