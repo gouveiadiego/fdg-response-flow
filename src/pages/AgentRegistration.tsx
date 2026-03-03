@@ -32,8 +32,12 @@ const registrationSchema = z.object({
     document: z.string().max(20).optional().or(z.literal('')),
     phone: z.string().min(1, 'Telefone é obrigatório').max(20),
     email: z.string().email('E-mail inválido').optional().or(z.literal('')),
-    address: z.string().max(500).optional(),
     cep: z.string().max(10).optional(),
+    street: z.string().max(300).optional(),
+    street_number: z.string().max(50).optional(),
+    neighborhood: z.string().max(150).optional(),
+    city: z.string().max(150).optional(),
+    state: z.string().max(2).optional(),
     is_armed: z.boolean().default(false),
     vehicle_plate: z.string().max(10).optional(),
     vehicle_type: z.string().optional(),
@@ -66,8 +70,12 @@ export default function AgentRegistration() {
             document: '',
             phone: '',
             email: '',
-            address: '',
             cep: '',
+            street: '',
+            street_number: '',
+            neighborhood: '',
+            city: '',
+            state: '',
             is_armed: false,
             vehicle_plate: '',
             vehicle_type: '',
@@ -97,21 +105,23 @@ export default function AgentRegistration() {
             const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
             const data = await response.json();
             if (!data.erro) {
-                const address = `${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}`;
-                form.setValue('address', address);
+                form.setValue('street', data.logradouro || '');
+                form.setValue('neighborhood', data.bairro || '');
+                form.setValue('city', data.localidade || '');
+                form.setValue('state', data.uf || '');
 
-                // Geocoding with fallback
+                // Geocoding
                 try {
-                    const fullAddress = `${address}, Brasil`;
+                    const parts = [data.logradouro, data.bairro, data.localidade, data.uf].filter(Boolean);
+                    const fullAddress = `${parts.join(', ')}, Brasil`;
                     const fallbackAddress = `${data.localidade}, ${data.uf}, Brasil`;
                     const coords = await geocodeAddress(fullAddress, fallbackAddress);
-
                     if (coords) {
                         form.setValue('latitude', coords.lat);
                         form.setValue('longitude', coords.lon);
                         toast.success('Endereço e coordenadas encontrados!');
                     } else {
-                        toast.info('Endereço encontrado, mas não foi possível obter as coordenadas automaticamente.');
+                        toast.info('Endereço encontrado! Preencha o número para melhorar a localização.');
                     }
                 } catch (geoError) {
                     console.error('Erro na geocodificação:', geoError);
@@ -136,8 +146,14 @@ export default function AgentRegistration() {
                 document: data.document || null,
                 phone: data.phone,
                 email: data.email || null,
-                address: data.address || null,
+                // Composed address for backward compat
+                address: [data.street, data.street_number, data.neighborhood, data.city, data.state].filter(Boolean).join(', ') || null,
                 cep: data.cep || null,
+                street: data.street || null,
+                street_number: data.street_number || null,
+                neighborhood: data.neighborhood || null,
+                city: data.city || null,
+                state: data.state || null,
                 is_armed: data.is_armed,
                 vehicle_plate: data.vehicle_plate || null,
                 vehicle_type: data.vehicle_type && data.vehicle_type !== 'none' ? data.vehicle_type : null,
@@ -280,6 +296,7 @@ export default function AgentRegistration() {
                                 <div className="space-y-4 pt-4 border-t border-white/10">
                                     <h3 className="text-sm font-semibold text-amber-400 uppercase tracking-wider">Endereço</h3>
 
+                                    {/* CEP */}
                                     <FormField
                                         control={form.control}
                                         name="cep"
@@ -309,19 +326,90 @@ export default function AgentRegistration() {
                                         )}
                                     />
 
+                                    {/* Rua + Número */}
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="col-span-2">
+                                            <FormField
+                                                control={form.control}
+                                                name="street"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-foreground/80">Rua / Logradouro</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="Rua das Flores" {...field} className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 transition-colors" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                        <FormField
+                                            control={form.control}
+                                            name="street_number"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-foreground/80">Número / Compl.</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="123 / Ap 4" {...field} className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 transition-colors" />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+
+                                    {/* Bairro */}
                                     <FormField
                                         control={form.control}
-                                        name="address"
+                                        name="neighborhood"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel className="text-foreground/80">Endereço Completo</FormLabel>
+                                                <FormLabel className="text-foreground/80">Bairro</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Rua, número, bairro, cidade - UF" {...field} className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 transition-colors" />
+                                                    <Input placeholder="Centro" {...field} className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 transition-colors" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
+
+                                    {/* Cidade + Estado */}
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="col-span-2">
+                                            <FormField
+                                                control={form.control}
+                                                name="city"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-foreground/80">Cidade</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="São Paulo" {...field} className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 transition-colors" />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                        <FormField
+                                            control={form.control}
+                                            name="state"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-foreground/80">Estado (UF)</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            placeholder="SP"
+                                                            maxLength={2}
+                                                            className="bg-background border-border text-foreground placeholder:text-muted-foreground/50 uppercase transition-colors"
+                                                            {...field}
+                                                            onChange={e => field.onChange(e.target.value.toUpperCase())}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Veículo */}
