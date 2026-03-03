@@ -4,19 +4,27 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Search, Building2, MapPin, Trash2 } from 'lucide-react';
+import { Plus, Search, Building2, MapPin, Trash2, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { NewClientDialog } from '@/components/clients/NewClientDialog';
 import { EditClientDialog } from '@/components/clients/EditClientDialog';
 import { DeleteAlertDialog } from '@/components/DeleteAlertDialog';
+import { exportClientsToExcel } from '@/utils/exportClientsToExcel';
 
 interface Client {
   id: string;
   name: string;
   document: string;
+  contact_name: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+  cep: string | null;
+  street: string | null;
+  street_number: string | null;
+  neighborhood: string | null;
   city: string;
   state: string;
-  contact_phone: string | null;
+  notes: string | null;
 }
 
 const Clients = () => {
@@ -41,11 +49,11 @@ const Clients = () => {
     try {
       const { data, error } = await supabase
         .from('clients')
-        .select('id, name, document, city, state, contact_phone')
+        .select('id, name, document, contact_name, contact_phone, contact_email, cep, street, street_number, neighborhood, city, state, notes')
         .order('name');
 
       if (error) throw error;
-      setClients(data || []);
+      setClients((data || []) as any);
     } catch (error) {
       console.error('Erro ao buscar clientes:', error);
       toast.error('Erro ao carregar clientes');
@@ -67,42 +75,26 @@ const Clients = () => {
 
   const handleConfirmDelete = async () => {
     if (!clientToDelete) return;
-
     setDeleteLoading(true);
     try {
-      // Check for vehicles
       const { count: vehiclesCount, error: vehiclesError } = await supabase
-        .from('vehicles')
-        .select('id', { count: 'exact', head: true })
-        .eq('client_id', clientToDelete);
-
+        .from('vehicles').select('id', { count: 'exact', head: true }).eq('client_id', clientToDelete);
       if (vehiclesError) throw vehiclesError;
-
       if (vehiclesCount && vehiclesCount > 0) {
-        toast.error(`Não é possível excluir: Cliente possui ${vehiclesCount} veículo(s) cadastrado(s). Exclua os veículos primeiro.`);
+        toast.error(`Não é possível excluir: Cliente possui ${vehiclesCount} veículo(s). Exclua os veículos primeiro.`);
         return;
       }
 
-      // Check for tickets
       const { count: ticketsCount, error: ticketsError } = await supabase
-        .from('tickets')
-        .select('id', { count: 'exact', head: true })
-        .eq('client_id', clientToDelete);
-
+        .from('tickets').select('id', { count: 'exact', head: true }).eq('client_id', clientToDelete);
       if (ticketsError) throw ticketsError;
-
       if (ticketsCount && ticketsCount > 0) {
-        toast.error(`Não é possível excluir: Cliente possui ${ticketsCount} chamado(s) registrado(s). Exclua os chamados primeiro.`);
+        toast.error(`Não é possível excluir: Cliente possui ${ticketsCount} chamado(s). Exclua os chamados primeiro.`);
         return;
       }
 
-      const { error, count } = await supabase
-        .from('clients')
-        .delete({ count: 'exact' })
-        .eq('id', clientToDelete);
-
+      const { error, count } = await supabase.from('clients').delete({ count: 'exact' }).eq('id', clientToDelete);
       if (error) throw error;
-
       if (count === 0) {
         toast.error('Erro: Cliente não encontrado ou permissão negada.');
       } else {
@@ -118,6 +110,16 @@ const Clients = () => {
       setDeleteDialogOpen(false);
       setClientToDelete(null);
     }
+  };
+
+  const handleExportExcel = () => {
+    if (clients.length === 0) {
+      toast.error('Nenhum cliente para exportar');
+      return;
+    }
+    const toExport = filteredClients.length > 0 ? filteredClients : clients;
+    exportClientsToExcel(toExport);
+    toast.success(`${toExport.length} cliente(s) exportado(s) com sucesso!`);
   };
 
   const handleViewVehicles = (clientId: string) => {
@@ -146,10 +148,16 @@ const Clients = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">Clientes</h1>
           <p className="text-sm text-muted-foreground">Gerencie os clientes do sistema</p>
         </div>
-        <Button onClick={() => setNewClientOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Cliente
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExportExcel}>
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Exportar Excel
+          </Button>
+          <Button onClick={() => setNewClientOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Cliente
+          </Button>
+        </div>
       </div>
 
       <div className="relative">
@@ -192,31 +200,22 @@ const Clients = () => {
               <CardContent className="space-y-2">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">{client.city}, {client.state}</span>
+                  <span className="truncate">
+                    {[client.neighborhood, client.city, client.state].filter(Boolean).join(', ') || `${client.city}, ${client.state}`}
+                  </span>
                 </div>
                 {client.contact_phone && (
                   <p className="text-sm text-muted-foreground truncate">{client.contact_phone}</p>
                 )}
                 <div className="flex gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleViewVehicles(client.id)}
-                  >
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => handleViewVehicles(client.id)}>
                     Ver Veículos
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleEdit(client.id)}
-                  >
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(client.id)}>
                     Editar
                   </Button>
                   <Button
-                    variant="ghost"
-                    size="sm"
+                    variant="ghost" size="sm"
                     className="text-destructive hover:bg-destructive/10 hover:text-destructive w-10 px-0"
                     onClick={(e) => handleDeleteClick(client.id, e)}
                   >
@@ -229,22 +228,10 @@ const Clients = () => {
         </div>
       )}
 
-      <NewClientDialog
-        open={newClientOpen}
-        onOpenChange={setNewClientOpen}
-        onSuccess={fetchClients}
-      />
-
-      <EditClientDialog
-        open={editClientOpen}
-        onOpenChange={setEditClientOpen}
-        clientId={selectedClientId}
-        onSuccess={fetchClients}
-      />
-
+      <NewClientDialog open={newClientOpen} onOpenChange={setNewClientOpen} onSuccess={fetchClients} />
+      <EditClientDialog open={editClientOpen} onOpenChange={setEditClientOpen} clientId={selectedClientId} onSuccess={fetchClients} />
       <DeleteAlertDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
+        open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}
         onConfirm={handleConfirmDelete}
         title="Excluir Cliente"
         description="Tem certeza que deseja excluir este cliente? Isso pode falhar se houver registros vinculados."
