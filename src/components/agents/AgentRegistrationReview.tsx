@@ -38,6 +38,11 @@ interface AgentRegistration {
     email: string | null;
     address: string | null;
     cep: string | null;
+    street: string | null;
+    street_number: string | null;
+    neighborhood: string | null;
+    city: string | null;
+    state: string | null;
     is_armed: boolean;
     vehicle_plate: string | null;
     vehicle_type: string | null;
@@ -140,6 +145,11 @@ export function AgentRegistrationReview({ onAgentApproved }: AgentRegistrationRe
                 email: reg.email,
                 address: reg.address,
                 cep: reg.cep,
+                street: reg.street,
+                street_number: reg.street_number,
+                neighborhood: reg.neighborhood,
+                city: reg.city,
+                state: reg.state,
                 is_armed: reg.is_armed,
                 vehicle_plate: reg.vehicle_plate,
                 vehicle_type: (reg.vehicle_type as any) || null,
@@ -158,7 +168,7 @@ export function AgentRegistrationReview({ onAgentApproved }: AgentRegistrationRe
                 longitude: finalLng,
                 status: 'ativo',
                 performance_level: 'bom',
-            });
+            } as any);
 
             if (agentError) throw agentError;
 
@@ -375,11 +385,27 @@ export function AgentRegistrationReview({ onAgentApproved }: AgentRegistrationRe
                                     <div className="grid grid-cols-2 gap-2 text-sm">
                                         <div>
                                             <p className="text-muted-foreground text-xs">CEP</p>
-                                            <p className="font-medium">{selectedReg.cep || '-'}</p>
+                                            <p className="font-medium">{(selectedReg as any).cep || '-'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-muted-foreground text-xs">Estado (UF)</p>
+                                            <p className="font-medium">{(selectedReg as any).state || '-'}</p>
                                         </div>
                                         <div className="col-span-2">
-                                            <p className="text-muted-foreground text-xs">Endereço</p>
-                                            <p className="font-medium">{selectedReg.address || '-'}</p>
+                                            <p className="text-muted-foreground text-xs">Rua / Logradouro</p>
+                                            <p className="font-medium">{(selectedReg as any).street || selectedReg.address || '-'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-muted-foreground text-xs">Número / Complemento</p>
+                                            <p className="font-medium">{(selectedReg as any).street_number || '-'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-muted-foreground text-xs">Bairro</p>
+                                            <p className="font-medium">{(selectedReg as any).neighborhood || '-'}</p>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <p className="text-muted-foreground text-xs">Cidade</p>
+                                            <p className="font-medium">{(selectedReg as any).city || '-'}</p>
                                         </div>
                                     </div>
                                 </div>
