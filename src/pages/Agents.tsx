@@ -42,6 +42,11 @@ interface Agent {
   // Location
   address: string | null;
   cep: string | null;
+  street: string | null;
+  street_number: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
   latitude: number | null;
   longitude: number | null;
   // Extras
@@ -113,13 +118,14 @@ const Agents = () => {
           performance_level, vehicle_type, vehicle_plate,
           has_alarm_skill, has_investigation_skill, has_preservation_skill,
           has_logistics_skill, has_auditing_skill,
-          address, cep, latitude, longitude,
+          address, cep, street, street_number, neighborhood, city, state,
+          latitude, longitude,
           notes, pix_key, bank_name, bank_agency, bank_account, bank_account_type
         `)
         .order('name');
 
       if (error) throw error;
-      setAgents(data || []);
+      setAgents((data as any[]) || []);
     } catch (error) {
       console.error('Erro ao buscar agentes:', error);
       toast.error('Erro ao carregar agentes');

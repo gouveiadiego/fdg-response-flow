@@ -18,6 +18,11 @@ interface Agent {
   has_auditing_skill: boolean;
   address: string | null;
   cep: string | null;
+  street: string | null;
+  street_number: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
   latitude: number | null;
   longitude: number | null;
   notes: string | null;
@@ -36,105 +41,53 @@ const performanceLabel = (p: string) => ({ ruim: 'Ruim', bom: 'Bom', otimo: 'Ót
 const vehicleLabel = (v: string | null) => ({ carro: 'Carro', moto: 'Moto' }[v ?? ''] ?? '-');
 const bankTypeLabel = (t: string | null) =>
   ({ corrente: 'Conta Corrente', poupanca: 'Conta Poupança' }[t ?? ''] ?? '-');
-
-/**
- * Separa o endereço livre nos seus componentes.
- * Suporta dois formatos:
- *   A) "Rua, Bairro, Cidade, UF"       → 4 partes separadas por vírgula
- *   B) "Rua, Bairro, Cidade - UF"      → última parte contém "Cidade - UF"
- *   C) "Cidade - UF" ou "Cidade, UF"   → endereço curto sem rua/bairro
- */
-const STATE_REGEX = /^[A-Z]{2}$/;
-const CITY_STATE_DASH = / - ([A-Z]{2})$/;
-
-const parseAddress = (address: string | null) => {
-  if (!address) return { rua: '-', bairro: '-', cidade: '-', estado: '-' };
-
-  const parts = address.split(',').map((p) => p.trim());
-  const lastPart = parts[parts.length - 1] ?? '';
-
-  // Formato A: última parte é exatamente uma UF (ex: "SP")
-  if (STATE_REGEX.test(lastPart)) {
-    return {
-      rua: parts[0] ?? '-',
-      bairro: parts.length > 3 ? parts[1] ?? '-' : '-',
-      cidade: parts.length > 2 ? parts[parts.length - 2] ?? '-' : parts[0] ?? '-',
-      estado: lastPart,
-    };
-  }
-
-  // Formato B: alguma parte contém "Cidade - UF" (ex: "Presidente Prudente - SP")
-  const dashIdx = parts.findIndex((p) => CITY_STATE_DASH.test(p));
-  if (dashIdx !== -1) {
-    const match = parts[dashIdx].match(CITY_STATE_DASH);
-    const estado = match?.[1] ?? '-';
-    const cidade = parts[dashIdx].replace(CITY_STATE_DASH, '').trim();
-    return {
-      rua: dashIdx > 0 ? parts[0] ?? '-' : '-',
-      bairro: dashIdx > 1 ? parts[dashIdx - 1] ?? '-' : '-',
-      cidade,
-      estado,
-    };
-  }
-
-  // Fallback genérico
-  return {
-    rua: parts[0] ?? '-',
-    bairro: parts[1] ?? '-',
-    cidade: parts[2] ?? '-',
-    estado: parts[3] ?? '-',
-  };
-};
+const val = (v: string | null | undefined) => v || '-';
 
 // ─── Export ───────────────────────────────────────────────────────────────────
 
 export const exportAgentsToExcel = (agents: Agent[]): void => {
-  const rows = agents.map((a) => {
-    const { rua, bairro, cidade, estado } = parseAddress(a.address);
+  const rows = agents.map((a) => ({
+    // ── Dados Gerais
+    'Nome': a.name,
+    'CPF': val(a.document),
+    'Telefone': a.phone,
+    'E-mail': val(a.email),
+    'Status': statusLabel(a.status),
+    'Desempenho': performanceLabel(a.performance_level),
+    'Observações': val(a.notes),
 
-    return {
-      // ── Dados Gerais
-      'Nome': a.name,
-      'CPF': a.document || '-',
-      'Telefone': a.phone,
-      'E-mail': a.email || '-',
-      'Status': statusLabel(a.status),
-      'Desempenho': performanceLabel(a.performance_level),
-      'Observações': a.notes || '-',
+    // ── Veículo
+    'Tipo de Veículo': vehicleLabel(a.vehicle_type),
+    'Placa do Veículo': a.vehicle_plate ? a.vehicle_plate.toUpperCase() : '-',
 
-      // ── Veículo
-      'Tipo de Veículo': vehicleLabel(a.vehicle_type),
-      'Placa do Veículo': a.vehicle_plate ? a.vehicle_plate.toUpperCase() : '-',
+    // ── Endereço (agora campos diretos do banco!)
+    'CEP': val(a.cep),
+    'Rua / Logradouro': val(a.street),
+    'Número / Complemento': val(a.street_number),
+    'Bairro': val(a.neighborhood),
+    'Cidade': val(a.city),
+    'Estado (UF)': val(a.state),
 
-      // ── Endereço
-      'CEP': a.cep || '-',
-      'Rua / Logradouro': rua,
-      'Bairro': bairro,
-      'Cidade': cidade,
-      'Estado (UF)': estado,
-      'Endereço Completo': a.address || '-',
+    // ── Localização
+    'Latitude': a.latitude ?? '-',
+    'Longitude': a.longitude ?? '-',
+    'Coordenadas (Google Maps)': a.latitude && a.longitude ? `${a.latitude}, ${a.longitude}` : '-',
 
-      // ── Localização
-      'Latitude': a.latitude ?? '-',
-      'Longitude': a.longitude ?? '-',
-      'Coordenadas (Google Maps)': a.latitude && a.longitude ? `${a.latitude}, ${a.longitude}` : '-',
+    // ── Habilidades
+    'Armado': bool(a.is_armed),
+    'Alarme': bool(a.has_alarm_skill),
+    'Averiguação': bool(a.has_investigation_skill),
+    'Preservação': bool(a.has_preservation_skill),
+    'Logística': bool(a.has_logistics_skill),
+    'Sindicância': bool(a.has_auditing_skill),
 
-      // ── Habilidades
-      'Armado': bool(a.is_armed),
-      'Alarme': bool(a.has_alarm_skill),
-      'Averiguação': bool(a.has_investigation_skill),
-      'Preservação': bool(a.has_preservation_skill),
-      'Logística': bool(a.has_logistics_skill),
-      'Sindicância': bool(a.has_auditing_skill),
-
-      // ── Dados Bancários
-      'Chave PIX': a.pix_key || '-',
-      'Banco': a.bank_name || '-',
-      'Tipo de Conta': bankTypeLabel(a.bank_account_type),
-      'Agência': a.bank_agency || '-',
-      'Conta': a.bank_account || '-',
-    };
-  });
+    // ── Dados Bancários
+    'Chave PIX': val(a.pix_key),
+    'Banco': val(a.bank_name),
+    'Tipo de Conta': bankTypeLabel(a.bank_account_type),
+    'Agência': val(a.bank_agency),
+    'Conta': val(a.bank_account),
+  }));
 
   const worksheet = XLSX.utils.json_to_sheet(rows);
 
