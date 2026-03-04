@@ -51,6 +51,30 @@ import { cn } from '@/lib/utils';
 import { AgentMap } from '@/components/agents/AgentMap';
 import { MapPin, Search, Loader2, Upload, X, Camera, Trash2, Check, ChevronsUpDown } from 'lucide-react';
 
+// Converts a UTC ISO string from Supabase to a local datetime-local input value (YYYY-MM-DDTHH:mm)
+// WITHOUT re-converting to UTC — preserves the local (BRT) time the user entered
+const toLocalInput = (isoString: string | null | undefined): string => {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return '';
+  // Use local timezone values to build the input string
+  const YYYY = d.getFullYear();
+  const MM = String(d.getMonth() + 1).padStart(2, '0');
+  const DD = String(d.getDate()).padStart(2, '0');
+  const HH = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${YYYY}-${MM}-${DD}T${HH}:${mm}`;
+};
+
+// Converts a datetime-local string (YYYY-MM-DDTHH:mm) to an ISO string WITH BRT offset (-03:00)
+// so Supabase stores the correct UTC timestamp
+const toSupabaseTimestamp = (localStr: string | null | undefined): string | null => {
+  if (!localStr) return null;
+  // Append BRT offset so the DB knows this is Brazil time
+  return `${localStr}:00-03:00`;
+};
+
+
 const optionalNumber = z.preprocess(
   (val) => (val === '' || val === null || val === undefined ? null : Number(val)),
   z.number().nullable().optional()
@@ -312,8 +336,8 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
         const supportAgents = (supportAgentsData || [])?.map((sa: any) => ({
           id: sa.id,
           agent_id: sa.agent_id,
-          arrival: sa.arrival ? new Date(sa.arrival).toISOString().slice(0, 16) : '',
-          departure: sa.departure ? new Date(sa.departure).toISOString().slice(0, 16) : '',
+          arrival: toLocalInput(sa.arrival),
+          departure: toLocalInput(sa.departure),
           km_start: sa.km_start,
           km_end: sa.km_end,
           toll_cost: sa.toll_cost || 0,
@@ -321,20 +345,21 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           other_costs: sa.other_costs || 0,
         })) || [];
 
+
         form.reset({
           status: ticket.status,
           client_id: ticket.client_id,
           vehicle_id: ticket.vehicle_id,
           main_agent_id: ticket.main_agent_id,
-          main_agent_arrival: ticket.main_agent_arrival ? new Date(ticket.main_agent_arrival).toISOString().slice(0, 16) : '',
-          main_agent_departure: ticket.main_agent_departure ? new Date(ticket.main_agent_departure).toISOString().slice(0, 16) : '',
+          main_agent_arrival: toLocalInput(ticket.main_agent_arrival),
+          main_agent_departure: toLocalInput(ticket.main_agent_departure),
           support_agents: supportAgents,
           plan_id: ticket.plan_id,
           service_type: ticket.service_type,
           city: ticket.city,
           state: ticket.state,
-          start_datetime: ticket.start_datetime ? new Date(ticket.start_datetime).toISOString().slice(0, 16) : '',
-          end_datetime: ticket.end_datetime ? new Date(ticket.end_datetime).toISOString().slice(0, 16) : '',
+          start_datetime: toLocalInput(ticket.start_datetime),
+          end_datetime: toLocalInput(ticket.end_datetime),
           coordinates_lat: ticket.coordinates_lat ? Number(ticket.coordinates_lat) : null,
           coordinates_lng: ticket.coordinates_lng ? Number(ticket.coordinates_lng) : null,
           km_start: ticket.km_start ? Number(ticket.km_start) : null,
@@ -545,14 +570,14 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           client_id: data.client_id,
           vehicle_id: data.vehicle_id,
           main_agent_id: data.main_agent_id,
-          main_agent_arrival: data.main_agent_arrival || null,
-          main_agent_departure: data.main_agent_departure || null,
+          main_agent_arrival: toSupabaseTimestamp(data.main_agent_arrival),
+          main_agent_departure: toSupabaseTimestamp(data.main_agent_departure),
           plan_id: data.plan_id,
           service_type: data.service_type,
           city: data.city,
           state: data.state,
-          start_datetime: data.main_agent_arrival || data.start_datetime,
-          end_datetime: data.main_agent_departure || data.end_datetime || null,
+          start_datetime: toSupabaseTimestamp(data.main_agent_arrival) || toSupabaseTimestamp(data.start_datetime),
+          end_datetime: toSupabaseTimestamp(data.main_agent_departure) || toSupabaseTimestamp(data.end_datetime) || null,
           coordinates_lat: data.coordinates_lat || null,
           coordinates_lng: data.coordinates_lng || null,
           km_start: data.km_start || null,
@@ -577,8 +602,8 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
             id: agent.id,
             ticket_id: ticketId,
             agent_id: agent.agent_id,
-            arrival: agent.arrival || null,
-            departure: agent.departure || null,
+            arrival: toSupabaseTimestamp(agent.arrival),
+            departure: toSupabaseTimestamp(agent.departure),
             km_start: agent.km_start || null,
             km_end: agent.km_end || null,
             toll_cost: agent.toll_cost || 0,
