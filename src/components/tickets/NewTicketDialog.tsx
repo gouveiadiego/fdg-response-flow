@@ -52,6 +52,13 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 
+// Converts a datetime-local string (YYYY-MM-DDTHH:mm) to an ISO string WITH BRT offset (-03:00)
+const toSupabaseTimestamp = (localStr: string | null | undefined): string | null => {
+  if (!localStr) return null;
+  return `${localStr}:00-03:00`;
+};
+
+
 const ticketSchema = z.object({
   client_id: z.string().min(1, 'Selecione um cliente'),
   vehicle_id: z.string().min(1, 'Selecione um veículo'),
@@ -408,12 +415,13 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
           plan_id: data.plan_id,
           service_type: data.service_type,
           main_agent_id: data.main_agent_id,
-          main_agent_arrival: data.main_agent_arrival || null,
-          main_agent_departure: data.main_agent_departure || null,
+          main_agent_arrival: toSupabaseTimestamp(data.main_agent_arrival),
+          main_agent_departure: toSupabaseTimestamp(data.main_agent_departure),
           city: data.city,
           state: data.state,
-          start_datetime: data.start_datetime,
-          end_datetime: data.end_datetime || null,
+          start_datetime: toSupabaseTimestamp(data.start_datetime) || data.start_datetime,
+          end_datetime: toSupabaseTimestamp(data.end_datetime),
+
           coordinates_lat: data.coordinates_lat,
           coordinates_lng: data.coordinates_lng,
           km_start: data.km_start,
@@ -438,8 +446,9 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
           const supportAgentsData = data.support_agents.map(agent => ({
             ticket_id: ticket.id,
             agent_id: agent.agent_id,
-            arrival: agent.arrival || null,
-            departure: agent.departure || null,
+            arrival: toSupabaseTimestamp(agent.arrival),
+            departure: toSupabaseTimestamp(agent.departure),
+
             km_start: agent.km_start || null,
             km_end: agent.km_end || null,
             toll_cost: agent.toll_cost || null,
