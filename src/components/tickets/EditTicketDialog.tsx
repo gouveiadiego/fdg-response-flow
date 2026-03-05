@@ -66,12 +66,13 @@ const toLocalInput = (isoString: string | null | undefined): string => {
   return `${YYYY}-${MM}-${DD}T${HH}:${mm}`;
 };
 
-// Converts a datetime-local string (YYYY-MM-DDTHH:mm) to an ISO string WITH BRT offset (-03:00)
-// so Supabase stores the correct UTC timestamp
+// Converts a datetime-local string (YYYY-MM-DDTHH:mm) to a UTC ISO string
+// using the browser's actual local timezone — works correctly for BRT and any other timezone
 const toSupabaseTimestamp = (localStr: string | null | undefined): string | null => {
   if (!localStr) return null;
-  // Append BRT offset so the DB knows this is Brazil time
-  return `${localStr}:00-03:00`;
+  const d = new Date(localStr); // browser parses as LOCAL time
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString(); // converts local to UTC correctly
 };
 
 
