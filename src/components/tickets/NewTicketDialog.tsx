@@ -164,6 +164,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
   const [openSupport1, setOpenSupport1] = useState(false);
   const [openSupport2, setOpenSupport2] = useState(false);
   const [isMapDialogOpen, setIsMapDialogOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const form = useForm<TicketFormData>({
     resolver: zodResolver(ticketSchema),
@@ -323,11 +324,11 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
     }
   };
 
-  const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const addFilesToGroups = (files: File[]) => {
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
 
-    const newFiles = Array.from(files).map(file => ({
+    const newFiles = imageFiles.map(file => ({
       file,
       preview: URL.createObjectURL(file),
     }));
@@ -355,9 +356,49 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
       }
       return updated;
     });
+  };
 
+  const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    addFilesToGroups(Array.from(files));
     e.target.value = '';
   };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    addFilesToGroups(Array.from(e.dataTransfer.files));
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => setIsDragging(false);
+
+  // Paste from clipboard (Ctrl+V)
+  useEffect(() => {
+    if (!open) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imageFiles: File[] = [];
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+      if (imageFiles.length > 0) {
+        setActiveTab('fotos');
+        addFilesToGroups(imageFiles);
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [open]);
 
   const removePhoto = (groupIndex: number, photoIndex: number) => {
     setPhotoGroups(prev => {
@@ -1285,12 +1326,17 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                 </TabsContent>
 
                 <TabsContent value="fotos" className="space-y-4 mt-4">
-                  <div className="border-2 border-dashed border-border rounded-lg p-6">
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-6 transition-colors ${isDragging ? 'border-primary bg-primary/5' : 'border-border'}`}
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                  >
                     <div className="flex flex-col items-center justify-center gap-4">
                       <Camera className="h-12 w-12 text-muted-foreground" />
                       <div className="text-center">
                         <p className="text-sm text-muted-foreground mb-2">
-                          Arraste fotos ou clique para selecionar
+                          Arraste, cole (Ctrl+V) ou clique para selecionar fotos
                         </p>
                         <Input
                           type="file"

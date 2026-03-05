@@ -181,6 +181,7 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
   const [openSupport1, setOpenSupport1] = useState(false);
   const [openSupport2, setOpenSupport2] = useState(false);
   const [isMapDialogOpen, setIsMapDialogOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const form = useForm<TicketFormData>({
     resolver: zodResolver(ticketSchema),
@@ -453,11 +454,11 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
     }
   };
 
-  const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const addFilesToGroups = (files: File[]) => {
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
 
-    const newFiles = Array.from(files).map(file => ({
+    const newFiles = imageFiles.map(file => ({
       file,
       preview: URL.createObjectURL(file),
     }));
@@ -483,9 +484,50 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
       }
       return updated;
     });
+  };
 
+  const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    addFilesToGroups(Array.from(files));
     e.target.value = '';
   };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    addFilesToGroups(files);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => setIsDragging(false);
+
+  // Paste from clipboard (Ctrl+V)
+  useEffect(() => {
+    if (!open) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imageFiles: File[] = [];
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+      if (imageFiles.length > 0) {
+        setActiveTab('fotos');
+        addFilesToGroups(imageFiles);
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [open]);
 
   const removeNewPhoto = (groupIndex: number, photoIndex: number) => {
     setNewPhotoGroups(prev => {
@@ -1534,7 +1576,15 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                     {/* Upload area */}
                     <div className="space-y-2">
                       <Label className="font-medium">Adicionar novas fotos</Label>
-                      <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+                      <div
+                        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDragging
+                            ? 'border-primary bg-primary/5'
+                            : 'border-muted-foreground/25'
+                          }`}
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                      >
                         <input
                           type="file"
                           id="photo-upload-edit"
@@ -1550,7 +1600,7 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                               <Camera className="h-8 w-8 text-muted-foreground" />
                             </div>
                             <span className="text-sm text-muted-foreground">
-                              Clique para selecionar fotos ou usar a câmera
+                              Clique, arraste ou cole (Ctrl+V) fotos aqui
                             </span>
                           </div>
                         </label>

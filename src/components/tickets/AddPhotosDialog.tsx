@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -32,61 +32,82 @@ export function AddPhotosDialog({ ticketId, open, onOpenChange, onSuccess }: Add
   const { user } = useAuth();
   const [groups, setGroups] = useState<PhotoGroup[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const totalPhotos = groups.reduce((sum, g) => sum + g.files.length, 0);
 
-  const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const addFilesToGroups = (files: File[]) => {
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
 
-    const newFiles = Array.from(files).map(file => ({
+    const newFiles = imageFiles.map(file => ({
       file,
       preview: URL.createObjectURL(file),
     }));
 
-    // Distribute into groups of 4
-    const newGroups: PhotoGroup[] = [];
-    let remaining = [...newFiles];
-
-    // Try to fill the last existing group first
-    if (groups.length > 0) {
-      const lastGroup = groups[groups.length - 1];
-      if (lastGroup.files.length < 4) {
-        const spotsAvailable = 4 - lastGroup.files.length;
-        const toAdd = remaining.splice(0, spotsAvailable);
-        const updatedGroups = [...groups];
-        updatedGroups[updatedGroups.length - 1] = {
-          ...lastGroup,
-          files: [...lastGroup.files, ...toAdd],
-        };
-        setGroups(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = {
-            ...updated[updated.length - 1],
-            files: [...updated[updated.length - 1].files, ...toAdd],
-          };
-          // Add remaining as new groups
-          while (remaining.length > 0) {
-            updated.push({ files: remaining.splice(0, 4), caption: '' });
-          }
-          return updated;
-        });
-        e.target.value = '';
-        return;
-      }
-    }
-
-    // All into new groups of 4
     setGroups(prev => {
       const updated = [...prev];
+      let remaining = [...newFiles];
+
+      if (updated.length > 0) {
+        const lastGroup = updated[updated.length - 1];
+        if (lastGroup.files.length < 4) {
+          const spotsAvailable = 4 - lastGroup.files.length;
+          const toAdd = remaining.splice(0, spotsAvailable);
+          updated[updated.length - 1] = {
+            ...lastGroup,
+            files: [...lastGroup.files, ...toAdd],
+          };
+        }
+      }
+
       while (remaining.length > 0) {
         updated.push({ files: remaining.splice(0, 4), caption: '' });
       }
       return updated;
     });
+  };
 
+  const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    addFilesToGroups(Array.from(files));
     e.target.value = '';
   };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    addFilesToGroups(Array.from(e.dataTransfer.files));
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => setIsDragging(false);
+
+  // Paste from clipboard (Ctrl+V)
+  useEffect(() => {
+    if (!open) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imageFiles: File[] = [];
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+      if (imageFiles.length > 0) {
+        addFilesToGroups(imageFiles);
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [open]);
 
   const removePhoto = (groupIndex: number, photoIndex: number) => {
     setGroups(prev => {
@@ -174,12 +195,17 @@ export function AddPhotosDialog({ ticketId, open, onOpenChange, onSuccess }: Add
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="border-2 border-dashed border-border rounded-lg p-6">
+          <div
+            className={`border-2 border-dashed rounded-lg p-6 transition-colors ${isDragging ? 'border-primary bg-primary/5' : 'border-border'}`}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+          >
             <div className="flex flex-col items-center justify-center gap-4">
               <Camera className="h-12 w-12 text-muted-foreground" />
               <div className="text-center">
                 <p className="text-sm text-muted-foreground mb-2">
-                  Arraste fotos ou clique para selecionar
+                  Arraste, cole (Ctrl+V) ou clique para selecionar fotos
                 </p>
                 <Input
                   type="file"
