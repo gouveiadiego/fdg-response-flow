@@ -49,7 +49,7 @@ import {
 } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { AgentMap } from '@/components/agents/AgentMap';
-import { MapPin, Search, Loader2, Upload, X, Camera, Trash2, Check, ChevronsUpDown } from 'lucide-react';
+import { MapPin, Search, Loader2, Upload, X, Camera, Trash2, Check, ChevronsUpDown, Plus } from 'lucide-react';
 
 // Converts a UTC ISO string from Supabase to a local datetime-local input value (YYYY-MM-DDTHH:mm)
 // WITHOUT re-converting to UTC — preserves the local (BRT) time the user entered
@@ -477,26 +477,33 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
     }));
 
     setNewPhotoGroups(prev => {
+      if (prev.length === 0) {
+        // No groups yet — start the first one
+        return [{ files: newFiles, caption: '' }];
+      }
+      // Add to the last open group (no 4-photo cap)
       const updated = [...prev];
-      let remaining = [...newFiles];
-
-      if (updated.length > 0) {
-        const lastGroup = updated[updated.length - 1];
-        if (lastGroup.files.length < 4) {
-          const spotsAvailable = 4 - lastGroup.files.length;
-          const toAdd = remaining.splice(0, spotsAvailable);
-          updated[updated.length - 1] = {
-            ...lastGroup,
-            files: [...lastGroup.files, ...toAdd],
-          };
-        }
-      }
-
-      while (remaining.length > 0) {
-        updated.push({ files: remaining.splice(0, 4), caption: '' });
-      }
+      updated[updated.length - 1] = {
+        ...updated[updated.length - 1],
+        files: [...updated[updated.length - 1].files, ...newFiles],
+      };
       return updated;
     });
+  };
+
+  const addFilesToGroup = (groupIndex: number, files: File[]) => {
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+    const newFiles = imageFiles.map(file => ({ file, preview: URL.createObjectURL(file) }));
+    setNewPhotoGroups(prev => {
+      const updated = [...prev];
+      updated[groupIndex] = { ...updated[groupIndex], files: [...updated[groupIndex].files, ...newFiles] };
+      return updated;
+    });
+  };
+
+  const addNewPhotoBlock = () => {
+    setNewPhotoGroups(prev => [...prev, { files: [], caption: '' }]);
   };
 
   const handlePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1639,37 +1646,61 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                     {/* New photos preview */}
                     {newPhotoGroups.length > 0 && (
                       <div className="space-y-4">
-                        <Label className="font-medium">Novas fotos ({newPhotoGroups.reduce((acc, g) => acc + g.files.length, 0)})</Label>
+                        <Label className="font-medium">Novos blocos de fotos</Label>
                         {newPhotoGroups.map((group, groupIndex) => (
                           <div key={groupIndex} className="border border-border rounded-lg p-4 space-y-3">
-                            <p className="text-xs font-medium text-muted-foreground uppercase">
-                              Grupo {groupIndex + 1} — {group.files.length} foto{group.files.length !== 1 ? 's' : ''}
-                            </p>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                              {group.files.map((photo, photoIndex) => (
-                                <div key={photoIndex} className="relative aspect-[4/3]">
-                                  <img
-                                    src={photo.preview}
-                                    alt={`Foto ${photoIndex + 1}`}
-                                    className="w-full h-full object-cover rounded-lg"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => removeNewPhoto(groupIndex, photoIndex)}
-                                    className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                </div>
-                              ))}
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-medium text-muted-foreground uppercase">
+                                Bloco {groupIndex + 1} — {group.files.length} foto{group.files.length !== 1 ? 's' : ''}
+                              </p>
+                              {/* Per-block add photos button */}
+                              <label htmlFor={`block-upload-${groupIndex}`} className="cursor-pointer">
+                                <input
+                                  type="file"
+                                  id={`block-upload-${groupIndex}`}
+                                  accept="image/*"
+                                  multiple
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    if (e.target.files) addFilesToGroup(groupIndex, Array.from(e.target.files));
+                                    e.target.value = '';
+                                  }}
+                                />
+                                <span className="text-xs text-primary underline">
+                                  + Adicionar fotos a este bloco
+                                </span>
+                              </label>
                             </div>
+                            {group.files.length > 0 && (
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {group.files.map((photo, photoIndex) => (
+                                  <div key={photoIndex} className="relative aspect-[4/3]">
+                                    <img
+                                      src={photo.preview}
+                                      alt={`Foto ${photoIndex + 1}`}
+                                      className="w-full h-full object-cover rounded-lg"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => removeNewPhoto(groupIndex, photoIndex)}
+                                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {group.files.length === 0 && (
+                              <p className="text-xs text-muted-foreground italic">Nenhuma foto ainda. Use o botão acima ou arraste para cá.</p>
+                            )}
                             <div>
                               <Label htmlFor={`edit-group-caption-${groupIndex}`} className="text-xs font-semibold text-primary">
-                                Descrição do grupo *
+                                Descrição do bloco *
                               </Label>
                               <Textarea
                                 id={`edit-group-caption-${groupIndex}`}
-                                placeholder="Descreva obrigatoriamente este grupo de fotos..."
+                                placeholder="Descreva obrigatoriamente este bloco de fotos..."
                                 value={group.caption}
                                 onChange={(e) => updateNewPhotoCaption(groupIndex, e.target.value)}
                                 className="mt-1 resize-none"
@@ -1680,6 +1711,18 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                         ))}
                       </div>
                     )}
+
+                    {/* Button to manually start a new block */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-dashed"
+                      onClick={addNewPhotoBlock}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Novo Bloco de Fotos
+                    </Button>
                   </TabsContent>
                 </Tabs>
 
