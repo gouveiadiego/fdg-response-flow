@@ -399,13 +399,26 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
 
   const handlePhotoDelete = async (photoId: string, fileUrl: string) => {
     try {
-      const fileName = fileUrl.split('/').pop();
-      if (fileName) {
-        await supabase.storage
-          .from('ticket-photos')
-          .remove([`${ticketId}/${fileName}`]);
+      // Extract the storage path from the full URL
+      // URL format: https://xxx.supabase.co/storage/v1/object/public/ticket-photos/TICKET_ID/filename
+      const bucketName = 'ticket-photos';
+      const bucketMarker = `/public/${bucketName}/`;
+      const bucketIndex = fileUrl.indexOf(bucketMarker);
+      const storagePath = bucketIndex >= 0
+        ? fileUrl.slice(bucketIndex + bucketMarker.length)
+        : `${ticketId}/${fileUrl.split('/').pop()}`;
+
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from(bucketName)
+        .remove([storagePath]);
+
+      if (storageError) {
+        console.error('Erro ao remover do storage:', storageError);
+        // Continue to delete DB record even if storage fails
       }
 
+      // Delete from DB
       const { error } = await supabase
         .from('ticket_photos')
         .delete()
@@ -1578,8 +1591,8 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                       <Label className="font-medium">Adicionar novas fotos</Label>
                       <div
                         className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDragging
-                            ? 'border-primary bg-primary/5'
-                            : 'border-muted-foreground/25'
+                          ? 'border-primary bg-primary/5'
+                          : 'border-muted-foreground/25'
                           }`}
                         onDrop={handleDrop}
                         onDragOver={handleDragOver}
