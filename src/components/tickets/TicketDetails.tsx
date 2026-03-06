@@ -158,6 +158,13 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
     }
   }, [ticketId, open]);
 
+  // Re-fetch photos when the AddPhotosDialog closes so the count is always current
+  useEffect(() => {
+    if (!addPhotosOpen && ticketId && open) {
+      fetchTicketPhotos();
+    }
+  }, [addPhotosOpen]);
+
   const fetchTicketDetails = async () => {
     if (!ticketId) return;
 
@@ -868,15 +875,26 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
               <CardContent>
                 {photos.length > 0 ? (
                   <div className="space-y-4">
-                    {Array.from({ length: Math.ceil(photos.length / 4) }).map((_, groupIndex) => {
-                      const groupPhotos = photos.slice(groupIndex * 4, (groupIndex + 1) * 4);
-                      return (
+                    {(() => {
+                      // Group photos by caption to match upload sessions
+                      const groups: { caption: string | null; photos: typeof photos }[] = [];
+                      for (const photo of photos) {
+                        const last = groups[groups.length - 1];
+                        if (last && last.caption === photo.caption) {
+                          last.photos.push(photo);
+                        } else {
+                          groups.push({ caption: photo.caption, photos: [photo] });
+                        }
+                      }
+                      return groups.map((group, groupIndex) => (
                         <div key={groupIndex} className="space-y-2">
-                          <p className="text-xs font-medium text-muted-foreground">
-                            Quadro {groupIndex + 1} — Fotos {groupIndex * 4 + 1} a {groupIndex * 4 + groupPhotos.length}
-                          </p>
+                          {group.caption && (
+                            <p className="text-xs font-medium text-muted-foreground">
+                              {group.caption}
+                            </p>
+                          )}
                           <div className="grid grid-cols-2 gap-3">
-                            {groupPhotos.map((photo) => (
+                            {group.photos.map((photo) => (
                               <div key={photo.id} className="space-y-1">
                                 <a
                                   href={photo.file_url}
@@ -892,18 +910,15 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                                     />
                                   </div>
                                 </a>
-                                {photo.caption && (
-                                  <p className="text-xs text-muted-foreground line-clamp-2">{photo.caption}</p>
-                                )}
                               </div>
                             ))}
                           </div>
-                          {groupIndex < Math.ceil(photos.length / 4) - 1 && (
+                          {groupIndex < groups.length - 1 && (
                             <Separator className="mt-3" />
                           )}
                         </div>
-                      );
-                    })}
+                      ));
+                    })()}
                     <Button
                       variant="outline"
                       size="sm"
