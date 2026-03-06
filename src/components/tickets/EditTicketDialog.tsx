@@ -1557,34 +1557,50 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
 
                   <TabsContent value="fotos" className="space-y-4 mt-4">
                     {/* Existing photos */}
-                    {existingPhotos.length > 0 && (
-                      <div className="space-y-2">
-                        <Label className="font-medium">Fotos já anexadas</Label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                          {existingPhotos.map((photo) => (
-                            <div key={photo.id} className="relative group">
-                              <img
-                                src={photo.file_url}
-                                alt={photo.caption || 'Foto do chamado'}
-                                className="w-full h-24 object-cover rounded-lg border"
-                              />
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="icon"
-                                className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={() => handlePhotoDelete(photo.id, photo.file_url)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                              {photo.caption && (
-                                <p className="text-xs text-muted-foreground mt-1 truncate">{photo.caption}</p>
+                    {existingPhotos.length > 0 && (() => {
+                      // Group photos by caption, preserving upload session order
+                      const groups: { caption: string | null; photos: typeof existingPhotos }[] = [];
+                      for (const photo of existingPhotos) {
+                        const last = groups[groups.length - 1];
+                        if (last && last.caption === photo.caption) {
+                          last.photos.push(photo);
+                        } else {
+                          groups.push({ caption: photo.caption, photos: [photo] });
+                        }
+                      }
+                      return (
+                        <div className="space-y-4">
+                          <Label className="font-medium">Fotos já anexadas</Label>
+                          {groups.map((group, gi) => (
+                            <div key={gi} className="border border-border rounded-lg p-3 space-y-2">
+                              {group.caption && (
+                                <p className="text-xs font-semibold text-primary">{group.caption}</p>
                               )}
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {group.photos.map((photo) => (
+                                  <div key={photo.id} className="relative group aspect-[4/3]">
+                                    <img
+                                      src={photo.file_url}
+                                      alt={photo.caption || 'Foto do chamado'}
+                                      className="w-full h-full object-cover rounded-lg border"
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="destructive"
+                                      size="icon"
+                                      className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={() => handlePhotoDelete(photo.id, photo.file_url)}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           ))}
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {/* Upload area */}
                     <div className="space-y-2">
