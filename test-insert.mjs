@@ -1,35 +1,38 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
-import fs from 'fs';
+dotenv.config();
 
-const envConfig = dotenv.parse(fs.readFileSync('.env'));
-const supabase = createClient(envConfig.VITE_SUPABASE_URL, envConfig.VITE_SUPABASE_ANON_KEY);
+const supabase = createClient(
+    process.env.VITE_SUPABASE_URL,
+    process.env.VITE_SUPABASE_ANON_KEY
+);
 
 async function testInsert() {
-    // 1. Get a random valid ticket
-    const { data: tickets } = await supabase.from('tickets').select('id').limit(1);
-    if (!tickets || tickets.length === 0) return console.log('No tickets');
-    const ticketId = tickets[0].id;
+    const payload = {
+        client_id: "test",
+        vehicle_id: "test",
+        plan_id: "test",
+        service_type: "acompanhamento_logistico",
+        main_agent_id: "test",
+        city: "Limeira",
+        state: "SP",
+        start_datetime: new Date().toISOString(),
+        created_by_user_id: "e50130d2-8de9-441c-b26a-93235b86bfaa", // using arbitrary valid uuid format, doesn't matter for schema check if RLS is bypassed or using service key. Actually anon key will fail RLS. 
+        revenue_base_value: 500,
+        revenue_included_hours: 3,
+        revenue_included_km: 50,
+        revenue_extra_hour_rate: 90,
+        revenue_extra_km_rate: 2.50,
+        revenue_discount_addition: 0,
+        revenue_total: 500,
+    };
 
-    // 2. Get a random agent
-    const { data: agents } = await supabase.from('agents').select('id').limit(1);
-    if (!agents || agents.length === 0) return console.log('No agents');
-    const agentId = agents[0].id;
+    const { data, error } = await supabase
+        .from('tickets')
+        .insert(payload);
 
-    // 3. Try to insert
-    console.log(`Inserting for ticket ${ticketId} and agent ${agentId}`);
-    const { error } = await supabase.from('ticket_support_agents').insert({
-        ticket_id: ticketId,
-        agent_id: agentId,
-        km_start: null,
-        toll_cost: null
-    });
-
-    if (error) {
-        console.error('INSERT FAILED:', JSON.stringify(error, null, 2));
-    } else {
-        console.log('INSERT SUCCESSFUL');
-    }
+    console.log('Error:', error);
+    console.log('Data:', data);
 }
 
 testInsert();

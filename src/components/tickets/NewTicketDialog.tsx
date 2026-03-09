@@ -506,9 +506,9 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
       const { data: ticket, error: ticketError } = await supabase
         .from('tickets')
         .insert({
-          client_id: data.client_id,
-          vehicle_id: data.vehicle_id,
-          plan_id: data.plan_id,
+          client_id: data.client_id || null,
+          vehicle_id: data.vehicle_id || null,
+          plan_id: data.plan_id || null,
           service_type: data.service_type,
           main_agent_id: data.main_agent_id,
           main_agent_arrival: toSupabaseTimestamp(data.main_agent_arrival),
@@ -529,7 +529,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
           detailed_report: data.detailed_report,
           created_by_user_id: user.id,
           code: null,
-          operator_id: data.operator_id && data.operator_id !== 'none' ? data.operator_id : null,
+          operator_id: data.operator_id && data.operator_id !== 'none' && data.operator_id !== '' ? data.operator_id : null,
           revenue_base_value: data.revenue_base_value || 0,
           revenue_included_hours: data.revenue_included_hours || 0,
           revenue_included_km: data.revenue_included_km || 0,
@@ -541,7 +541,10 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
         .select()
         .single();
 
-      if (ticketError) throw ticketError;
+      if (ticketError) {
+        console.error('Erro detalhado do supabase ao criar chamado:', ticketError);
+        throw ticketError;
+      }
 
       // Insert support agents (Wrapped in try/catch to allow partial success)
       if (data.support_agents && data.support_agents.length > 0) {
