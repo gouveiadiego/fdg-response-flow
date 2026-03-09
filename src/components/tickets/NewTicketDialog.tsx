@@ -609,9 +609,10 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
       setActiveTab('cliente');
       onSuccess();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao criar chamado:', error);
-      toast.error('Erro ao criar chamado');
+      const msg = error?.message || 'Erro desconhecido';
+      toast.error(`Erro ao criar chamado: ${msg}`);
     } finally {
       setIsSubmitting(false);
     }
