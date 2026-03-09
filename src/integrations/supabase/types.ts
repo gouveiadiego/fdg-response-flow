@@ -443,6 +443,13 @@ export type Database = {
           main_agent_payment_status: string
           main_agent_paid_at: string | null
           vehicle_id: string
+          revenue_base_value: number | null
+          revenue_included_hours: number | null
+          revenue_included_km: number | null
+          revenue_extra_hour_rate: number | null
+          revenue_extra_km_rate: number | null
+          revenue_discount_addition: number | null
+          revenue_total: number | null
         }
         Insert: {
           city: string
@@ -475,6 +482,13 @@ export type Database = {
           main_agent_payment_status?: string
           main_agent_paid_at?: string | null
           vehicle_id: string
+          revenue_base_value?: number | null
+          revenue_included_hours?: number | null
+          revenue_included_km?: number | null
+          revenue_extra_hour_rate?: number | null
+          revenue_extra_km_rate?: number | null
+          revenue_discount_addition?: number | null
+          revenue_total?: number | null
         }
         Update: {
           city?: string
@@ -507,6 +521,13 @@ export type Database = {
           main_agent_payment_status?: string
           main_agent_paid_at?: string | null
           vehicle_id?: string
+          revenue_base_value?: number | null
+          revenue_included_hours?: number | null
+          revenue_included_km?: number | null
+          revenue_extra_hour_rate?: number | null
+          revenue_extra_km_rate?: number | null
+          revenue_discount_addition?: number | null
+          revenue_total?: number | null
         }
         Relationships: [
           {

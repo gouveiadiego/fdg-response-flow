@@ -115,6 +115,13 @@ const ticketSchema = z.object({
   summary: z.string().max(500).optional(),
   detailed_report: z.string().max(5000).optional(),
   operator_id: z.string().optional(),
+  revenue_base_value: optionalNumber,
+  revenue_included_hours: optionalNumber,
+  revenue_included_km: optionalNumber,
+  revenue_extra_hour_rate: optionalNumber,
+  revenue_extra_km_rate: optionalNumber,
+  revenue_discount_addition: optionalNumber,
+  revenue_total: optionalNumber,
 });
 
 type TicketFormData = z.infer<typeof ticketSchema>;
@@ -209,6 +216,13 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
       summary: '',
       detailed_report: '',
       operator_id: '',
+      revenue_base_value: 500.00,
+      revenue_included_hours: 3.00,
+      revenue_included_km: 50.00,
+      revenue_extra_hour_rate: 90.00,
+      revenue_extra_km_rate: 2.50,
+      revenue_discount_addition: 0.00,
+      revenue_total: 500.00,
     },
   });
 
@@ -248,10 +262,40 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
       cost: acc.cost + totalCost
     };
   }, { km: 0, cost: 0 }) || { km: 0, cost: 0 };
-
   // Global Totals
   const totalKmGeral = kmRodado + supportTotals.km;
   const totalCustoGeral = totalCost + supportTotals.cost;
+
+  // Faturamento Cliente Calculations
+  const revenueBase = form.watch('revenue_base_value') || 0;
+  const includedHours = form.watch('revenue_included_hours') || 0;
+  const includedKm = form.watch('revenue_included_km') || 0;
+  const extraHourRate = form.watch('revenue_extra_hour_rate') || 0;
+  const extraKmRate = form.watch('revenue_extra_km_rate') || 0;
+  const discountAddition = form.watch('revenue_discount_addition') || 0;
+
+  const rStartDateTime = form.watch('start_datetime') || '';
+  const rEndDateTime = form.watch('end_datetime') || '';
+  let durationHours = 0;
+  if (rStartDateTime && rEndDateTime) {
+    const s = new Date(rStartDateTime).getTime();
+    const e = new Date(rEndDateTime).getTime();
+    if (e > s) {
+      durationHours = (e - s) / (1000 * 60 * 60);
+    }
+  }
+
+  const generatedExtraHours = Math.max(0, Math.ceil(durationHours - includedHours)); // Arredondamento pra cima nas horas se for regra comum (deixar decimal temporariamente)
+  const exactExtraHours = Math.max(0, durationHours - includedHours);
+  const extraKm = Math.max(0, totalKmGeral - includedKm); // usa kmGeral como base
+
+  const costExtraHours = exactExtraHours * extraHourRate;
+  const costExtraKm = extraKm * extraKmRate;
+  const calculatedRevenueTotal = revenueBase + costExtraHours + costExtraKm + discountAddition;
+
+  useEffect(() => {
+    form.setValue('revenue_total', calculatedRevenueTotal);
+  }, [calculatedRevenueTotal, form]);
 
   useEffect(() => {
     if (open) {
@@ -372,6 +416,13 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           summary: ticket.summary || '',
           detailed_report: ticket.detailed_report || '',
           operator_id: ticket.operator_id || '',
+          revenue_base_value: ticket.revenue_base_value !== null ? Number(ticket.revenue_base_value) : 500.00,
+          revenue_included_hours: ticket.revenue_included_hours !== null ? Number(ticket.revenue_included_hours) : 3.00,
+          revenue_included_km: ticket.revenue_included_km !== null ? Number(ticket.revenue_included_km) : 50.00,
+          revenue_extra_hour_rate: ticket.revenue_extra_hour_rate !== null ? Number(ticket.revenue_extra_hour_rate) : 90.00,
+          revenue_extra_km_rate: ticket.revenue_extra_km_rate !== null ? Number(ticket.revenue_extra_km_rate) : 2.50,
+          revenue_discount_addition: ticket.revenue_discount_addition !== null ? Number(ticket.revenue_discount_addition) : 0.00,
+          revenue_total: ticket.revenue_total !== null ? Number(ticket.revenue_total) : 500.00,
         });
       }
     } catch (error) {
@@ -650,6 +701,13 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           other_costs: data.other_costs || 0,
           summary: data.summary || null,
           detailed_report: data.detailed_report || null,
+          revenue_base_value: data.revenue_base_value || 0,
+          revenue_included_hours: data.revenue_included_hours || 0,
+          revenue_included_km: data.revenue_included_km || 0,
+          revenue_extra_hour_rate: data.revenue_extra_hour_rate || 0,
+          revenue_extra_km_rate: data.revenue_extra_km_rate || 0,
+          revenue_discount_addition: data.revenue_discount_addition || 0,
+          revenue_total: data.revenue_total || 0,
         })
         .eq('id', ticketId);
 
@@ -776,9 +834,10 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                 }
               })} className="space-y-4 pr-4">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
+                  <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="cliente">Cliente</TabsTrigger>
                     <TabsTrigger value="agente">Agente/Despesas</TabsTrigger>
+                    <TabsTrigger value="faturamento">Faturamento</TabsTrigger>
                     <TabsTrigger value="fotos">Fotos</TabsTrigger>
                   </TabsList>
 
@@ -1723,6 +1782,126 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                       <Plus className="h-4 w-4 mr-2" />
                       Novo Bloco de Fotos
                     </Button>
+                  </TabsContent>
+
+                  <TabsContent value="faturamento" className="space-y-6 mt-4">
+                    <div className="bg-muted p-4 rounded-lg space-y-4">
+                      <h3 className="font-semibold text-lg">Parâmetros de Cobrança (Cliente)</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Ajuste os valores para lidar com exceções. O sistema calcula o valor final a ser cobrado automaticamente com base nas horas trabalhadas e na quilometragem rodada da aba Cliente.
+                      </p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t pt-4">
+                        <FormField
+                          control={form.control}
+                          name="revenue_base_value"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Valor Base (R$)</FormLabel>
+                              <FormControl>
+                                <Input type="number" step="0.01" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="revenue_included_hours"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Franquia Horas (h)</FormLabel>
+                              <FormControl>
+                                <Input type="number" step="0.5" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="revenue_included_km"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Franquia KM</FormLabel>
+                              <FormControl>
+                                <Input type="number" step="1" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="revenue_extra_hour_rate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Valor Hora Extra (R$)</FormLabel>
+                              <FormControl>
+                                <Input type="number" step="0.01" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="revenue_extra_km_rate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Valor KM Extra (R$)</FormLabel>
+                              <FormControl>
+                                <Input type="number" step="0.01" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="revenue_discount_addition"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Ajustes Extras (R$)</FormLabel>
+                              <FormControl>
+                                <Input type="number" step="0.01" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-primary/5 p-6 rounded-lg border border-primary/20">
+                      <h3 className="text-xl font-bold mb-4 text-primary">Simulação do Faturamento</h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between border-b border-primary/10 pb-2">
+                          <span>Tempo Trabalhado:</span>
+                          <strong>{durationHours.toFixed(2)} h</strong>
+                        </div>
+                        <div className="flex justify-between border-b border-primary/10 pb-2">
+                          <span>Distância Rodada (Total):</span>
+                          <strong>{totalKmGeral.toFixed(2)} km</strong>
+                        </div>
+                        <div className="flex justify-between border-b border-primary/10 pb-2">
+                          <span className="text-muted-foreground">Horas Extras ({exactExtraHours.toFixed(2)} h x R$ {extraHourRate.toFixed(2)}):</span>
+                          <span className="text-muted-foreground">+ R$ {costExtraHours.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-primary/10 pb-2">
+                          <span className="text-muted-foreground">KM Extra ({extraKm.toFixed(2)} km x R$ {extraKmRate.toFixed(2)}):</span>
+                          <span className="text-muted-foreground">+ R$ {costExtraKm.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-primary/10 pb-2">
+                          <span className="text-muted-foreground">Ajustes Manuais:</span>
+                          <span className="text-muted-foreground">{discountAddition >= 0 ? '+' : '-'} R$ {Math.abs(discountAddition).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-lg font-bold pt-2 text-primary">
+                          <span>Total a Cobrar:</span>
+                          <span>R$ {calculatedRevenueTotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
                   </TabsContent>
                 </Tabs>
 
