@@ -9,3 +9,6 @@ ALTER TABLE public.tickets
   ADD COLUMN revenue_extra_km_rate DECIMAL(10, 2) DEFAULT 2.50,
   ADD COLUMN revenue_discount_addition DECIMAL(10, 2) DEFAULT 0.00,
   ADD COLUMN revenue_total DECIMAL(10, 2) DEFAULT 0.00;
+
+-- Refresh PostgREST schema cache to ensure the API recognizes the new columns immediately
+NOTIFY pgrst, 'reload schema';

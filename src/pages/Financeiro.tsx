@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DatePickerWithRange } from '@/components/dashboard/DateRangePicker';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -17,13 +19,15 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
     DollarSign, CheckCircle2, Clock, Search, User, Users, CreditCard, Copy, Filter,
-    FileText, HandCoins, Building2
+    FileText, HandCoins, Building2, Calculator
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FaturamentoDialog } from '@/components/finance/FaturamentoDialog';
+import { PagamentoAgenteDialog } from '@/components/finance/PagamentoAgenteDialog';
 
 interface PaymentItem {
     ticketId: string;
+    agentId: string;
     ticketCode: string;
     clientName: string;
     startDatetime: string;
@@ -36,6 +40,7 @@ interface PaymentItem {
     bankAgency: string | null;
     bankAccount: string | null;
     bankAccountType: string | null;
+    compensationTotal: number;
     tollCost: number;
     foodCost: number;
     otherCosts: number;
@@ -50,24 +55,35 @@ const Financeiro = () => {
     const [filter, setFilter] = useState<'pendente' | 'pago' | 'todos'>('pendente');
     const [searchTerm, setSearchTerm] = useState('');
     const [tickets, setTickets] = useState<any[]>([]);
+    const [date, setDate] = useState<DateRange | undefined>({
+        from: startOfMonth(new Date()),
+        to: endOfMonth(new Date())
+    });
+    const [faturamentoFilter, setFaturamentoFilter] = useState<'pendente' | 'recebido' | 'todos'>('pendente');
 
     // Faturamento Dialog State
     const [faturamentoDialogOpen, setFaturamentoDialogOpen] = useState(false);
     const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
+    // Pagamento Agente Dialog State
+    const [pagamentoAgenteDialogOpen, setPagamentoAgenteDialogOpen] = useState(false);
+    const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+    const [selectedAgentRole, setSelectedAgentRole] = useState<'principal' | 'apoio_1' | 'apoio_2'>('principal');
+
     useEffect(() => {
         fetchPayments();
-    }, []);
+    }, [date]);
 
     const fetchPayments = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('tickets')
                 .select(`
           id, code, start_datetime, status,
           toll_cost, food_cost, other_costs,
           main_agent_payment_status, main_agent_paid_at,
+          revenue_status, revenue_paid_at, revenue_total,
           clients (name),
           main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type),
           ticket_support_agents (
@@ -80,6 +96,17 @@ const Financeiro = () => {
                 .eq('status', 'finalizado')
                 .order('start_datetime', { ascending: false });
 
+            if (date?.from) {
+                query = query.gte('start_datetime', date.from.toISOString());
+            }
+            if (date?.to) {
+                const endOfDay = new Date(date.to);
+                endOfDay.setHours(23, 59, 59, 999);
+                query = query.lte('start_datetime', endOfDay.toISOString());
+            }
+
+            const { data, error } = await query;
+
             if (error) throw error;
 
             setTickets(data || []);
@@ -88,11 +115,13 @@ const Financeiro = () => {
             (data || []).forEach((ticket: any) => {
                 // Main agent
                 if (ticket.main_agent) {
+                    const compensation = Number(ticket.main_agent_compensation_total) || 0;
                     const toll = Number(ticket.toll_cost) || 0;
                     const food = Number(ticket.food_cost) || 0;
                     const other = Number(ticket.other_costs) || 0;
                     paymentItems.push({
                         ticketId: ticket.id,
+                        agentId: ticket.main_agent_id,
                         ticketCode: ticket.code || '-',
                         clientName: ticket.clients?.name || '-',
                         startDatetime: ticket.start_datetime,
@@ -105,10 +134,11 @@ const Financeiro = () => {
                         bankAgency: ticket.main_agent.bank_agency,
                         bankAccount: ticket.main_agent.bank_account,
                         bankAccountType: ticket.main_agent.bank_account_type,
+                        compensationTotal: compensation,
                         tollCost: toll,
                         foodCost: food,
                         otherCosts: other,
-                        totalCost: toll + food + other,
+                        totalCost: compensation + toll + food + other,
                         paymentStatus: ticket.main_agent_payment_status || 'pendente',
                         paidAt: ticket.main_agent_paid_at
                     });
@@ -118,11 +148,13 @@ const Financeiro = () => {
                 if (ticket.ticket_support_agents && ticket.ticket_support_agents.length > 0) {
                     ticket.ticket_support_agents.forEach((sa: any, index: number) => {
                         if (sa.agent) {
+                            const compensation = Number(sa.compensation_total) || 0;
                             const toll = Number(sa.toll_cost) || 0;
                             const food = Number(sa.food_cost) || 0;
                             const other = Number(sa.other_costs) || 0;
                             paymentItems.push({
                                 ticketId: ticket.id,
+                                agentId: sa.agent_id,
                                 ticketCode: ticket.code || '-',
                                 clientName: ticket.clients?.name || '-',
                                 startDatetime: ticket.start_datetime,
@@ -135,10 +167,11 @@ const Financeiro = () => {
                                 bankAgency: sa.agent.bank_agency,
                                 bankAccount: sa.agent.bank_account,
                                 bankAccountType: sa.agent.bank_account_type,
+                                compensationTotal: compensation,
                                 tollCost: toll,
                                 foodCost: food,
                                 otherCosts: other,
-                                totalCost: toll + food + other,
+                                totalCost: compensation + toll + food + other,
                                 paymentStatus: sa.payment_status || 'pendente',
                                 paidAt: sa.paid_at
                             });
@@ -158,24 +191,29 @@ const Financeiro = () => {
     };
 
     const handleMarkAsPaid = async (item: PaymentItem) => {
-        const fieldMap = {
-            principal: { status: 'main_agent_payment_status', paidAt: 'main_agent_paid_at' },
-            apoio_1: { status: 'support_agent_1_payment_status', paidAt: 'support_agent_1_paid_at' },
-            apoio_2: { status: 'support_agent_2_payment_status', paidAt: 'support_agent_2_paid_at' },
-        };
-
-        const fields = fieldMap[item.agentRole];
-
         try {
-            const { error } = await supabase
-                .from('tickets')
-                .update({
-                    [fields.status]: 'pago',
-                    [fields.paidAt]: new Date().toISOString(),
-                })
-                .eq('id', item.ticketId);
+            if (item.agentRole === 'principal') {
+                const { error } = await supabase
+                    .from('tickets')
+                    .update({
+                        main_agent_payment_status: 'pago',
+                        main_agent_paid_at: new Date().toISOString(),
+                    })
+                    .eq('id', item.ticketId);
 
-            if (error) throw error;
+                if (error) throw error;
+            } else {
+                const { error } = await supabase
+                    .from('ticket_support_agents')
+                    .update({
+                        payment_status: 'pago',
+                        paid_at: new Date().toISOString(),
+                    })
+                    .eq('ticket_id', item.ticketId)
+                    .eq('agent_id', item.agentId);
+
+                if (error) throw error;
+            }
 
             toast.success(`Pagamento de ${item.agentName} marcado como pago!`);
             fetchPayments();
@@ -184,32 +222,74 @@ const Financeiro = () => {
             toast.error('Erro ao atualizar pagamento');
         }
     };
-
     const handleUndoPayment = async (item: PaymentItem) => {
-        const fieldMap = {
-            principal: { status: 'main_agent_payment_status', paidAt: 'main_agent_paid_at' },
-            apoio_1: { status: 'support_agent_1_payment_status', paidAt: 'support_agent_1_paid_at' },
-            apoio_2: { status: 'support_agent_2_payment_status', paidAt: 'support_agent_2_paid_at' },
-        };
-
-        const fields = fieldMap[item.agentRole];
-
         try {
-            const { error } = await supabase
-                .from('tickets')
-                .update({
-                    [fields.status]: 'pendente',
-                    [fields.paidAt]: null,
-                })
-                .eq('id', item.ticketId);
+            if (item.agentRole === 'principal') {
+                const { error } = await supabase
+                    .from('tickets')
+                    .update({
+                        main_agent_payment_status: 'pendente',
+                        main_agent_paid_at: null,
+                    })
+                    .eq('id', item.ticketId);
 
-            if (error) throw error;
+                if (error) throw error;
+            } else {
+                const { error } = await supabase
+                    .from('ticket_support_agents')
+                    .update({
+                        payment_status: 'pendente',
+                        paid_at: null,
+                    })
+                    .eq('ticket_id', item.ticketId)
+                    .eq('agent_id', item.agentId);
+
+                if (error) throw error;
+            }
 
             toast.success(`Pagamento de ${item.agentName} revertido.`);
             fetchPayments();
         } catch (error) {
             console.error('Erro ao reverter pagamento:', error);
             toast.error('Erro ao reverter pagamento');
+        }
+    };
+
+    const handleMarkRevenueAsPaid = async (ticketId: string) => {
+        try {
+            const { error } = await supabase
+                .from('tickets')
+                .update({
+                    revenue_status: 'recebido',
+                    revenue_paid_at: new Date().toISOString(),
+                })
+                .eq('id', ticketId);
+
+            if (error) throw error;
+            toast.success('Faturamento marcado como recebido!');
+            fetchPayments();
+        } catch (error) {
+            console.error(error);
+            toast.error('Erro ao marcar faturamento como recebido');
+        }
+    };
+
+    const handleUndoRevenuePayment = async (ticketId: string) => {
+        try {
+            const { error } = await supabase
+                .from('tickets')
+                .update({
+                    revenue_status: 'pendente',
+                    revenue_paid_at: null,
+                })
+                .eq('id', ticketId);
+
+            if (error) throw error;
+            toast.success('Recebimento revertido.');
+            fetchPayments();
+        } catch (error) {
+            console.error(error);
+            toast.error('Erro ao reverter recebimento do cliente');
         }
     };
 
@@ -239,6 +319,29 @@ const Financeiro = () => {
         .filter(i => i.paymentStatus === 'pendente')
         .reduce((sum, i) => sum + i.totalCost, 0);
 
+    // Faturamento Calculations
+    const filteredTickets = tickets.filter(t => {
+        const matchesSearch = !searchTerm ||
+            (t.code && t.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (t.clients?.name && t.clients.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+        const status = t.revenue_status || 'pendente';
+        const matchesFilter = faturamentoFilter === 'todos' || status === faturamentoFilter;
+
+        return matchesSearch && matchesFilter;
+    });
+
+    const pendingFaturamentoCount = tickets.filter(t => (t.revenue_status || 'pendente') === 'pendente').length;
+    const receivedFaturamentoCount = tickets.filter(t => t.revenue_status === 'recebido').length;
+
+    const pendingFaturamentoTotal = tickets
+        .filter(t => (t.revenue_status || 'pendente') === 'pendente')
+        .reduce((sum, t) => sum + (Number(t.revenue_total) || 0), 0);
+
+    const receivedFaturamentoTotal = tickets
+        .filter(t => t.revenue_status === 'recebido')
+        .reduce((sum, t) => sum + (Number(t.revenue_total) || 0), 0);
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
@@ -248,12 +351,15 @@ const Financeiro = () => {
                         Financeiro
                     </h1>
                     <p className="text-muted-foreground mt-1">
-                        Controle de pagamentos dos agentes
+                        Controle de contas a pagar e receber
                     </p>
                 </div>
-                <Button variant="outline" onClick={fetchPayments} disabled={loading}>
-                    {loading ? 'Carregando...' : 'Atualizar'}
-                </Button>
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <DatePickerWithRange date={date} setDate={setDate} />
+                    <Button variant="outline" onClick={fetchPayments} disabled={loading}>
+                        {loading ? 'Carregando...' : 'Atualizar'}
+                    </Button>
+                </div>
             </div>
 
             <Tabs defaultValue="pagamentos" className="space-y-6">
@@ -399,7 +505,13 @@ const Financeiro = () => {
                                         </div>
 
                                         {/* Costs */}
-                                        <div className="grid grid-cols-4 gap-2 text-center">
+                                        <div className="grid grid-cols-5 gap-2 text-center">
+                                            <div>
+                                                <span className="text-[10px] text-muted-foreground uppercase block">Honorários</span>
+                                                <span className="text-xs font-semibold">
+                                                    {(item.compensationTotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                </span>
+                                            </div>
                                             <div>
                                                 <span className="text-[10px] text-muted-foreground uppercase block">Pedágio</span>
                                                 <span className="text-xs font-semibold">
@@ -467,13 +579,28 @@ const Financeiro = () => {
                                         )}
 
                                         {/* Action Button */}
-                                        <div className="flex justify-end pt-1">
+                                        <div className="flex justify-end gap-2 pt-1">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="gap-1.5 border-primary/20 hover:bg-primary/5 text-primary"
+                                                onClick={() => {
+                                                    setSelectedTicketId(item.ticketId);
+                                                    setSelectedAgentId(item.agentId);
+                                                    setSelectedAgentRole(item.agentRole);
+                                                    setPagamentoAgenteDialogOpen(true);
+                                                }}
+                                            >
+                                                <Calculator className="h-3.5 w-3.5" />
+                                                Calculadora
+                                            </Button>
+
                                             {item.paymentStatus === 'pendente' ? (
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
                                                         <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white">
                                                             <CheckCircle2 className="h-3.5 w-3.5" />
-                                                            Marcar como Pago
+                                                            Pagar
                                                         </Button>
                                                     </AlertDialogTrigger>
                                                     <AlertDialogContent>
@@ -531,12 +658,68 @@ const Financeiro = () => {
                 </TabsContent>
 
                 {/* ABA DE FATURAMENTO (CLIENTES) */}
-                <TabsContent value="faturamento" className="space-y-4">
-                    <div className="bg-primary/5 rounded-lg border border-primary/20 p-4 mb-4">
+                <TabsContent value="faturamento" className="space-y-6">
+                    <div className="bg-primary/5 rounded-lg border border-primary/20 p-4">
                         <h2 className="text-lg font-bold text-primary mb-1">Receitas de Chamados</h2>
                         <p className="text-sm text-muted-foreground">
                             Aqui você pode definir o valor que será cobrado do cliente final para cada chamado, ajustando franquias e valores extras.
                         </p>
+                    </div>
+
+                    {/* Summary Cards Faturamento */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Card className="border-amber-500/20 bg-amber-500/10 dark:bg-amber-500/5">
+                            <CardContent className="flex items-center gap-3 pt-4">
+                                <div className="bg-amber-500/20 p-2 rounded-lg">
+                                    <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold text-amber-700 dark:text-amber-500">
+                                        {pendingFaturamentoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </p>
+                                    <p className="text-xs text-amber-600/80 dark:text-amber-400/80 font-medium">{pendingFaturamentoCount} A Receber</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="border-emerald-500/20 bg-emerald-500/10 dark:bg-emerald-500/5">
+                            <CardContent className="flex items-center gap-3 pt-4">
+                                <div className="bg-emerald-500/20 p-2 rounded-lg">
+                                    <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-500">
+                                        {receivedFaturamentoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </p>
+                                    <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80 font-medium">{receivedFaturamentoCount} Recebidos</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Filters Faturamento */}
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Buscar por chamado ou cliente..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Filter className="h-4 w-4 text-muted-foreground" />
+                            <Select value={faturamentoFilter} onValueChange={(v: any) => setFaturamentoFilter(v)}>
+                                <SelectTrigger className="w-[160px]">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="pendente">🔴 A Receber</SelectItem>
+                                    <SelectItem value="recebido">🟢 Recebidos</SelectItem>
+                                    <SelectItem value="todos">Todos</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
                     {loading ? (
@@ -545,72 +728,115 @@ const Financeiro = () => {
                                 <Card key={i} className="animate-pulse h-24 bg-muted/50" />
                             ))}
                         </div>
-                    ) : tickets.length === 0 ? (
+                    ) : filteredTickets.length === 0 ? (
                         <div className="text-center py-12 text-muted-foreground">
-                            Nenhum chamado encontrado.
+                            Nenhum chamado listado.
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {tickets.map((ticket) => (
-                                <Card key={ticket.id} className="border-border hover:shadow-md transition-shadow">
-                                    <CardContent className="p-4 space-y-3">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <Badge variant={ticket.status === 'finalizado' ? 'default' : 'secondary'} className="mb-2">
-                                                    {ticket.status.replace('_', ' ').toUpperCase()}
-                                                </Badge>
-                                                <h3 className="font-bold text-base leading-tight">
-                                                    Chamado {ticket.code || '-'}
-                                                </h3>
-                                                <p className="text-sm text-muted-foreground mt-0.5">
-                                                    {ticket.clients?.name || 'Cliente Desconhecido'}
-                                                </p>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="text-[10px] uppercase text-muted-foreground font-semibold">Data</span>
-                                                <p className="text-xs">{format(new Date(ticket.start_datetime), 'dd/MM/yyyy')}</p>
-                                            </div>
-                                        </div>
+                            {filteredTickets.map((ticket) => {
+                                const isReceived = ticket.revenue_status === 'recebido';
 
-                                        <div className="bg-muted/50 rounded-md p-3 flex justify-between items-center border border-muted">
-                                            <div>
-                                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">
-                                                    Faturamento Calculado
-                                                </p>
-                                                <p className={`font-black tracking-tight ${ticket.revenue_total ? 'text-primary text-xl' : 'text-muted-foreground text-sm'}`}>
-                                                    {ticket.revenue_total
-                                                        ? ticket.revenue_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                                                        : 'Não definido'}
-                                                </p>
+                                return (
+                                    <Card key={ticket.id} className={`transition-all hover:shadow-md ${isReceived
+                                        ? 'border-emerald-500/20 bg-emerald-500/10 dark:bg-emerald-500/5'
+                                        : 'border-border bg-card'
+                                        }`}>
+                                        <CardContent className="p-4 flex flex-col h-full space-y-3">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <div className="flex gap-2 mb-2">
+                                                        <Badge variant={ticket.status === 'finalizado' ? 'default' : 'secondary'}>
+                                                            {ticket.status.replace('_', ' ').toUpperCase()}
+                                                        </Badge>
+                                                        <Badge className={
+                                                            isReceived
+                                                                ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
+                                                                : 'bg-amber-100 text-amber-700 hover:bg-amber-100'
+                                                        }>
+                                                            {isReceived ? '✅ Recebido' : '⏳ A Receber'}
+                                                        </Badge>
+                                                    </div>
+                                                    <h3 className="font-bold text-base leading-tight">
+                                                        Chamado {ticket.code || '-'}
+                                                    </h3>
+                                                    <p className="text-sm text-muted-foreground mt-0.5">
+                                                        {ticket.clients?.name || 'Cliente Desconhecido'}
+                                                    </p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-[10px] uppercase text-muted-foreground font-semibold">Data</span>
+                                                    <p className="text-xs">{format(new Date(ticket.start_datetime), 'dd/MM/yyyy')}</p>
+                                                </div>
                                             </div>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="bg-white border-primary/20 hover:bg-primary/5 text-primary"
-                                                onClick={() => {
-                                                    setSelectedTicketId(ticket.id);
-                                                    setFaturamentoDialogOpen(true);
-                                                }}
-                                            >
-                                                <FileText className="h-4 w-4 mr-2" />
-                                                Calcular
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
+
+                                            <div className="bg-muted/50 rounded-md p-3 flex justify-between items-center border border-muted">
+                                                <div>
+                                                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-0.5">
+                                                        Faturamento Calculado
+                                                    </p>
+                                                    <p className={`font-black tracking-tight ${ticket.revenue_total ? 'text-primary text-xl' : 'text-muted-foreground text-sm'}`}>
+                                                        {ticket.revenue_total
+                                                            ? ticket.revenue_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                                                            : 'Não definido'}
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="bg-background border-primary/20 hover:bg-primary/5 text-primary"
+                                                    onClick={() => {
+                                                        setSelectedTicketId(ticket.id);
+                                                        setFaturamentoDialogOpen(true);
+                                                    }}
+                                                >
+                                                    <FileText className="h-4 w-4 mr-2" />
+                                                    Calcular
+                                                </Button>
+                                            </div>
+
+                                            <div className="mt-auto pt-3 border-t border-border flex justify-end items-center gap-2">
+                                                {!isReceived ? (
+                                                    <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto" onClick={() => handleMarkRevenueAsPaid(ticket.id)}>
+                                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                                        Marcar como Recebido
+                                                    </Button>
+                                                ) : (
+                                                    <>
+                                                        {ticket.revenue_paid_at && (
+                                                            <span className="text-[10px] text-emerald-600 font-medium mr-auto">
+                                                                Recebido em {format(new Date(ticket.revenue_paid_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                                                            </span>
+                                                        )}
+                                                        <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground h-8" onClick={() => handleUndoRevenuePayment(ticket.id)}>
+                                                            Desfazer
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )
+                            })}
                         </div>
                     )}
                 </TabsContent>
             </Tabs>
 
             <FaturamentoDialog
-                ticketId={selectedTicketId}
                 open={faturamentoDialogOpen}
                 onOpenChange={setFaturamentoDialogOpen}
-                onSuccess={() => {
-                    fetchPayments(); // Refresh list to get new revenue values
-                }}
+                ticketId={selectedTicketId}
+                onSuccess={fetchPayments}
+            />
+
+            <PagamentoAgenteDialog
+                open={pagamentoAgenteDialogOpen}
+                onOpenChange={setPagamentoAgenteDialogOpen}
+                ticketId={selectedTicketId}
+                agentId={selectedAgentId}
+                agentRole={selectedAgentRole}
+                onSuccess={fetchPayments}
             />
         </div>
     );

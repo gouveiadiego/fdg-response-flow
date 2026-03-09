@@ -362,9 +362,16 @@ export type Database = {
           toll_cost: number | null
           food_cost: number | null
           other_costs: number | null
-          is_paid: boolean
+          payment_status: string | null
+          paid_at: string | null
           created_at: string
           updated_at: string
+          compensation_base_value: number | null
+          compensation_included_hours: number | null
+          compensation_included_km: number | null
+          compensation_extra_hour_rate: number | null
+          compensation_extra_km_rate: number | null
+          compensation_total: number | null
         }
         Insert: {
           id?: string
@@ -377,9 +384,16 @@ export type Database = {
           toll_cost?: number | null
           food_cost?: number | null
           other_costs?: number | null
-          is_paid?: boolean
+          payment_status?: string | null
+          paid_at?: string | null
           created_at?: string
           updated_at?: string
+          compensation_base_value?: number | null
+          compensation_included_hours?: number | null
+          compensation_included_km?: number | null
+          compensation_extra_hour_rate?: number | null
+          compensation_extra_km_rate?: number | null
+          compensation_total?: number | null
         }
         Update: {
           id?: string
@@ -392,9 +406,16 @@ export type Database = {
           toll_cost?: number | null
           food_cost?: number | null
           other_costs?: number | null
-          is_paid?: boolean
+          payment_status?: string | null
+          paid_at?: string | null
           created_at?: string
           updated_at?: string
+          compensation_base_value?: number | null
+          compensation_included_hours?: number | null
+          compensation_included_km?: number | null
+          compensation_extra_hour_rate?: number | null
+          compensation_extra_km_rate?: number | null
+          compensation_total?: number | null
         }
         Relationships: [
           {
@@ -450,6 +471,14 @@ export type Database = {
           revenue_extra_km_rate: number | null
           revenue_discount_addition: number | null
           revenue_total: number | null
+          revenue_status: string | null
+          revenue_paid_at: string | null
+          main_agent_compensation_base_value: number | null
+          main_agent_compensation_included_hours: number | null
+          main_agent_compensation_included_km: number | null
+          main_agent_compensation_extra_hour_rate: number | null
+          main_agent_compensation_extra_km_rate: number | null
+          main_agent_compensation_total: number | null
         }
         Insert: {
           city: string
@@ -489,6 +518,14 @@ export type Database = {
           revenue_extra_km_rate?: number | null
           revenue_discount_addition?: number | null
           revenue_total?: number | null
+          revenue_status?: string | null
+          revenue_paid_at?: string | null
+          main_agent_compensation_base_value?: number | null
+          main_agent_compensation_included_hours?: number | null
+          main_agent_compensation_included_km?: number | null
+          main_agent_compensation_extra_hour_rate?: number | null
+          main_agent_compensation_extra_km_rate?: number | null
+          main_agent_compensation_total?: number | null
         }
         Update: {
           city?: string
@@ -528,6 +565,14 @@ export type Database = {
           revenue_extra_km_rate?: number | null
           revenue_discount_addition?: number | null
           revenue_total?: number | null
+          revenue_status?: string | null
+          revenue_paid_at?: string | null
+          main_agent_compensation_base_value?: number | null
+          main_agent_compensation_included_hours?: number | null
+          main_agent_compensation_included_km?: number | null
+          main_agent_compensation_extra_hour_rate?: number | null
+          main_agent_compensation_extra_km_rate?: number | null
+          main_agent_compensation_total?: number | null
         }
         Relationships: [
           {
