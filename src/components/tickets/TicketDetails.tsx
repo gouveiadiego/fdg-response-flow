@@ -856,47 +856,6 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                   </div>
                 </div>
 
-                {/* Faturamento Cliente Summary */}
-                {ticket.revenue_total !== null && ticket.revenue_total !== undefined && (
-                  <div className="bg-primary/5 rounded-lg p-4 border border-primary/20 mt-4">
-                    <div className="mb-3 border-b border-primary/10 pb-2 flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-primary" />
-                      <h4 className="font-semibold text-primary uppercase text-xs tracking-wider">Faturamento Cliente</h4>
-                    </div>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Valor Base:</span>
-                        <span>R$ {Number(ticket.revenue_base_value || 0).toFixed(2)}</span>
-                      </div>
-
-                      {Number(ticket.revenue_extra_hour_rate) > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Horas Extras (acima de {ticket.revenue_included_hours}h):</span>
-                          <span>R$ {Number(ticket.revenue_extra_hour_rate).toFixed(2)} / h</span>
-                        </div>
-                      )}
-
-                      {Number(ticket.revenue_extra_km_rate) > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">KM Extra (acima de {ticket.revenue_included_km}km):</span>
-                          <span>R$ {Number(ticket.revenue_extra_km_rate).toFixed(2)} / km</span>
-                        </div>
-                      )}
-
-                      {Number(ticket.revenue_discount_addition) !== 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Ajustes Extras:</span>
-                          <span>{Number(ticket.revenue_discount_addition) > 0 ? '+' : '-'} R$ {Math.abs(Number(ticket.revenue_discount_addition)).toFixed(2)}</span>
-                        </div>
-                      )}
-
-                      <div className="flex justify-between font-bold text-base pt-2 border-t border-primary/10 mt-2 text-primary">
-                        <span>Total a Cobrar:</span>
-                        <span>R$ {Number(ticket.revenue_total).toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
