@@ -25,6 +25,39 @@ const ALARME_PRICING = {
     extraKmRate: 1.50,
 };
 
+// Pricing per agent role based on armed/unarmed
+const ARMED_PRICING = { base: 300, includedHours: 3, includedKm: 50, extraHourRate: 45, extraKmRate: 1.50 };
+const UNARMED_PRICING = { base: 280, includedHours: 3, includedKm: 50, extraHourRate: 40, extraKmRate: 1.50 };
+
+/**
+ * Determine if the agent acting in a given role should be priced as ARMED or UNARMED,
+ * based on the plan name and their role (principal or support).
+ *
+ * Plan rules:
+ *  - "1 Agente Armado"         → principal = armed
+ *  - "1 Agente Desarmado"      → principal = unarmed
+ *  - "1 Armado + 1 Desarmado"  → principal = armed, support = unarmed
+ *  - "2 Agentes Armados"       → all = armed
+ *  - anything else             → fall back to agent's own is_armed flag
+ */
+function getIsArmedByPlan(
+    planName: string | null | undefined,
+    agentRole: 'principal' | 'apoio_1' | 'apoio_2',
+    agentIsArmed: boolean
+): boolean {
+    if (!planName) return agentIsArmed;
+    const name = planName.toLowerCase();
+    const isSupport = agentRole !== 'principal';
+
+    if (name.includes('armado + 1 desarmado') || name.includes('armado+1 desarmado')) {
+        return !isSupport; // principal=armed, support=unarmed
+    }
+    if (name.includes('2 agente') && name.includes('armado')) return true;  // 2 armed
+    if (name.includes('1 agente') && name.includes('armado') && !name.includes('desarmado')) return true;
+    if (name.includes('1 agente') && name.includes('desarmado') && !name.includes('armado + ')) return false;
+    return agentIsArmed; // fallback
+}
+
 const compensationSchema = z.object({
     compensation_base_value: optionalNumber,
     compensation_included_hours: optionalNumber,
@@ -50,6 +83,7 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
     const [isFetching, setIsFetching] = useState(false);
     const [agentInfo, setAgentInfo] = useState<{ name: string; isArmed: boolean } | null>(null);
     const [isAlarmPlan, setIsAlarmPlan] = useState(false);
+    const [planName, setPlanName] = useState<string | null>(null);
 
     // Real stats from the ticket to calculate over
     const [stats, setStats] = useState({
@@ -92,15 +126,21 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
             let durationHours = 0;
             let totalKm = 0;
             let existingValues: any = {};
+            let ticketPlanName: string | null = null;
+            let ticketServiceType: string | null = null;
 
             if (agentRole === 'principal') {
                 const { data: ticket, error } = await supabase
                     .from('tickets')
-                    .select('*')
+                    .select('*, plans(name)')
                     .eq('id', ticketId)
                     .single();
 
                 if (error) throw error;
+
+                ticketServiceType = ticket.service_type;
+                ticketPlanName = (ticket as any).plans?.name ?? null;
+                setPlanName(ticketPlanName);
 
                 const isAlarme = ticket.service_type === 'alarme';
                 setIsAlarmPlan(isAlarme);
@@ -121,6 +161,21 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                     total: ticket.main_agent_compensation_total
                 };
             } else {
+                // For support agents, also fetch the ticket to get plan + service_type
+                const { data: ticketData, error: ticketErr } = await supabase
+                    .from('tickets')
+                    .select('service_type, plans(name)')
+                    .eq('id', ticketId)
+                    .single();
+
+                if (!ticketErr && ticketData) {
+                    ticketServiceType = ticketData.service_type;
+                    ticketPlanName = (ticketData as any).plans?.name ?? null;
+                    setPlanName(ticketPlanName);
+                    const isAlarme = ticketData.service_type === 'alarme';
+                    setIsAlarmPlan(isAlarme);
+                }
+
                 const { data: supportAgent, error } = await supabase
                     .from('ticket_support_agents')
                     .select('*')
@@ -150,15 +205,18 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
 
             setStats({ durationHours, totalKm });
 
-            // Auto-calculate defaults if none exist
-            const isArmed = !!agent.is_armed;
-            const isAlarmeRole = isAlarmPlan || (agentRole !== 'principal' && false); // support keeps same alarm plan
+            // Determine if this agent, in their role, should be priced as armed or unarmed
+            // Priority: plan name > agent's own is_armed flag
+            const isAlarme = ticketServiceType === 'alarme';
+            const agentIsArmedByPlan = getIsArmedByPlan(ticketPlanName, agentRole, !!agent.is_armed);
+            const pricing = agentIsArmedByPlan ? ARMED_PRICING : UNARMED_PRICING;
+
             form.reset({
-                compensation_base_value: existingValues.base ?? (isAlarmPlan ? ALARME_PRICING.base : (isArmed ? 300 : 280)),
-                compensation_included_hours: existingValues.incHours ?? (isAlarmPlan ? ALARME_PRICING.includedHours : 3),
-                compensation_included_km: existingValues.incKm ?? (isAlarmPlan ? ALARME_PRICING.includedKm : 50),
-                compensation_extra_hour_rate: existingValues.extraRate ?? (isAlarmPlan ? ALARME_PRICING.extraHourRate : (isArmed ? 45 : 40)),
-                compensation_extra_km_rate: existingValues.extraKmRate ?? ALARME_PRICING.extraKmRate,
+                compensation_base_value: existingValues.base ?? (isAlarme ? ALARME_PRICING.base : pricing.base),
+                compensation_included_hours: existingValues.incHours ?? (isAlarme ? ALARME_PRICING.includedHours : pricing.includedHours),
+                compensation_included_km: existingValues.incKm ?? (isAlarme ? ALARME_PRICING.includedKm : pricing.includedKm),
+                compensation_extra_hour_rate: existingValues.extraRate ?? (isAlarme ? ALARME_PRICING.extraHourRate : pricing.extraHourRate),
+                compensation_extra_km_rate: existingValues.extraKmRate ?? (isAlarme ? ALARME_PRICING.extraKmRate : pricing.extraKmRate),
                 compensation_total: existingValues.total ?? 0,
             });
 
@@ -247,11 +305,18 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                             <div className="bg-muted p-4 rounded-lg">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="font-semibold text-lg">Parâmetros (Agente {agentInfo?.isArmed ? 'Armado' : 'Desarmado'})</h3>
-                                    {isAlarmPlan && (
-                                        <span className="inline-flex items-center gap-1.5 bg-orange-100 text-orange-700 border border-orange-300 rounded-full px-3 py-1 text-xs font-bold">
-                                            🔔 Plano Alarme
-                                        </span>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                        {planName && !isAlarmPlan && (
+                                            <span className="inline-flex items-center bg-muted text-muted-foreground border border-border rounded-full px-2.5 py-0.5 text-[11px] font-medium">
+                                                {planName}
+                                            </span>
+                                        )}
+                                        {isAlarmPlan && (
+                                            <span className="inline-flex items-center gap-1.5 bg-orange-100 text-orange-700 border border-orange-300 rounded-full px-3 py-1 text-xs font-bold">
+                                                🔔 Plano Alarme
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t pt-4">
