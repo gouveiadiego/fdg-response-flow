@@ -71,7 +71,11 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             const { data: ticket, error } = await supabase
                 .from('tickets')
                 .select(`
-          *,
+          id, code, km_start, km_end, 
+          main_agent_arrival, main_agent_departure,
+          revenue_base_value, revenue_included_hours, revenue_included_km,
+          revenue_extra_hour_rate, revenue_extra_km_rate, revenue_discount_addition,
+          revenue_total,
           ticket_support_agents (
             arrival, departure, km_start, km_end
           )

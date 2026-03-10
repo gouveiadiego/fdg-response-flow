@@ -187,9 +187,9 @@ const Financeiro = () => {
             });
 
             setItems(paymentItems);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao buscar pagamentos:', error);
-            const msg = error instanceof Error ? error.message : 'Erro desconhecido';
+            const msg = error?.message || 'Erro desconhecido';
             toast.error(`Erro ao carregar pagamentos: ${msg}`);
         } finally {
             setLoading(false);
