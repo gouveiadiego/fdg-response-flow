@@ -82,7 +82,9 @@ const Financeiro = () => {
                 .select(`
           id, code, start_datetime, status,
           toll_cost, food_cost, other_costs,
+          main_agent_id,
           main_agent_payment_status, main_agent_paid_at,
+          main_agent_compensation_total,
           revenue_status, revenue_paid_at, revenue_total,
           clients (name),
           main_agent:agents!tickets_main_agent_id_fkey (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type),
@@ -90,6 +92,7 @@ const Financeiro = () => {
             agent_id,
             toll_cost, food_cost, other_costs,
             payment_status, paid_at,
+            compensation_total,
             agent:agents (name, is_armed, pix_key, bank_name, bank_agency, bank_account, bank_account_type)
           )
         `)
@@ -107,7 +110,10 @@ const Financeiro = () => {
 
             const { data, error } = await query;
 
-            if (error) throw error;
+            if (error) {
+                console.error('Supabase error fetching payments:', error);
+                throw error;
+            }
 
             setTickets(data || []);
             const paymentItems: PaymentItem[] = [];
