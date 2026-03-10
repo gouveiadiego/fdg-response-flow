@@ -85,6 +85,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
           revenue_base_value, revenue_included_hours, revenue_included_km,
           revenue_extra_hour_rate, revenue_extra_km_rate, revenue_discount_addition,
           revenue_total,
+          plans ( name ),
           ticket_support_agents (
             arrival, departure, km_start, km_end
           )
@@ -94,7 +95,9 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
 
             if (error) throw error;
 
-            const isAlarme = ticket.service_type === 'alarme';
+            // Detect alarm plan via plan NAME (independent from service_type)
+            const planName = (ticket as any).plans?.name ?? null;
+            const isAlarme = planName?.toLowerCase().includes('alarme') ?? false;
             setIsAlarmPlan(isAlarme);
 
             // Calculate total duration

@@ -142,7 +142,7 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                 ticketPlanName = (ticket as any).plans?.name ?? null;
                 setPlanName(ticketPlanName);
 
-                const isAlarme = ticket.service_type === 'alarme';
+                const isAlarme = ticketPlanName?.toLowerCase().includes('alarme') ?? false;
                 setIsAlarmPlan(isAlarme);
 
                 if (ticket.main_agent_arrival && ticket.main_agent_departure) {
@@ -172,7 +172,7 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                     ticketServiceType = ticketData.service_type;
                     ticketPlanName = (ticketData as any).plans?.name ?? null;
                     setPlanName(ticketPlanName);
-                    const isAlarme = ticketData.service_type === 'alarme';
+                    const isAlarme = ticketPlanName?.toLowerCase().includes('alarme') ?? false;
                     setIsAlarmPlan(isAlarme);
                 }
 
@@ -206,8 +206,8 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
             setStats({ durationHours, totalKm });
 
             // Determine if this agent, in their role, should be priced as armed or unarmed
-            // Priority: plan name > agent's own is_armed flag
-            const isAlarme = ticketServiceType === 'alarme';
+            // Alarm detection: use PLAN NAME (independent from service_type field)
+            const isAlarme = ticketPlanName?.toLowerCase().includes('alarme') ?? false;
             const agentIsArmedByPlan = getIsArmedByPlan(ticketPlanName, agentRole, !!agent.is_armed);
             const pricing = agentIsArmedByPlan ? ARMED_PRICING : UNARMED_PRICING;
 
