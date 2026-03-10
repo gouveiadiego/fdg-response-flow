@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { AddPhotosDialog } from './AddPhotosDialog';
 import { generateTicketPDF, type TicketPDFData } from './TicketPDFGenerator';
+import { generateAlarmePropostaPDF } from './AlarmePropostaGenerator';
 
 interface TicketDetailsProps {
   ticketId: string | null;
@@ -160,6 +161,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
   const [loading, setLoading] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
+  const [generatingAlarmeProposta, setGeneratingAlarmeProposta] = useState(false);
   const [addPhotosOpen, setAddPhotosOpen] = useState(false);
 
   useEffect(() => {
@@ -458,6 +460,42 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
   const formatCurrency = (value: number | null) => {
     if (value === null || value === undefined) return 'R$ 0,00';
     return `R$ ${value.toFixed(2).replace('.', ',')}`;
+  };
+
+  const handleGenerateAlarmeProposta = async () => {
+    if (!ticket) return;
+    setGeneratingAlarmeProposta(true);
+    try {
+      // Calculate KM and duration from ticket data
+      let totalKm = 0;
+      if (ticket.km_start && ticket.km_end) {
+        totalKm = Number(ticket.km_end) - Number(ticket.km_start);
+      }
+      let durationHours = 0;
+      if (ticket.main_agent_arrival && ticket.main_agent_departure) {
+        durationHours = (new Date(ticket.main_agent_departure).getTime() - new Date(ticket.main_agent_arrival).getTime()) / (1000 * 60 * 60);
+      }
+      const tollCost = Number(ticket.toll_cost ?? 0);
+
+      await generateAlarmePropostaPDF({
+        code: ticket.code,
+        client_name: ticket.clients?.name || 'Cliente',
+        city: ticket.city,
+        state: ticket.state,
+        start_datetime: ticket.start_datetime,
+        end_datetime: ticket.end_datetime,
+        km_total: totalKm,
+        duration_hours: durationHours,
+        toll_cost: tollCost,
+        operator_name: ticket.operators?.name || 'FDG',
+      });
+      toast.success('Proposta de alarme gerada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao gerar proposta de alarme:', error);
+      toast.error('Erro ao gerar proposta de alarme.');
+    } finally {
+      setGeneratingAlarmeProposta(false);
+    }
   };
 
   if (loading || !ticket) {
@@ -955,6 +993,27 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
               </CardContent>
             </Card>
 
+            {/* Alarme: pricing info card */}
+            {ticket.service_type === 'alarme' && (
+              <div className="border border-orange-300 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">🔔</span>
+                  <h3 className="font-bold text-orange-700 dark:text-orange-400 text-sm">Condições do Plano — Acionamento de Alarme</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Pacote base</span><strong>R$ 100,00</strong></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Tempo incluso</span><strong>30 min</strong></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">KM incluso</span><strong>50 km</strong></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Hora adicional</span><strong>R$ 20,00/h</strong></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">KM adicional</span><strong>R$ 1,50/km</strong></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Pedágio</span><strong>Reembolso integral</strong></div>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-2 border-t border-orange-200 dark:border-orange-800 pt-2">
+                  Prazo de pagamento: 1 dia útil após recebimento da documentação completa.
+                </p>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex flex-wrap gap-2 justify-end">
               <Button variant="outline" onClick={() => onEdit(ticket.id)}>
@@ -970,6 +1029,18 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                 <FileDown className="h-4 w-4 mr-2" />
                 {generatingPDF ? 'Gerando...' : 'Gerar PDF'}
               </Button>
+
+              {ticket.service_type === 'alarme' && (
+                <Button
+                  variant="outline"
+                  className="border-orange-400 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/30"
+                  onClick={handleGenerateAlarmeProposta}
+                  disabled={generatingAlarmeProposta}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  {generatingAlarmeProposta ? 'Gerando...' : 'Gerar Proposta Alarme'}
+                </Button>
+              )}
 
               {ticket.status === 'aberto' && (
                 <Button

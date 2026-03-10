@@ -17,6 +17,14 @@ import { Button } from '@/components/ui/button';
 
 const optionalNumber = z.number().or(z.string().transform(v => v === '' ? undefined : Number(v))).optional();
 
+const ALARME_PRICING = {
+    base: 100,
+    includedHours: 0.5,
+    includedKm: 50,
+    extraHourRate: 20,
+    extraKmRate: 1.50,
+};
+
 const faturamentoSchema = z.object({
     revenue_base_value: optionalNumber,
     revenue_included_hours: optionalNumber,
@@ -39,6 +47,7 @@ interface FaturamentoDialogProps {
 export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: FaturamentoDialogProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(false);
+    const [isAlarmPlan, setIsAlarmPlan] = useState(false);
 
     // Real stats from the ticket to calculate over
     const [ticketStats, setTicketStats] = useState({
@@ -71,7 +80,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             const { data: ticket, error } = await supabase
                 .from('tickets')
                 .select(`
-          id, code, km_start, km_end, 
+          id, code, km_start, km_end, service_type,
           main_agent_arrival, main_agent_departure,
           revenue_base_value, revenue_included_hours, revenue_included_km,
           revenue_extra_hour_rate, revenue_extra_km_rate, revenue_discount_addition,
@@ -84,6 +93,9 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                 .single();
 
             if (error) throw error;
+
+            const isAlarme = ticket.service_type === 'alarme';
+            setIsAlarmPlan(isAlarme);
 
             // Calculate total duration
             let totalDiffMs = 0;
@@ -111,11 +123,11 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             setTicketStats({ durationHours, totalKm });
 
             form.reset({
-                revenue_base_value: ticket.revenue_base_value ?? 500,
-                revenue_included_hours: ticket.revenue_included_hours ?? 3,
-                revenue_included_km: ticket.revenue_included_km ?? 50,
-                revenue_extra_hour_rate: ticket.revenue_extra_hour_rate ?? 90,
-                revenue_extra_km_rate: ticket.revenue_extra_km_rate ?? 2.5,
+                revenue_base_value: ticket.revenue_base_value ?? (isAlarme ? ALARME_PRICING.base : 500),
+                revenue_included_hours: ticket.revenue_included_hours ?? (isAlarme ? ALARME_PRICING.includedHours : 3),
+                revenue_included_km: ticket.revenue_included_km ?? (isAlarme ? ALARME_PRICING.includedKm : 50),
+                revenue_extra_hour_rate: ticket.revenue_extra_hour_rate ?? (isAlarme ? ALARME_PRICING.extraHourRate : 90),
+                revenue_extra_km_rate: ticket.revenue_extra_km_rate ?? (isAlarme ? ALARME_PRICING.extraKmRate : 2.5),
                 revenue_discount_addition: ticket.revenue_discount_addition ?? 0,
                 revenue_total: ticket.revenue_total ?? 0,
             });
@@ -195,9 +207,18 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
                             <div className="bg-muted p-4 rounded-lg space-y-4">
-                                <h3 className="font-semibold text-lg">Parâmetros de Cobrança (Cliente)</h3>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-semibold text-lg">Parâmetros de Cobrança (Cliente)</h3>
+                                    {isAlarmPlan && (
+                                        <span className="inline-flex items-center gap-1.5 bg-orange-100 text-orange-700 border border-orange-300 rounded-full px-3 py-1 text-xs font-bold">
+                                            🔔 Plano Alarme
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="text-sm text-muted-foreground leading-relaxed">
-                                    Ajuste os valores para lidar com exceções. O sistema calcula o valor final a ser cobrado automaticamente.
+                                    {isAlarmPlan
+                                        ? 'Valores do Plano de Acionamento de Alarme já pré-preenchidos. Verifique e ajuste se necessário.'
+                                        : 'Ajuste os valores para lidar com exceções. O sistema calcula o valor final a ser cobrado automaticamente.'}
                                 </p>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t pt-4">

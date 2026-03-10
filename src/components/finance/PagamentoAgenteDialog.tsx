@@ -17,6 +17,14 @@ import { Button } from '@/components/ui/button';
 
 const optionalNumber = z.number().or(z.string().transform(v => v === '' ? undefined : Number(v))).optional();
 
+const ALARME_PRICING = {
+    base: 100,
+    includedHours: 0.5,
+    includedKm: 50,
+    extraHourRate: 20,
+    extraKmRate: 1.50,
+};
+
 const compensationSchema = z.object({
     compensation_base_value: optionalNumber,
     compensation_included_hours: optionalNumber,
@@ -41,6 +49,7 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(false);
     const [agentInfo, setAgentInfo] = useState<{ name: string; isArmed: boolean } | null>(null);
+    const [isAlarmPlan, setIsAlarmPlan] = useState(false);
 
     // Real stats from the ticket to calculate over
     const [stats, setStats] = useState({
@@ -93,6 +102,9 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
 
                 if (error) throw error;
 
+                const isAlarme = ticket.service_type === 'alarme';
+                setIsAlarmPlan(isAlarme);
+
                 if (ticket.main_agent_arrival && ticket.main_agent_departure) {
                     durationHours = (new Date(ticket.main_agent_departure).getTime() - new Date(ticket.main_agent_arrival).getTime()) / (1000 * 60 * 60);
                 }
@@ -140,12 +152,13 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
 
             // Auto-calculate defaults if none exist
             const isArmed = !!agent.is_armed;
+            const isAlarmeRole = isAlarmPlan || (agentRole !== 'principal' && false); // support keeps same alarm plan
             form.reset({
-                compensation_base_value: existingValues.base ?? (isArmed ? 300 : 280),
-                compensation_included_hours: existingValues.incHours ?? 3,
-                compensation_included_km: existingValues.incKm ?? 50,
-                compensation_extra_hour_rate: existingValues.extraRate ?? (isArmed ? 45 : 40),
-                compensation_extra_km_rate: existingValues.extraKmRate ?? 1.50,
+                compensation_base_value: existingValues.base ?? (isAlarmPlan ? ALARME_PRICING.base : (isArmed ? 300 : 280)),
+                compensation_included_hours: existingValues.incHours ?? (isAlarmPlan ? ALARME_PRICING.includedHours : 3),
+                compensation_included_km: existingValues.incKm ?? (isAlarmPlan ? ALARME_PRICING.includedKm : 50),
+                compensation_extra_hour_rate: existingValues.extraRate ?? (isAlarmPlan ? ALARME_PRICING.extraHourRate : (isArmed ? 45 : 40)),
+                compensation_extra_km_rate: existingValues.extraKmRate ?? ALARME_PRICING.extraKmRate,
                 compensation_total: existingValues.total ?? 0,
             });
 
@@ -232,8 +245,13 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
                             <div className="bg-muted p-4 rounded-lg">
-                                <div className="flex justify-between items-center mb-4">
+                                <div className="flex items-center justify-between mb-4">
                                     <h3 className="font-semibold text-lg">Parâmetros (Agente {agentInfo?.isArmed ? 'Armado' : 'Desarmado'})</h3>
+                                    {isAlarmPlan && (
+                                        <span className="inline-flex items-center gap-1.5 bg-orange-100 text-orange-700 border border-orange-300 rounded-full px-3 py-1 text-xs font-bold">
+                                            🔔 Plano Alarme
+                                        </span>
+                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t pt-4">
