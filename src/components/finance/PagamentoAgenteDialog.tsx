@@ -246,6 +246,11 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
     const onSubmit = async (data: CompensationFormData) => {
         setIsLoading(true);
         try {
+            // Recalculate total inside onSubmit to ensure we use the latest values being saved
+            const extraHours = Math.max(0, stats.durationHours - data.compensation_included_hours);
+            const extraKm = Math.max(0, stats.totalKm - data.compensation_included_km);
+            const finalTotal = data.compensation_base_value + (extraHours * data.compensation_extra_hour_rate) + (extraKm * data.compensation_extra_km_rate);
+
             if (agentRole === 'principal') {
                 const { error } = await supabase
                     .from('tickets')
@@ -255,8 +260,8 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                         main_agent_compensation_included_km: data.compensation_included_km,
                         main_agent_compensation_extra_hour_rate: data.compensation_extra_hour_rate,
                         main_agent_compensation_extra_km_rate: data.compensation_extra_km_rate,
-                        main_agent_compensation_total: calculatedTotal,
-                    }) // Type cast if types.ts hasn't finished updating
+                        main_agent_compensation_total: finalTotal,
+                    })
                     .eq('id', ticketId);
                 if (error) throw error;
             } else {
@@ -268,7 +273,7 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                         compensation_included_km: data.compensation_included_km,
                         compensation_extra_hour_rate: data.compensation_extra_hour_rate,
                         compensation_extra_km_rate: data.compensation_extra_km_rate,
-                        compensation_total: calculatedTotal,
+                        compensation_total: finalTotal,
                     })
                     .eq('ticket_id', ticketId)
                     .eq('agent_id', agentId);

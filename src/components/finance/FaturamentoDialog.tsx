@@ -162,11 +162,20 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
 
     const calculatedRevenueTotal = baseValue + costExtraHours + costExtraKm + discountAddition;
 
-    const onSubmit = async (data: FaturamentoFormData) => {
+    const onSubmit = async (data: z.infer<typeof faturamentoSchema>) => {
         if (!ticketId) return;
 
         setIsLoading(true);
         try {
+            // Recalculate total inside onSubmit to ensure we use the latest values being saved
+            const extraHours = Math.max(0, ticketStats.durationHours - (data.revenue_included_hours || 0));
+            const extraKm = Math.max(0, ticketStats.totalKm - (data.revenue_included_km || 0));
+            
+            const finalRevenueTotal = (data.revenue_base_value || 0) + 
+                                     (extraHours * (data.revenue_extra_hour_rate || 0)) + 
+                                     (extraKm * (data.revenue_extra_km_rate || 0)) + 
+                                     (data.revenue_discount_addition || 0);
+
             const { error } = await supabase
                 .from('tickets')
                 .update({
@@ -176,7 +185,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                     revenue_extra_hour_rate: data.revenue_extra_hour_rate ?? 0,
                     revenue_extra_km_rate: data.revenue_extra_km_rate ?? 0,
                     revenue_discount_addition: data.revenue_discount_addition ?? 0,
-                    revenue_total: calculatedRevenueTotal, // Use the calculated value from UI
+                    revenue_total: finalRevenueTotal,
                 })
                 .eq('id', ticketId);
 
