@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { parseSafeNumber } from '@/lib/numberUtils';
 import { Button } from '@/components/ui/button';
 
 const optionalNumber = z.number().or(z.string().transform(v => v === '' ? undefined : Number(v))).optional();
@@ -168,23 +169,30 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
         setIsLoading(true);
         try {
             // Recalculate total inside onSubmit to ensure we use the latest values being saved
-            const extraHours = Math.max(0, ticketStats.durationHours - (data.revenue_included_hours || 0));
-            const extraKm = Math.max(0, ticketStats.totalKm - (data.revenue_included_km || 0));
+            const revenue_base_value = parseSafeNumber(data.revenue_base_value);
+            const revenue_included_hours = parseSafeNumber(data.revenue_included_hours);
+            const revenue_included_km = parseSafeNumber(data.revenue_included_km);
+            const revenue_extra_hour_rate = parseSafeNumber(data.revenue_extra_hour_rate);
+            const revenue_extra_km_rate = parseSafeNumber(data.revenue_extra_km_rate);
+            const revenue_discount_addition = parseSafeNumber(data.revenue_discount_addition);
+
+            const extraHours = Math.max(0, ticketStats.durationHours - revenue_included_hours);
+            const extraKm = Math.max(0, ticketStats.totalKm - revenue_included_km);
             
-            const finalRevenueTotal = (data.revenue_base_value || 0) + 
-                                     (extraHours * (data.revenue_extra_hour_rate || 0)) + 
-                                     (extraKm * (data.revenue_extra_km_rate || 0)) + 
-                                     (data.revenue_discount_addition || 0);
+            const finalRevenueTotal = revenue_base_value + 
+                                     (extraHours * revenue_extra_hour_rate) + 
+                                     (extraKm * revenue_extra_km_rate) + 
+                                     revenue_discount_addition;
 
             const { error } = await supabase
                 .from('tickets')
                 .update({
-                    revenue_base_value: data.revenue_base_value ?? 0,
-                    revenue_included_hours: data.revenue_included_hours ?? 0,
-                    revenue_included_km: data.revenue_included_km ?? 0,
-                    revenue_extra_hour_rate: data.revenue_extra_hour_rate ?? 0,
-                    revenue_extra_km_rate: data.revenue_extra_km_rate ?? 0,
-                    revenue_discount_addition: data.revenue_discount_addition ?? 0,
+                    revenue_base_value,
+                    revenue_included_hours,
+                    revenue_included_km,
+                    revenue_extra_hour_rate,
+                    revenue_extra_km_rate,
+                    revenue_discount_addition,
                     revenue_total: finalRevenueTotal,
                 })
                 .eq('id', ticketId);
@@ -267,7 +275,12 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                                             <FormItem>
                                                 <FormLabel>Franquia KM</FormLabel>
                                                 <FormControl>
-                                                    <Input type="number" step="1" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
+                                                    <Input
+                                                        type="text"
+                                                        inputMode="decimal"
+                                                        {...field}
+                                                        onChange={(e) => field.onChange(parseSafeNumber(e.target.value))}
+                                                    />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>

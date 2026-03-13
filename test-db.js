@@ -13,29 +13,27 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function testInsert() {
-    console.log('Inserting ticket...');
+async function fetchTickets() {
+    console.log('Fetching tickets with status finalizado...');
     const { data, error } = await supabase
         .from('tickets')
-        .insert({
-            client_id: null,
-            vehicle_id: null,
-            plan_id: null,
-            service_type: 'alarme',
-            main_agent_id: '80e92243-7182-4f7f-8e41-af27918a38ae',
-            city: 'Test City',
-            state: 'SP',
-            start_datetime: new Date().toISOString(),
-            created_by_user_id: '6ca2df45-4235-430b-93f9-ff4fd0eb1988',
-            revenue_base_value: 0,
-        })
-        .select();
+        .select('*')
+        .eq('status', 'finalizado')
+        .order('start_datetime', { ascending: false })
+        .limit(5);
 
     if (error) {
-        console.error('Insert error:', error);
+        console.error('Fetch error:', error);
     } else {
-        console.log('Success!', data);
+        console.log('Finalized Tickets (last 5):');
+        data.forEach(t => {
+            console.log(`[Code: ${t.code}] [ID: ${t.id}]`);
+            console.log(`  Agent Compensation Total: ${t.main_agent_compensation_total}`);
+            console.log(`  Revenue Total: ${t.revenue_total}`);
+            console.log(`  Toll: ${t.toll_cost}, Food: ${t.food_cost}`);
+            console.log('---');
+        });
     }
 }
 
-testInsert();
+fetchTickets();

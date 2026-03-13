@@ -369,11 +369,17 @@ const Financeiro = () => {
 
             <Tabs defaultValue="pagamentos" className="space-y-6">
                 <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
-                    <TabsTrigger value="pagamentos" className="flex gap-2 items-center">
+                    <TabsTrigger 
+                        value="pagamentos" 
+                        className="flex gap-2 items-center data-[state=active]:text-red-600 data-[state=active]:bg-red-50 dark:data-[state=active]:bg-red-950/30"
+                    >
                         <HandCoins className="h-4 w-4" />
                         Pagamentos (Agentes)
                     </TabsTrigger>
-                    <TabsTrigger value="faturamento" className="flex gap-2 items-center">
+                    <TabsTrigger 
+                        value="faturamento" 
+                        className="flex gap-2 items-center data-[state=active]:text-emerald-600 data-[state=active]:bg-emerald-50 dark:data-[state=active]:bg-emerald-950/30"
+                    >
                         <Building2 className="h-4 w-4" />
                         Faturamento (Clientes)
                     </TabsTrigger>

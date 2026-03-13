@@ -98,6 +98,12 @@ const ticketSchema = z.object({
     toll_cost: optionalNumber,
     food_cost: optionalNumber,
     other_costs: optionalNumber,
+    compensation_base_value: optionalNumber,
+    compensation_included_hours: optionalNumber,
+    compensation_included_km: optionalNumber,
+    compensation_extra_hour_rate: optionalNumber,
+    compensation_extra_km_rate: optionalNumber,
+    compensation_total: optionalNumber,
   })).default([]),
   plan_id: z.string().min(1, 'Plano é obrigatório'),
   service_type: z.enum(['alarme', 'averiguacao', 'preservacao', 'acompanhamento_logistico', 'sindicancia']),
@@ -122,6 +128,12 @@ const ticketSchema = z.object({
   revenue_extra_km_rate: optionalNumber,
   revenue_discount_addition: optionalNumber,
   revenue_total: optionalNumber,
+  main_agent_compensation_base_value: optionalNumber,
+  main_agent_compensation_included_hours: optionalNumber,
+  main_agent_compensation_included_km: optionalNumber,
+  main_agent_compensation_extra_hour_rate: optionalNumber,
+  main_agent_compensation_extra_km_rate: optionalNumber,
+  main_agent_compensation_total: optionalNumber,
 });
 
 type TicketFormData = z.infer<typeof ticketSchema>;
@@ -223,6 +235,12 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
       revenue_extra_km_rate: 2.50,
       revenue_discount_addition: 0.00,
       revenue_total: 500.00,
+      main_agent_compensation_base_value: 0,
+      main_agent_compensation_included_hours: 3,
+      main_agent_compensation_included_km: 50,
+      main_agent_compensation_extra_hour_rate: 0,
+      main_agent_compensation_extra_km_rate: 0,
+      main_agent_compensation_total: 0,
     },
   });
 
@@ -367,7 +385,13 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
             km_end,
             toll_cost,
             food_cost,
-            other_costs
+            other_costs,
+            compensation_base_value,
+            compensation_included_hours,
+            compensation_included_km,
+            compensation_extra_hour_rate,
+            compensation_extra_km_rate,
+            compensation_total
         `)
         .eq('ticket_id', ticketId);
 
@@ -389,6 +413,12 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           toll_cost: sa.toll_cost || 0,
           food_cost: sa.food_cost || 0,
           other_costs: sa.other_costs || 0,
+          compensation_base_value: sa.compensation_base_value,
+          compensation_included_hours: sa.compensation_included_hours,
+          compensation_included_km: sa.compensation_included_km,
+          compensation_extra_hour_rate: sa.compensation_extra_hour_rate,
+          compensation_extra_km_rate: sa.compensation_extra_km_rate,
+          compensation_total: sa.compensation_total,
         })) || [];
 
 
@@ -423,6 +453,12 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           revenue_extra_km_rate: ticket.revenue_extra_km_rate !== null ? Number(ticket.revenue_extra_km_rate) : 2.50,
           revenue_discount_addition: ticket.revenue_discount_addition !== null ? Number(ticket.revenue_discount_addition) : 0.00,
           revenue_total: ticket.revenue_total !== null ? Number(ticket.revenue_total) : 500.00,
+          main_agent_compensation_base_value: ticket.main_agent_compensation_base_value !== null ? Number(ticket.main_agent_compensation_base_value) : 0,
+          main_agent_compensation_included_hours: ticket.main_agent_compensation_included_hours !== null ? Number(ticket.main_agent_compensation_included_hours) : 0,
+          main_agent_compensation_included_km: ticket.main_agent_compensation_included_km !== null ? Number(ticket.main_agent_compensation_included_km) : 0,
+          main_agent_compensation_extra_hour_rate: ticket.main_agent_compensation_extra_hour_rate !== null ? Number(ticket.main_agent_compensation_extra_hour_rate) : 0,
+          main_agent_compensation_extra_km_rate: ticket.main_agent_compensation_extra_km_rate !== null ? Number(ticket.main_agent_compensation_extra_km_rate) : 0,
+          main_agent_compensation_total: ticket.main_agent_compensation_total !== null ? Number(ticket.main_agent_compensation_total) : 0,
         });
       }
     } catch (error) {
@@ -708,6 +744,12 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           revenue_extra_km_rate: data.revenue_extra_km_rate || 0,
           revenue_discount_addition: data.revenue_discount_addition || 0,
           revenue_total: data.revenue_total || 0,
+          main_agent_compensation_base_value: data.main_agent_compensation_base_value || 0,
+          main_agent_compensation_included_hours: data.main_agent_compensation_included_hours || 0,
+          main_agent_compensation_included_km: data.main_agent_compensation_included_km || 0,
+          main_agent_compensation_extra_hour_rate: data.main_agent_compensation_extra_hour_rate || 0,
+          main_agent_compensation_extra_km_rate: data.main_agent_compensation_extra_km_rate || 0,
+          main_agent_compensation_total: data.main_agent_compensation_total || 0,
         })
         .eq('id', ticketId);
 
@@ -730,6 +772,12 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
             toll_cost: agent.toll_cost || 0,
             food_cost: agent.food_cost || 0,
             other_costs: agent.other_costs || 0,
+            compensation_base_value: agent.compensation_base_value || 0,
+            compensation_included_hours: agent.compensation_included_hours || 0,
+            compensation_included_km: agent.compensation_included_km || 0,
+            compensation_extra_hour_rate: agent.compensation_extra_hour_rate || 0,
+            compensation_extra_km_rate: agent.compensation_extra_km_rate || 0,
+            compensation_total: agent.compensation_total || 0,
           }));
 
           // Helper to check if string is valid UUID

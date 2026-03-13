@@ -14,6 +14,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { parseSafeNumber } from '@/lib/numberUtils';
 
 const optionalNumber = z.number().or(z.string().transform(v => v === '' ? undefined : Number(v))).optional();
 
@@ -247,19 +248,25 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
         setIsLoading(true);
         try {
             // Recalculate total inside onSubmit to ensure we use the latest values being saved
-            const extraHours = Math.max(0, stats.durationHours - data.compensation_included_hours);
-            const extraKm = Math.max(0, stats.totalKm - data.compensation_included_km);
-            const finalTotal = data.compensation_base_value + (extraHours * data.compensation_extra_hour_rate) + (extraKm * data.compensation_extra_km_rate);
+            const compensation_base_value = parseSafeNumber(data.compensation_base_value);
+            const compensation_included_hours = parseSafeNumber(data.compensation_included_hours);
+            const compensation_included_km = parseSafeNumber(data.compensation_included_km);
+            const compensation_extra_hour_rate = parseSafeNumber(data.compensation_extra_hour_rate);
+            const compensation_extra_km_rate = parseSafeNumber(data.compensation_extra_km_rate);
+
+            const extraHours = Math.max(0, stats.durationHours - compensation_included_hours);
+            const extraKm = Math.max(0, stats.totalKm - compensation_included_km);
+            const finalTotal = compensation_base_value + (extraHours * compensation_extra_hour_rate) + (extraKm * compensation_extra_km_rate);
 
             if (agentRole === 'principal') {
                 const { error } = await supabase
                     .from('tickets')
                     .update({
-                        main_agent_compensation_base_value: data.compensation_base_value,
-                        main_agent_compensation_included_hours: data.compensation_included_hours,
-                        main_agent_compensation_included_km: data.compensation_included_km,
-                        main_agent_compensation_extra_hour_rate: data.compensation_extra_hour_rate,
-                        main_agent_compensation_extra_km_rate: data.compensation_extra_km_rate,
+                        main_agent_compensation_base_value: compensation_base_value,
+                        main_agent_compensation_included_hours: compensation_included_hours,
+                        main_agent_compensation_included_km: compensation_included_km,
+                        main_agent_compensation_extra_hour_rate: compensation_extra_hour_rate,
+                        main_agent_compensation_extra_km_rate: compensation_extra_km_rate,
                         main_agent_compensation_total: finalTotal,
                     })
                     .eq('id', ticketId);
@@ -268,19 +275,20 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                 const { error } = await supabase
                     .from('ticket_support_agents')
                     .update({
-                        compensation_base_value: data.compensation_base_value,
-                        compensation_included_hours: data.compensation_included_hours,
-                        compensation_included_km: data.compensation_included_km,
-                        compensation_extra_hour_rate: data.compensation_extra_hour_rate,
-                        compensation_extra_km_rate: data.compensation_extra_km_rate,
+                        compensation_base_value,
+                        compensation_included_hours,
+                        compensation_included_km,
+                        compensation_extra_hour_rate,
+                        compensation_extra_km_rate,
                         compensation_total: finalTotal,
                     })
                     .eq('ticket_id', ticketId)
                     .eq('agent_id', agentId);
+
                 if (error) throw error;
             }
 
-            toast.success('Honorários salvos com sucesso!');
+            toast.success(`Pagamento de ${agentInfo?.name || 'agente'} atualizado.`);
             onSuccess();
             onOpenChange(false);
         } catch (error) {
@@ -332,7 +340,7 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                                             <FormItem>
                                                 <FormLabel>Valor Base (R$)</FormLabel>
                                                 <FormControl>
-                                                    <Input type="number" step="0.01" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
+                                                    <Input type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
                                                 </FormControl>
                                             </FormItem>
                                         )}
@@ -344,7 +352,7 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                                             <FormItem>
                                                 <FormLabel>Franquia Horas (h)</FormLabel>
                                                 <FormControl>
-                                                    <Input type="number" step="0.5" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
+                                                    <Input type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
                                                 </FormControl>
                                             </FormItem>
                                         )}
@@ -356,7 +364,12 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                                             <FormItem>
                                                 <FormLabel>Franquia KM</FormLabel>
                                                 <FormControl>
-                                                    <Input type="number" step="1" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
+                                                    <Input
+                                                        type="text"
+                                                        inputMode="decimal"
+                                                        {...field}
+                                                        onChange={(e) => field.onChange(parseSafeNumber(e.target.value))}
+                                                    />
                                                 </FormControl>
                                             </FormItem>
                                         )}
