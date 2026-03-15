@@ -374,6 +374,18 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                                                     {detailedStats.endTime ? format(detailedStats.endTime, "dd/MM/yyyy HH:mm:ss") : '--:--'}
                                                 </p>
                                             </div>
+                                            <div className="bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/50 col-span-2 flex justify-between items-center">
+                                                <div>
+                                                    <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">
+                                                        {isAlarmPlan ? 'Tipo de Serviço' : 'Placa Cavalo'}
+                                                    </p>
+                                                    <p className="text-sm font-semibold text-zinc-200">
+                                                        {isAlarmPlan ? 'ATENDIMENTO ALARME' : contextInfo?.plate || 'Sem placa'}
+                                                    </p>
+                                                </div>
+                                                {isAlarmPlan && <div className="bg-orange-500/20 p-1.5 rounded-full"><Info className="w-4 h-4 text-orange-400" /></div>}
+                                                {!isAlarmPlan && <div className="bg-zinc-800 p-1.5 rounded-full"><Car className="w-4 h-4 text-zinc-400" /></div>}
+                                            </div>
                                             <div className="bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/50">
                                                 <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">KM Inicial</p>
                                                 <p className="text-sm font-semibold text-zinc-200">{detailedStats.startKm} km</p>
