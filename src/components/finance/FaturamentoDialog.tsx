@@ -49,6 +49,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(false);
     const [isAlarmPlan, setIsAlarmPlan] = useState(false);
+    const [contextInfo, setContextInfo] = useState<{ clientName: string; plate: string; code: string } | null>(null);
 
     // Real stats from the ticket to calculate over
     const [ticketStats, setTicketStats] = useState({
@@ -87,6 +88,8 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
           revenue_extra_hour_rate, revenue_extra_km_rate, revenue_discount_addition,
           revenue_total,
           plans ( name ),
+          clients ( name ),
+          vehicles ( tractor_plate ),
           ticket_support_agents (
             arrival, departure, km_start, km_end
           )
@@ -100,6 +103,12 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             const planName = (ticket as any).plans?.name ?? null;
             const isAlarme = planName?.toLowerCase().includes('alarme') ?? false;
             setIsAlarmPlan(isAlarme);
+
+            setContextInfo({
+                clientName: (ticket as any).clients?.name || 'Não informado',
+                plate: (ticket as any).vehicles?.tractor_plate || 'Sem placa',
+                code: ticket.code || '-'
+            });
 
             // Calculate total duration
             let totalDiffMs = 0;
@@ -168,7 +177,6 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
 
         setIsLoading(true);
         try {
-            // Recalculate total inside onSubmit to ensure we use the latest values being saved
             const revenue_base_value = parseSafeNumber(data.revenue_base_value);
             const revenue_included_hours = parseSafeNumber(data.revenue_included_hours);
             const revenue_included_km = parseSafeNumber(data.revenue_included_km);
@@ -177,11 +185,11 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             const revenue_discount_addition = parseSafeNumber(data.revenue_discount_addition);
 
             const extraHours = Math.max(0, ticketStats.durationHours - revenue_included_hours);
-            const extraKm = Math.max(0, ticketStats.totalKm - revenue_included_km);
+            const extraKmTotal = Math.max(0, ticketStats.totalKm - revenue_included_km);
             
             const finalRevenueTotal = revenue_base_value + 
                                      (extraHours * revenue_extra_hour_rate) + 
-                                     (extraKm * revenue_extra_km_rate) + 
+                                     (extraKmTotal * revenue_extra_km_rate) + 
                                      revenue_discount_addition;
 
             const { error } = await supabase
@@ -218,6 +226,23 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                     <DialogDescription>
                         Defina os valores de cobrança para o cliente correspondente a este chamado.
                     </DialogDescription>
+
+                    {contextInfo && (
+                        <div className="mt-4 grid grid-cols-3 gap-2 bg-muted/50 p-3 rounded-md border border-dashed border-border">
+                            <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Chamado</p>
+                                <p className="text-xs font-semibold">{contextInfo.code}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Cliente</p>
+                                <p className="text-xs font-semibold">{contextInfo.clientName}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Placa Cavalo</p>
+                                <p className="text-xs font-semibold">{contextInfo.plate}</p>
+                            </div>
+                        </div>
+                    )}
                 </DialogHeader>
 
                 {isFetching ? (
@@ -241,7 +266,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                                         : 'Ajuste os valores para lidar com exceções. O sistema calcula o valor final a ser cobrado automaticamente.'}
                                 </p>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t pt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-border/50 pt-4">
                                     <FormField
                                         control={form.control}
                                         name="revenue_base_value"
@@ -328,32 +353,32 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                                 </div>
                             </div>
 
-                            <div className="bg-primary/5 p-6 rounded-lg border border-primary/20">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-lg border border-primary/20 shadow-sm">
                                 <h3 className="text-xl font-bold mb-4 text-primary">Simulação do Faturamento</h3>
-                                <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between border-b border-primary/10 pb-2">
+                                <div className="space-y-3 text-sm">
+                                    <div className="flex justify-between border-b border-border pb-2">
                                         <span>Tempo Trabalhado:</span>
                                         <strong>{currentDurationHours.toFixed(2)} h</strong>
                                     </div>
-                                    <div className="flex justify-between border-b border-primary/10 pb-2">
+                                    <div className="flex justify-between border-b border-border pb-2">
                                         <span>Distância Rodada (Total):</span>
                                         <strong>{currentTotalKm.toFixed(2)} km</strong>
                                     </div>
-                                    <div className="flex justify-between border-b border-primary/10 pb-2">
-                                        <span className="text-muted-foreground">Horas Extras ({exactExtraHours.toFixed(2)} h x R$ {extraHourRate.toFixed(2)}):</span>
-                                        <span className="text-muted-foreground">+ R$ {costExtraHours.toFixed(2)}</span>
+                                    <div className="flex justify-between text-muted-foreground pt-1">
+                                        <span>Horas Extras ({exactExtraHours.toFixed(2)} h x R$ {extraHourRate.toFixed(2)}):</span>
+                                        <span>+ R$ {costExtraHours.toFixed(2)}</span>
                                     </div>
-                                    <div className="flex justify-between border-b border-primary/10 pb-2">
-                                        <span className="text-muted-foreground">KM Extra ({extraKm.toFixed(2)} km x R$ {extraKmRate.toFixed(2)}):</span>
-                                        <span className="text-muted-foreground">+ R$ {costExtraKm.toFixed(2)}</span>
+                                    <div className="flex justify-between text-muted-foreground border-b border-border pb-2">
+                                        <span>KM Extra ({extraKm.toFixed(2)} km x R$ {extraKmRate.toFixed(2)}):</span>
+                                        <span>+ R$ {costExtraKm.toFixed(2)}</span>
                                     </div>
-                                    <div className="flex justify-between border-b border-primary/10 pb-2">
-                                        <span className="text-muted-foreground">Ajustes Manuais:</span>
-                                        <span className="text-muted-foreground">{discountAddition >= 0 ? '+' : '-'} R$ {Math.abs(discountAddition).toFixed(2)}</span>
+                                    <div className="flex justify-between border-b border-border pb-2 pt-1 font-medium italic">
+                                        <span>Ajustes Manuais:</span>
+                                        <span>{discountAddition >= 0 ? '+' : '-'} R$ {Math.abs(discountAddition).toFixed(2)}</span>
                                     </div>
-                                    <div className="flex justify-between text-lg font-bold pt-2 text-primary">
+                                    <div className="flex justify-between text-xl font-bold pt-4 text-primary">
                                         <span>Total a Cobrar:</span>
-                                        <span>R$ {calculatedRevenueTotal.toFixed(2)}</span>
+                                        <span className="text-2xl tracking-tight">R$ {calculatedRevenueTotal.toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -362,7 +387,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
                                     Cancelar
                                 </Button>
-                                <Button type="submit" disabled={isLoading}>
+                                <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8">
                                     {isLoading ? 'Salvando...' : 'Salvar Faturamento'}
                                 </Button>
                             </div>

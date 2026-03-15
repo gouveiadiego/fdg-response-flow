@@ -86,6 +86,7 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(false);
     const [agentInfo, setAgentInfo] = useState<{ name: string; isArmed: boolean } | null>(null);
+    const [contextInfo, setContextInfo] = useState<{ clientName: string; plate: string; code: string } | null>(null);
     const [isAlarmPlan, setIsAlarmPlan] = useState(false);
     const [planName, setPlanName] = useState<string | null>(null);
 
@@ -136,22 +137,27 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
             let ticketPlanName: string | null = null;
             let ticketServiceType: string | null = null;
 
+            const { data: ticket, error } = await supabase
+                .from('tickets')
+                .select('*, plans(name), clients(name), vehicles(tractor_plate)')
+                .eq('id', ticketId)
+                .single();
+
+            if (error) throw error;
+
+            ticketServiceType = ticket.service_type;
+            ticketPlanName = (ticket as any).plans?.name ?? null;
+            setPlanName(ticketPlanName);
+            setContextInfo({
+                clientName: (ticket as any).clients?.name || 'Não informado',
+                plate: (ticket as any).vehicles?.tractor_plate || 'Sem placa',
+                code: ticket.code || '-'
+            });
+
+            const isAlarme = ticketPlanName?.toLowerCase().includes('alarme') ?? false;
+            setIsAlarmPlan(isAlarme);
+
             if (agentRole === 'principal') {
-                const { data: ticket, error } = await supabase
-                    .from('tickets')
-                    .select('*, plans(name)')
-                    .eq('id', ticketId)
-                    .single();
-
-                if (error) throw error;
-
-                ticketServiceType = ticket.service_type;
-                ticketPlanName = (ticket as any).plans?.name ?? null;
-                setPlanName(ticketPlanName);
-
-                const isAlarme = ticketPlanName?.toLowerCase().includes('alarme') ?? false;
-                setIsAlarmPlan(isAlarme);
-
                 if (ticket.main_agent_arrival && ticket.main_agent_departure) {
                     durationHours = (new Date(ticket.main_agent_departure).getTime() - new Date(ticket.main_agent_arrival).getTime()) / (1000 * 60 * 60);
                 }
@@ -171,29 +177,14 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                     other: ticket.other_costs
                 };
             } else {
-                // For support agents, also fetch the ticket to get plan + service_type
-                const { data: ticketData, error: ticketErr } = await supabase
-                    .from('tickets')
-                    .select('service_type, plans(name)')
-                    .eq('id', ticketId)
-                    .single();
-
-                if (!ticketErr && ticketData) {
-                    ticketServiceType = ticketData.service_type;
-                    ticketPlanName = (ticketData as any).plans?.name ?? null;
-                    setPlanName(ticketPlanName);
-                    const isAlarme = ticketPlanName?.toLowerCase().includes('alarme') ?? false;
-                    setIsAlarmPlan(isAlarme);
-                }
-
-                const { data: supportAgent, error } = await supabase
+                const { data: supportAgent, error: supportError } = await supabase
                     .from('ticket_support_agents')
                     .select('*')
                     .eq('ticket_id', ticketId)
                     .eq('agent_id', agentId)
                     .maybeSingle();
 
-                if (error) throw error;
+                if (supportError) throw supportError;
                 if (!supportAgent) throw new Error('Agente de apoio não encontrado para este chamado.');
 
                 if (supportAgent.arrival && supportAgent.departure) {
@@ -219,8 +210,6 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
             setStats({ durationHours, totalKm });
 
             // Determine if this agent, in their role, should be priced as armed or unarmed
-            // Alarm detection: use PLAN NAME (independent from service_type field)
-            const isAlarme = ticketPlanName?.toLowerCase().includes('alarme') ?? false;
             const agentIsArmedByPlan = getIsArmedByPlan(ticketPlanName, agentRole, !!agent.is_armed);
             const pricing = agentIsArmedByPlan ? ARMED_PRICING : UNARMED_PRICING;
 
@@ -268,7 +257,6 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
     const onSubmit = async (data: CompensationFormData) => {
         setIsLoading(true);
         try {
-            // Recalculate total inside onSubmit to ensure we use the latest values being saved
             const compensation_base_value = parseSafeNumber(data.compensation_base_value);
             const compensation_included_hours = parseSafeNumber(data.compensation_included_hours);
             const compensation_included_km = parseSafeNumber(data.compensation_included_km);
@@ -280,9 +268,8 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
             const other_costs = parseSafeNumber(data.other_costs);
 
             const extraHours = Math.max(0, stats.durationHours - compensation_included_hours);
-            const extraKm = Math.max(0, stats.totalKm - compensation_included_km);
-            const honorarioTotal = compensation_base_value + (extraHours * compensation_extra_hour_rate) + (extraKm * compensation_extra_km_rate);
-            const finalTotal = honorarioTotal + toll_cost + food_cost + other_costs;
+            const extraKmTotal = Math.max(0, stats.totalKm - compensation_included_km);
+            const honorarioTotal = compensation_base_value + (extraHours * compensation_extra_hour_rate) + (extraKmTotal * compensation_extra_km_rate);
 
             if (agentRole === 'principal') {
                 const { error } = await supabase
@@ -333,12 +320,29 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl overflow-y-auto max-h-[90vh]">
                 <DialogHeader>
-                    <DialogTitle>Honorários do Agente</DialogTitle>
+                    <DialogTitle>Calculadora de Pagamento</DialogTitle>
                     <DialogDescription>
-                        Calcule o valor a ser pago para <strong>{agentInfo?.name}</strong> neste chamado.
+                        Calcule o valor para <strong>{agentInfo?.name}</strong>.
                     </DialogDescription>
+
+                    {contextInfo && (
+                        <div className="mt-4 grid grid-cols-3 gap-2 bg-muted/50 p-3 rounded-md border border-dashed border-border">
+                            <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold">Chamado</p>
+                                <p className="text-xs font-semibold">{contextInfo.code}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold">Cliente</p>
+                                <p className="text-xs font-semibold">{contextInfo.clientName}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold">Placa Cavalo</p>
+                                <p className="text-xs font-semibold">{contextInfo.plate}</p>
+                            </div>
+                        </div>
+                    )}
                 </DialogHeader>
 
                 {isFetching ? (
@@ -347,7 +351,7 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
-                            <div className="bg-muted p-4 rounded-lg">
+                            <div className="bg-muted p-4 rounded-lg shadow-inner">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="font-semibold text-lg">Parâmetros (Agente {agentInfo?.isArmed ? 'Armado' : 'Desarmado'})</h3>
                                     <div className="flex items-center gap-2">
@@ -364,7 +368,7 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t pt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-border/50 pt-4">
                                     <FormField
                                         control={form.control}
                                         name="compensation_base_value"
@@ -431,7 +435,71 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                                         )}
                                     />
                                 </div>
-                                <div className="flex justify-end gap-2 pt-2">
+
+                                <h3 className="font-semibold text-md mt-6 mb-3 border-t border-border/50 pt-4">Reembolso de Despesas</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="toll_cost"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Pedágio (R$)</FormLabel>
+                                                <FormControl>
+                                                    <Input type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="food_cost"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Alimentação (R$)</FormLabel>
+                                                <FormControl>
+                                                    <Input type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="other_costs"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Outros (R$)</FormLabel>
+                                                <FormControl>
+                                                    <Input type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+
+                                <div className="mt-6 flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-lg border border-primary/20 shadow-sm">
+                                    <div className="text-center md:text-left">
+                                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Honorário Limpo</p>
+                                        <p className="text-lg font-semibold text-foreground">
+                                            {baseHonorario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        </p>
+                                    </div>
+                                    <div className="hidden md:block h-10 w-px bg-border" />
+                                    <div className="text-center md:text-left">
+                                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total Despesas</p>
+                                        <p className="text-lg font-semibold text-orange-500">
+                                            {(tollCost + foodCost + otherCosts).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        </p>
+                                    </div>
+                                    <div className="hidden md:block h-10 w-px bg-border" />
+                                    <div className="text-center md:text-right">
+                                        <p className="text-[10px] text-primary uppercase font-bold tracking-wider">Total Geral a Pagar</p>
+                                        <p className="text-2xl font-bold text-primary">
+                                            {calculatedTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-2 pt-6">
                                     <Button
                                         type="button"
                                         variant="outline"
@@ -440,7 +508,7 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                                     >
                                         Cancelar
                                     </Button>
-                                    <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90">
+                                    <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8">
                                         {isLoading ? 'Salvando...' : 'Salvar Pagamento'}
                                     </Button>
                                 </div>
