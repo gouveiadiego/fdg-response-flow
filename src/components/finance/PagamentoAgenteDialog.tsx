@@ -17,7 +17,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { parseSafeNumber } from '@/lib/numberUtils';
-import { Clock, MapPin, Calculator, Info, User, Car } from 'lucide-react';
+import { Clock, MapPin, Calculator, Info, User, Car, FileText } from 'lucide-react';
+import { generateAgentPaymentPDF } from './AgentPaymentPDFGenerator';
 
 const optionalNumber = z.number().or(z.string().transform(v => v === '' ? undefined : Number(v))).optional();
 
@@ -81,7 +82,16 @@ interface PagamentoAgenteDialogProps {
 export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOpenChange, onSuccess }: PagamentoAgenteDialogProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(false);
-    const [agentInfo, setAgentInfo] = useState<{ name: string; isArmed: boolean } | null>(null);
+    const [agentInfo, setAgentInfo] = useState<{
+        name: string;
+        isArmed: boolean;
+        document: string;
+        pix_key: string | null;
+        bank_name: string | null;
+        bank_agency: string | null;
+        bank_account: string | null;
+        bank_account_type: string | null;
+    } | null>(null);
     const [contextInfo, setContextInfo] = useState<{ clientName: string; plate: string; code: string } | null>(null);
     const [isAlarmPlan, setIsAlarmPlan] = useState(false);
     const [planName, setPlanName] = useState<string | null>(null);
@@ -122,12 +132,21 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
         try {
             const { data: agent, error: agentError } = await supabase
                 .from('agents')
-                .select('name, is_armed')
+                .select('name, is_armed, document, pix_key, bank_name, bank_agency, bank_account, bank_account_type')
                 .eq('id', agentId)
                 .single();
 
             if (agentError) throw agentError;
-            setAgentInfo({ name: agent.name, isArmed: !!agent.is_armed });
+            setAgentInfo({
+                name: agent.name,
+                isArmed: !!agent.is_armed,
+                document: agent.document,
+                pix_key: agent.pix_key,
+                bank_name: agent.bank_name,
+                bank_agency: agent.bank_agency,
+                bank_account: agent.bank_account,
+                bank_account_type: agent.bank_account_type,
+            });
 
             const { data: ticket, error } = await supabase
                 .from('tickets')
@@ -306,6 +325,40 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleGeneratePDF = async () => {
+        if (!agentInfo || !contextInfo) return;
+
+        await generateAgentPaymentPDF({
+            ticketCode: contextInfo.code,
+            agentName: agentInfo.name,
+            agentDocument: agentInfo.document,
+            serviceType: isAlarmPlan ? 'ALARME' : 'ATENDIMENTO',
+            planName: planName || 'N/A',
+            startTime: detailedStats.startTime,
+            endTime: detailedStats.endTime,
+            startKm: detailedStats.startKm,
+            endKm: detailedStats.endKm,
+            baseValue: baseValue,
+            includedHours: includedHours,
+            includedKm: includedKm,
+            extraHourRate: extraHourRate,
+            extraKmRate: extraKmRate,
+            extraHours: extraHours,
+            extraKm: extraKm,
+            toll: tollCost,
+            food: foodCost,
+            other: otherCosts,
+            total: calculatedTotal,
+            bankingInfo: {
+                pixKey: agentInfo.pix_key,
+                bankName: agentInfo.bank_name,
+                bankAgency: agentInfo.bank_agency,
+                bankAccount: agentInfo.bank_account,
+                bankAccountType: agentInfo.bank_account_type,
+            }
+        });
     };
 
     return (
@@ -613,16 +666,26 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                                                 variant="outline"
                                                 onClick={() => onOpenChange(false)}
                                                 disabled={isLoading}
-                                                className="flex-1 bg-transparent border-zinc-800 hover:bg-zinc-900 text-zinc-400"
+                                                className="bg-transparent border-zinc-800 hover:bg-zinc-900 text-zinc-400"
                                             >
                                                 CANCELAR
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={handleGeneratePDF}
+                                                disabled={isLoading || isFetching}
+                                                className="bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-300 gap-2"
+                                            >
+                                                <FileText className="w-4 h-4" />
+                                                RECIBO PDF
                                             </Button>
                                             <Button 
                                                 type="submit" 
                                                 disabled={isLoading} 
-                                                className="flex-[2] bg-primary hover:bg-primary/90 text-primary-foreground font-black tracking-widest uppercase shadow-[0_0_20px_rgba(var(--primary),0.3)]"
+                                                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-black tracking-widest uppercase shadow-[0_0_20px_rgba(var(--primary),0.3)]"
                                             >
-                                                {isLoading ? 'SALVANDO...' : 'SALVAR PAGAMENTO'}
+                                                {isLoading ? 'SALVANDO...' : 'SALVAR'}
                                             </Button>
                                         </div>
                                     </div>
