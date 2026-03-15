@@ -4,6 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import {
     Dialog,
     DialogContent,
@@ -15,6 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { parseSafeNumber } from '@/lib/numberUtils';
+import { Clock, MapPin, Calculator, Info, User, Car } from 'lucide-react';
 
 const optionalNumber = z.number().or(z.string().transform(v => v === '' ? undefined : Number(v))).optional();
 
@@ -33,13 +36,6 @@ const UNARMED_PRICING = { base: 280, includedHours: 3, includedKm: 50, extraHour
 /**
  * Determine if the agent acting in a given role should be priced as ARMED or UNARMED,
  * based on the plan name and their role (principal or support).
- *
- * Plan rules:
- *  - "1 Agente Armado"         → principal = armed
- *  - "1 Agente Desarmado"      → principal = unarmed
- *  - "1 Armado + 1 Desarmado"  → principal = armed, support = unarmed
- *  - "2 Agentes Armados"       → all = armed
- *  - anything else             → fall back to agent's own is_armed flag
  */
 function getIsArmedByPlan(
     planName: string | null | undefined,
@@ -90,10 +86,14 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
     const [isAlarmPlan, setIsAlarmPlan] = useState(false);
     const [planName, setPlanName] = useState<string | null>(null);
 
-    // Real stats from the ticket to calculate over
-    const [stats, setStats] = useState({
-        durationHours: 0,
+    // Detailed stats for the breakdown UI
+    const [detailedStats, setDetailedStats] = useState({
+        startTime: null as Date | null,
+        endTime: null as Date | null,
+        startKm: 0,
+        endKm: 0,
         totalKm: 0,
+        durationHours: 0,
     });
 
     const form = useForm<CompensationFormData>({
@@ -120,7 +120,6 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
     const fetchData = async () => {
         setIsFetching(true);
         try {
-            // Get Agent armed status
             const { data: agent, error: agentError } = await supabase
                 .from('agents')
                 .select('name, is_armed')
@@ -130,13 +129,6 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
             if (agentError) throw agentError;
             setAgentInfo({ name: agent.name, isArmed: !!agent.is_armed });
 
-            // Get Ticket/Support data to check existing values and calculate stats
-            let durationHours = 0;
-            let totalKm = 0;
-            let existingValues: any = {};
-            let ticketPlanName: string | null = null;
-            let ticketServiceType: string | null = null;
-
             const { data: ticket, error } = await supabase
                 .from('tickets')
                 .select('*, plans(name), clients(name), vehicles(tractor_plate)')
@@ -145,8 +137,7 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
 
             if (error) throw error;
 
-            ticketServiceType = ticket.service_type;
-            ticketPlanName = (ticket as any).plans?.name ?? null;
+            const ticketPlanName = (ticket as any).plans?.name ?? null;
             setPlanName(ticketPlanName);
             setContextInfo({
                 clientName: (ticket as any).clients?.name || 'Não informado',
@@ -157,13 +148,17 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
             const isAlarme = ticketPlanName?.toLowerCase().includes('alarme') ?? false;
             setIsAlarmPlan(isAlarme);
 
+            let startTime = null;
+            let endTime = null;
+            let startKm = 0;
+            let endKm = 0;
+            let existingValues: any = {};
+
             if (agentRole === 'principal') {
-                if (ticket.main_agent_arrival && ticket.main_agent_departure) {
-                    durationHours = (new Date(ticket.main_agent_departure).getTime() - new Date(ticket.main_agent_arrival).getTime()) / (1000 * 60 * 60);
-                }
-                if (ticket.km_start && ticket.km_end) {
-                    totalKm = Number(ticket.km_end) - Number(ticket.km_start);
-                }
+                startTime = ticket.main_agent_arrival ? new Date(ticket.main_agent_arrival) : null;
+                endTime = ticket.main_agent_departure ? new Date(ticket.main_agent_departure) : null;
+                startKm = Number(ticket.km_start) || 0;
+                endKm = Number(ticket.km_end) || 0;
 
                 existingValues = {
                     base: ticket.main_agent_compensation_base_value,
@@ -185,14 +180,12 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                     .maybeSingle();
 
                 if (supportError) throw supportError;
-                if (!supportAgent) throw new Error('Agente de apoio não encontrado para este chamado.');
+                if (!supportAgent) throw new Error('Agente de apoio não encontrado.');
 
-                if (supportAgent.arrival && supportAgent.departure) {
-                    durationHours = (new Date(supportAgent.departure).getTime() - new Date(supportAgent.arrival).getTime()) / (1000 * 60 * 60);
-                }
-                if (supportAgent.km_start && supportAgent.km_end) {
-                    totalKm = Number(supportAgent.km_end) - Number(supportAgent.km_start);
-                }
+                startTime = supportAgent.arrival ? new Date(supportAgent.arrival) : null;
+                endTime = supportAgent.departure ? new Date(supportAgent.departure) : null;
+                startKm = Number(supportAgent.km_start) || 0;
+                endKm = Number(supportAgent.km_end) || 0;
 
                 existingValues = {
                     base: supportAgent.compensation_base_value,
@@ -207,9 +200,11 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                 };
             }
 
-            setStats({ durationHours, totalKm });
+            const totalKm = Math.max(0, endKm - startKm);
+            const durationHours = startTime && endTime ? (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60) : 0;
 
-            // Determine if this agent, in their role, should be priced as armed or unarmed
+            setDetailedStats({ startTime, endTime, startKm, endKm, totalKm, durationHours });
+
             const agentIsArmedByPlan = getIsArmedByPlan(ticketPlanName, agentRole, !!agent.is_armed);
             const pricing = agentIsArmedByPlan ? ARMED_PRICING : UNARMED_PRICING;
 
@@ -226,93 +221,88 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
             });
 
         } catch (error) {
-            console.error('Erro ao buscar dados para honorários:', error);
+            console.error('Erro ao buscar dados:', error);
             toast.error('Erro ao buscar dados do agente.');
         } finally {
             setIsFetching(false);
         }
     };
 
-    // Calculation logic
+    const formatDuration = (hours: number) => {
+        const h = Math.floor(hours);
+        const m = Math.floor((hours - h) * 60);
+        const s = Math.floor(((hours - h) * 60 - m) * 60);
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    };
+
+    // Watchers for real-time update
     const baseValue = form.watch('compensation_base_value') || 0;
     const includedHours = form.watch('compensation_included_hours') || 0;
     const includedKm = form.watch('compensation_included_km') || 0;
     const extraHourRate = form.watch('compensation_extra_hour_rate') || 0;
     const extraKmRate = form.watch('compensation_extra_km_rate') || 0;
-
-    const exactExtraHours = Math.max(0, stats.durationHours - includedHours);
-    const costExtraHours = exactExtraHours * extraHourRate;
-
-    const extraKm = Math.max(0, stats.totalKm - includedKm);
-    const costExtraKm = extraKm * extraKmRate;
-
-    const baseHonorario = baseValue + costExtraHours + costExtraKm;
-
     const tollCost = form.watch('toll_cost') || 0;
     const foodCost = form.watch('food_cost') || 0;
     const otherCosts = form.watch('other_costs') || 0;
 
+    const extraKm = Math.max(0, detailedStats.totalKm - includedKm);
+    const extraHours = Math.max(0, detailedStats.durationHours - includedHours);
+
+    const costExtraKm = extraKm * extraKmRate;
+    const costExtraHours = extraHours * extraHourRate;
+    const baseHonorario = baseValue + costExtraHours + costExtraKm;
     const calculatedTotal = baseHonorario + tollCost + foodCost + otherCosts;
 
     const onSubmit = async (data: CompensationFormData) => {
         setIsLoading(true);
         try {
-            const compensation_base_value = parseSafeNumber(data.compensation_base_value);
-            const compensation_included_hours = parseSafeNumber(data.compensation_included_hours);
-            const compensation_included_km = parseSafeNumber(data.compensation_included_km);
-            const compensation_extra_hour_rate = parseSafeNumber(data.compensation_extra_hour_rate);
-            const compensation_extra_km_rate = parseSafeNumber(data.compensation_extra_km_rate);
+            const val_base = parseSafeNumber(data.compensation_base_value);
+            const val_inc_h = parseSafeNumber(data.compensation_included_hours);
+            const val_inc_km = parseSafeNumber(data.compensation_included_km);
+            const val_extra_h_rate = parseSafeNumber(data.compensation_extra_hour_rate);
+            const val_extra_km_rate = parseSafeNumber(data.compensation_extra_km_rate);
+            const val_toll = parseSafeNumber(data.toll_cost);
+            const val_food = parseSafeNumber(data.food_cost);
+            const val_other = parseSafeNumber(data.other_costs);
 
-            const toll_cost = parseSafeNumber(data.toll_cost);
-            const food_cost = parseSafeNumber(data.food_cost);
-            const other_costs = parseSafeNumber(data.other_costs);
-
-            const extraHours = Math.max(0, stats.durationHours - compensation_included_hours);
-            const extraKmTotal = Math.max(0, stats.totalKm - compensation_included_km);
-            const honorarioTotal = compensation_base_value + (extraHours * compensation_extra_hour_rate) + (extraKmTotal * compensation_extra_km_rate);
+            const ex_h = Math.max(0, detailedStats.durationHours - val_inc_h);
+            const ex_km = Math.max(0, detailedStats.totalKm - val_inc_km);
+            const totalHon = val_base + (ex_h * val_extra_h_rate) + (ex_km * val_extra_km_rate);
 
             if (agentRole === 'principal') {
-                const { error } = await supabase
-                    .from('tickets')
-                    .update({
-                        main_agent_compensation_base_value: compensation_base_value,
-                        main_agent_compensation_included_hours: compensation_included_hours,
-                        main_agent_compensation_included_km: compensation_included_km,
-                        main_agent_compensation_extra_hour_rate: compensation_extra_hour_rate,
-                        main_agent_compensation_extra_km_rate: compensation_extra_km_rate,
-                        main_agent_compensation_total: honorarioTotal,
-                        toll_cost: toll_cost,
-                        food_cost: food_cost,
-                        other_costs: other_costs
-                    })
-                    .eq('id', ticketId);
+                const { error } = await supabase.from('tickets').update({
+                    main_agent_compensation_base_value: val_base,
+                    main_agent_compensation_included_hours: val_inc_h,
+                    main_agent_compensation_included_km: val_inc_km,
+                    main_agent_compensation_extra_hour_rate: val_extra_h_rate,
+                    main_agent_compensation_extra_km_rate: val_extra_km_rate,
+                    main_agent_compensation_total: totalHon,
+                    toll_cost: val_toll,
+                    food_cost: val_food,
+                    other_costs: val_other
+                }).eq('id', ticketId);
                 if (error) throw error;
             } else {
-                const { error } = await supabase
-                    .from('ticket_support_agents')
-                    .update({
-                        compensation_base_value,
-                        compensation_included_hours,
-                        compensation_included_km,
-                        compensation_extra_hour_rate,
-                        compensation_extra_km_rate,
-                        compensation_total: honorarioTotal,
-                        toll_cost,
-                        food_cost,
-                        other_costs
-                    })
-                    .eq('ticket_id', ticketId)
-                    .eq('agent_id', agentId);
-
+                const { error } = await supabase.from('ticket_support_agents').update({
+                    compensation_base_value: val_base,
+                    compensation_included_hours: val_inc_h,
+                    compensation_included_km: val_inc_km,
+                    compensation_extra_hour_rate: val_extra_h_rate,
+                    compensation_extra_km_rate: val_extra_km_rate,
+                    compensation_total: totalHon,
+                    toll_cost: val_toll,
+                    food_cost: val_food,
+                    other_costs: val_other
+                }).eq('ticket_id', ticketId).eq('agent_id', agentId);
                 if (error) throw error;
             }
 
-            toast.success(`Pagamento de ${agentInfo?.name || 'agente'} atualizado.`);
+            toast.success('Valores atualizados com sucesso.');
             onSuccess();
             onOpenChange(false);
         } catch (error) {
-            console.error('Erro ao salvar honorários:', error);
-            toast.error('Erro ao salvar honorários.');
+            console.error(error);
+            toast.error('Erro ao salvar.');
         } finally {
             setIsLoading(false);
         }
@@ -320,197 +310,321 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl overflow-y-auto max-h-[90vh]">
-                <DialogHeader>
-                    <DialogTitle>Calculadora de Pagamento</DialogTitle>
-                    <DialogDescription>
-                        Calcule o valor para <strong>{agentInfo?.name}</strong>.
-                    </DialogDescription>
-
-                    {contextInfo && (
-                        <div className="mt-4 grid grid-cols-3 gap-2 bg-muted/50 p-3 rounded-md border border-dashed border-border">
-                            <div>
-                                <p className="text-[10px] text-muted-foreground uppercase font-bold">Chamado</p>
-                                <p className="text-xs font-semibold">{contextInfo.code}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-muted-foreground uppercase font-bold">Cliente</p>
-                                <p className="text-xs font-semibold">{contextInfo.clientName}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-muted-foreground uppercase font-bold">Placa Cavalo</p>
-                                <p className="text-xs font-semibold">{contextInfo.plate}</p>
+            <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto p-0 gap-0 border-none bg-zinc-950 text-zinc-100">
+                <div className="p-6 bg-gradient-to-br from-zinc-900 to-zinc-950 border-b border-zinc-800/50">
+                    <DialogHeader>
+                        <div className="flex items-center justify-between mb-2">
+                            <DialogTitle className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                                <Calculator className="w-6 h-6 text-primary" />
+                                Detalhes de Pagamento
+                            </DialogTitle>
+                            <div className="flex gap-2">
+                                {isAlarmPlan && (
+                                    <span className="bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                                        🔔 ALARME
+                                    </span>
+                                )}
+                                <span className="bg-zinc-800 text-zinc-400 border border-zinc-700 px-3 py-1 rounded-full text-xs font-medium">
+                                    {planName || 'Plano não definido'}
+                                </span>
                             </div>
                         </div>
-                    )}
-                </DialogHeader>
+                        <DialogDescription className="text-zinc-400">
+                            Resumo completo e conferência de valores para o agente <strong>{agentInfo?.name}</strong>.
+                        </DialogDescription>
+                    </DialogHeader>
+                </div>
 
                 {isFetching ? (
-                    <div className="py-8 text-center">Carregando dados...</div>
+                    <div className="p-20 text-center text-zinc-500 flex flex-col items-center gap-4">
+                        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        Carregando informações do chamado...
+                    </div>
                 ) : (
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <form onSubmit={form.handleSubmit(onSubmit)}>
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
+                                {/* Left Side: Details & Stats */}
+                                <div className="lg:col-span-7 p-6 space-y-8 bg-zinc-900/30">
+                                    
+                                    {/* Detalhes | A Pagar Section */}
+                                    <section>
+                                        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                            <Info className="w-3.5 h-3.5" />
+                                            Detalhes | A Pagar
+                                        </h3>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/50">
+                                                <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Código / Sequência</p>
+                                                <p className="text-sm font-semibold text-zinc-200">{contextInfo?.code}</p>
+                                            </div>
+                                            <div className="bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/50">
+                                                <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Agente</p>
+                                                <p className="text-sm font-semibold text-zinc-200 uppercase">{agentInfo?.name}</p>
+                                            </div>
+                                            <div className="bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/50">
+                                                <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Início Atendimento</p>
+                                                <p className="text-sm font-semibold text-zinc-200">
+                                                    {detailedStats.startTime ? format(detailedStats.startTime, "dd/MM/yyyy HH:mm:ss") : '--:--'}
+                                                </p>
+                                            </div>
+                                            <div className="bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/50">
+                                                <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Fim Atendimento</p>
+                                                <p className="text-sm font-semibold text-zinc-200">
+                                                    {detailedStats.endTime ? format(detailedStats.endTime, "dd/MM/yyyy HH:mm:ss") : '--:--'}
+                                                </p>
+                                            </div>
+                                            <div className="bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/50">
+                                                <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">KM Inicial</p>
+                                                <p className="text-sm font-semibold text-zinc-200">{detailedStats.startKm} km</p>
+                                            </div>
+                                            <div className="bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/50">
+                                                <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">KM Final</p>
+                                                <p className="text-sm font-semibold text-zinc-200">{detailedStats.endKm} km</p>
+                                            </div>
+                                        </div>
+                                    </section>
 
-                            <div className="bg-muted p-4 rounded-lg shadow-inner">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="font-semibold text-lg">Parâmetros (Agente {agentInfo?.isArmed ? 'Armado' : 'Desarmado'})</h3>
-                                    <div className="flex items-center gap-2">
-                                        {planName && !isAlarmPlan && (
-                                            <span className="inline-flex items-center bg-muted text-muted-foreground border border-border rounded-full px-2.5 py-0.5 text-[11px] font-medium">
-                                                {planName}
-                                            </span>
-                                        )}
-                                        {isAlarmPlan && (
-                                            <span className="inline-flex items-center gap-1.5 bg-orange-100 text-orange-700 border border-orange-300 rounded-full px-3 py-1 text-xs font-bold">
-                                                🔔 Plano Alarme
-                                            </span>
-                                        )}
-                                    </div>
+                                    {/* Resumo do Cálculo Section */}
+                                    <section className="space-y-6">
+                                        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                            <Calculator className="w-3.5 h-3.5" />
+                                            Resumo do Cálculo
+                                        </h3>
+                                        
+                                        {/* Franquia */}
+                                        <div className="flex items-center justify-between group">
+                                            <div>
+                                                <p className="text-sm font-medium text-zinc-300">Franquia Acordada</p>
+                                                <p className="text-[11px] text-zinc-500">Valores inclusos no acionamento base</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <span className="bg-zinc-800 text-zinc-300 px-3 py-1 rounded text-xs font-mono">
+                                                    {includedHours}h
+                                                </span>
+                                                <span className="bg-zinc-800 text-zinc-300 px-3 py-1 rounded text-xs font-mono">
+                                                    {includedKm}KM
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="h-px bg-zinc-800/50 border-t border-dashed border-zinc-700/30" />
+
+                                        {/* KM Excedente */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-sm font-medium text-zinc-300">Valor KM's Excedente</p>
+                                                {extraKm > 0 && (
+                                                    <span className="text-xs text-orange-400 font-bold">+ {costExtraKm.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                                )}
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="bg-zinc-950 p-3 rounded border border-zinc-800/50 text-center">
+                                                    <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">KM Total</p>
+                                                    <p className="text-lg font-bold text-zinc-300">{detailedStats.totalKm}</p>
+                                                </div>
+                                                <div className="bg-zinc-950 p-3 rounded border border-zinc-800/50 text-center">
+                                                    <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">KM Excedente</p>
+                                                    <p className={`text-lg font-bold ${extraKm > 0 ? 'text-orange-400' : 'text-zinc-600'}`}>{extraKm}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="h-px bg-zinc-800/50 border-t border-dashed border-zinc-700/30" />
+
+                                        {/* Horas Excedentes */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-sm font-medium text-zinc-300">Valor Horas Excedente</p>
+                                                {extraHours > 0 && (
+                                                    <span className="text-xs text-orange-400 font-bold">+ {costExtraHours.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                                )}
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="bg-zinc-950 p-3 rounded border border-zinc-800/50 text-center">
+                                                    <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Total Horas</p>
+                                                    <p className="text-lg font-bold text-zinc-300">{formatDuration(detailedStats.durationHours)}</p>
+                                                </div>
+                                                <div className="bg-zinc-950 p-3 rounded border border-zinc-800/50 text-center">
+                                                    <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Horas Excedentes</p>
+                                                    <p className={`text-lg font-bold ${extraHours > 0 ? 'text-orange-400' : 'text-zinc-600'}`}>{extraHours.toFixed(2)}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="h-px bg-zinc-800/50 border-t border-dashed border-zinc-700/30" />
+
+                                        {/* Despesas Checkboxes/Inputs */}
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div className="flex justify-between items-center bg-zinc-950 p-3 rounded border border-zinc-800/50 col-span-2">
+                                                <p className="text-sm font-medium text-zinc-400">Pedágio Reembolsável</p>
+                                                <p className="text-sm font-bold text-zinc-100">{tollCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                            </div>
+                                            <div className="flex justify-between items-center bg-zinc-950 p-3 rounded border border-zinc-800/50">
+                                                <p className="text-sm font-medium text-zinc-400">Alim./Outros</p>
+                                                <p className="text-sm font-bold text-zinc-100">{(foodCost + otherCosts).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                            </div>
+                                        </div>
+                                    </section>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-border/50 pt-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="compensation_base_value"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Valor Base (R$)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="compensation_included_hours"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Franquia Horas (h)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="compensation_included_km"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Franquia KM</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        type="text"
-                                                        inputMode="decimal"
-                                                        {...field}
-                                                        onChange={(e) => field.onChange(parseSafeNumber(e.target.value))}
-                                                    />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="compensation_extra_hour_rate"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Valor Hora Extra (R$)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" step="0.01" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="compensation_extra_km_rate"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Valor KM Extra (R$)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" step="0.01" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
+                                {/* Right Side: Parameters & Final Total */}
+                                <div className="lg:col-span-5 p-6 space-y-6 border-l border-zinc-800/50 bg-zinc-950">
+                                    <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                        <Calculator className="w-3.5 h-3.5" />
+                                        Parâmetros de Ajuste
+                                    </h3>
 
-                                <h3 className="font-semibold text-md mt-6 mb-3 border-t border-border/50 pt-4">Reembolso de Despesas</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="toll_cost"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Pedágio (R$)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="food_cost"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Alimentação (R$)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="other_costs"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Outros (R$)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
+                                    <div className="space-y-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="compensation_base_value"
+                                            render={({ field }) => (
+                                                <FormItem className="space-y-1.5">
+                                                    <FormLabel className="text-[11px] text-zinc-500 font-bold uppercase">VALOR BASE (R$)</FormLabel>
+                                                    <FormControl>
+                                                        <Input className="bg-zinc-900 border-zinc-800 text-zinc-100 focus:ring-primary h-10 font-mono text-lg" type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
 
-                                <div className="mt-6 flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-lg border border-primary/20 shadow-sm">
-                                    <div className="text-center md:text-left">
-                                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Honorário Limpo</p>
-                                        <p className="text-lg font-semibold text-foreground">
-                                            {baseHonorario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                        </p>
-                                    </div>
-                                    <div className="hidden md:block h-10 w-px bg-border" />
-                                    <div className="text-center md:text-left">
-                                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total Despesas</p>
-                                        <p className="text-lg font-semibold text-orange-500">
-                                            {(tollCost + foodCost + otherCosts).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                        </p>
-                                    </div>
-                                    <div className="hidden md:block h-10 w-px bg-border" />
-                                    <div className="text-center md:text-right">
-                                        <p className="text-[10px] text-primary uppercase font-bold tracking-wider">Total Geral a Pagar</p>
-                                        <p className="text-2xl font-bold text-primary">
-                                            {calculatedTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                        </p>
-                                    </div>
-                                </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="compensation_included_hours"
+                                                render={({ field }) => (
+                                                    <FormItem className="space-y-1.5">
+                                                        <FormLabel className="text-[11px] text-zinc-500 font-bold uppercase">FRANQUIA HS</FormLabel>
+                                                        <FormControl>
+                                                            <Input className="bg-zinc-900 border-zinc-800 text-zinc-100 focus:ring-primary h-10 font-mono" type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="compensation_included_km"
+                                                render={({ field }) => (
+                                                    <FormItem className="space-y-1.5">
+                                                        <FormLabel className="text-[11px] text-zinc-500 font-bold uppercase">FRANQUIA KM</FormLabel>
+                                                        <FormControl>
+                                                            <Input className="bg-zinc-900 border-zinc-800 text-zinc-100 focus:ring-primary h-10 font-mono" type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
 
-                                <div className="flex justify-end gap-2 pt-6">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => onOpenChange(false)}
-                                        disabled={isLoading}
-                                    >
-                                        Cancelar
-                                    </Button>
-                                    <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8">
-                                        {isLoading ? 'Salvando...' : 'Salvar Pagamento'}
-                                    </Button>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="compensation_extra_hour_rate"
+                                                render={({ field }) => (
+                                                    <FormItem className="space-y-1.5">
+                                                        <FormLabel className="text-[11px] text-zinc-500 font-bold uppercase">R$ HORA EXTRA</FormLabel>
+                                                        <FormControl>
+                                                            <Input className="bg-zinc-900 border-zinc-800 text-zinc-100 focus:ring-primary h-10 font-mono" type="number" step="0.01" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="compensation_extra_km_rate"
+                                                render={({ field }) => (
+                                                    <FormItem className="space-y-1.5">
+                                                        <FormLabel className="text-[11px] text-zinc-500 font-bold uppercase">R$ KM EXTRA</FormLabel>
+                                                        <FormControl>
+                                                            <Input className="bg-zinc-900 border-zinc-800 text-zinc-100 focus:ring-primary h-10 font-mono" type="number" step="0.01" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+
+                                        <div className="h-px bg-zinc-800 my-6" />
+
+                                        <div className="space-y-3">
+                                            <p className="text-[11px] text-zinc-500 font-bold uppercase">OUTROS REEMBOLSOS</p>
+                                            <div className="grid grid-cols-1 gap-3">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="toll_cost"
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex items-center gap-3 space-y-0 bg-zinc-900 p-2 rounded border border-zinc-800">
+                                                            <FormLabel className="w-24 text-[10px] text-zinc-400 font-bold uppercase">PEDÁGIO</FormLabel>
+                                                            <FormControl>
+                                                                <Input className="bg-transparent border-none text-right font-mono h-8 shadow-none focus-visible:ring-0" type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
+                                                            </FormControl>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="food_cost"
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex items-center gap-3 space-y-0 bg-zinc-900 p-2 rounded border border-zinc-800">
+                                                            <FormLabel className="w-24 text-[10px] text-zinc-400 font-bold uppercase">ALIMENTAÇÃO</FormLabel>
+                                                            <FormControl>
+                                                                <Input className="bg-transparent border-none text-right font-mono h-8 shadow-none focus-visible:ring-0" type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
+                                                            </FormControl>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="other_costs"
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex items-center gap-3 space-y-0 bg-zinc-900 p-2 rounded border border-zinc-800">
+                                                            <FormLabel className="w-24 text-[10px] text-zinc-400 font-bold uppercase">OUTROS</FormLabel>
+                                                            <FormControl>
+                                                                <Input className="bg-transparent border-none text-right font-mono h-8 shadow-none focus-visible:ring-0" type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
+                                                            </FormControl>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Final Payment Boxes Section (Premium UI) */}
+                                    <div className="space-y-4 pt-4 mt-auto">
+                                        <div className="bg-zinc-900/80 p-4 rounded-xl border border-zinc-800 shadow-xl overflow-hidden relative">
+                                            <div className="flex justify-between items-center relative z-10">
+                                                <div>
+                                                    <p className="text-[10px] text-primary font-bold uppercase tracking-widest">TOTAL A PAGAR</p>
+                                                    <p className="text-3xl font-black text-white leading-tight">
+                                                        {calculatedTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                    </p>
+                                                </div>
+                                                <div className="bg-primary/10 p-3 rounded-full">
+                                                    <Calculator className="w-6 h-6 text-primary" />
+                                                </div>
+                                            </div>
+                                            {/* Subtle background glow */}
+                                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[60px] rounded-full -mr-16 -mt-16" />
+                                        </div>
+
+                                        <div className="flex gap-2 pt-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => onOpenChange(false)}
+                                                disabled={isLoading}
+                                                className="flex-1 bg-transparent border-zinc-800 hover:bg-zinc-900 text-zinc-400"
+                                            >
+                                                CANCELAR
+                                            </Button>
+                                            <Button 
+                                                type="submit" 
+                                                disabled={isLoading} 
+                                                className="flex-[2] bg-primary hover:bg-primary/90 text-primary-foreground font-black tracking-widest uppercase shadow-[0_0_20px_rgba(var(--primary),0.3)]"
+                                            >
+                                                {isLoading ? 'SALVANDO...' : 'SALVAR PAGAMENTO'}
+                                            </Button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </form>
