@@ -15,6 +15,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { parseSafeNumber } from '@/lib/numberUtils';
 import { Button } from '@/components/ui/button';
+import { Calculator, Info, Car, Clock, FileText, User } from 'lucide-react';
+import { generateClientInvoicePDF } from './ClientInvoicePDFGenerator';
 
 const optionalNumber = z.number().or(z.string().transform(v => v === '' ? undefined : Number(v))).optional();
 
@@ -49,6 +51,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
     const [isLoading, setIsLoading] = useState(false);
     const [isFetching, setIsFetching] = useState(false);
     const [isAlarmPlan, setIsAlarmPlan] = useState(false);
+    const [planName, setPlanName] = useState<string | null>(null);
     const [contextInfo, setContextInfo] = useState<{ clientName: string; plate: string; code: string } | null>(null);
 
     // Real stats from the ticket to calculate over
@@ -60,13 +63,13 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
     const form = useForm<FaturamentoFormData>({
         resolver: zodResolver(faturamentoSchema),
         defaultValues: {
-            revenue_base_value: 500.00,
-            revenue_included_hours: 3.00,
-            revenue_included_km: 50.00,
-            revenue_extra_hour_rate: 90.00,
+            revenue_base_value: 0,
+            revenue_included_hours: 3,
+            revenue_included_km: 50,
+            revenue_extra_hour_rate: 90,
             revenue_extra_km_rate: 2.50,
-            revenue_discount_addition: 0.00,
-            revenue_total: 0.00,
+            revenue_discount_addition: 0,
+            revenue_total: 0,
         },
     });
 
@@ -82,26 +85,26 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             const { data: ticket, error } = await supabase
                 .from('tickets')
                 .select(`
-          id, code, km_start, km_end, service_type,
-          main_agent_arrival, main_agent_departure,
-          revenue_base_value, revenue_included_hours, revenue_included_km,
-          revenue_extra_hour_rate, revenue_extra_km_rate, revenue_discount_addition,
-          revenue_total,
-          plans ( name ),
-          clients ( name ),
-          vehicles ( tractor_plate ),
-          ticket_support_agents (
-            arrival, departure, km_start, km_end
-          )
-        `)
+                  id, code, km_start, km_end, service_type,
+                  main_agent_arrival, main_agent_departure,
+                  revenue_base_value, revenue_included_hours, revenue_included_km,
+                  revenue_extra_hour_rate, revenue_extra_km_rate, revenue_discount_addition,
+                  revenue_total,
+                  plans ( name ),
+                  clients ( name ),
+                  vehicles ( tractor_plate ),
+                  ticket_support_agents (
+                    arrival, departure, km_start, km_end
+                  )
+                `)
                 .eq('id', ticketId)
                 .single();
 
             if (error) throw error;
 
-            // Detect alarm plan via plan NAME (independent from service_type)
-            const planName = (ticket as any).plans?.name ?? null;
-            const isAlarme = planName?.toLowerCase().includes('alarme') ?? false;
+            const ticketPlanName = (ticket as any).plans?.name ?? null;
+            setPlanName(ticketPlanName);
+            const isAlarme = ticketPlanName?.toLowerCase().includes('alarme') ?? false;
             setIsAlarmPlan(isAlarme);
 
             setContextInfo({
@@ -123,17 +126,17 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             const durationHours = totalDiffMs > 0 ? totalDiffMs / (1000 * 60 * 60) : 0;
 
             // Calculate total KM
-            let totalKm = 0;
+            let totalKmList = 0;
             if (ticket.km_start && ticket.km_end) {
-                totalKm += Number(ticket.km_end) - Number(ticket.km_start);
+                totalKmList += Number(ticket.km_end) - Number(ticket.km_start);
             }
             ticket.ticket_support_agents?.forEach((agent: any) => {
                 if (agent.km_start && agent.km_end) {
-                    totalKm += Number(agent.km_end) - Number(agent.km_start);
+                    totalKmList += Number(agent.km_end) - Number(agent.km_start);
                 }
             });
 
-            setTicketStats({ durationHours, totalKm });
+            setTicketStats({ durationHours, totalKm: totalKmList });
 
             form.reset({
                 revenue_base_value: ticket.revenue_base_value ?? (isAlarme ? ALARME_PRICING.base : 500),
@@ -146,14 +149,13 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             });
 
         } catch (error) {
-            console.error('Erro ao buscar dados do ticket para faturamento:', error);
+            console.error('Erro ao buscar dados do ticket:', error);
             toast.error('Erro ao buscar dados do chamado.');
         } finally {
             setIsFetching(false);
         }
     };
 
-    // Watch form values to calculate simulation
     const baseValue = form.watch('revenue_base_value') || 0;
     const includedHours = form.watch('revenue_included_hours') || 0;
     const includedKm = form.watch('revenue_included_km') || 0;
@@ -161,49 +163,58 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
     const extraKmRate = form.watch('revenue_extra_km_rate') || 0;
     const discountAddition = form.watch('revenue_discount_addition') || 0;
 
-    const currentDurationHours = ticketStats.durationHours;
-    const currentTotalKm = ticketStats.totalKm;
-
-    const exactExtraHours = Math.max(0, currentDurationHours - includedHours);
-    const costExtraHours = exactExtraHours * extraHourRate;
-
-    const extraKm = Math.max(0, currentTotalKm - includedKm);
+    const extraKm = Math.max(0, ticketStats.totalKm - includedKm);
     const costExtraKm = extraKm * extraKmRate;
+    const extraHours = Math.max(0, ticketStats.durationHours - includedHours);
+    const costExtraHours = extraHours * extraHourRate;
+    const calculatedTotal = baseValue + costExtraHours + costExtraKm + discountAddition;
 
-    const calculatedRevenueTotal = baseValue + costExtraHours + costExtraKm + discountAddition;
+    const handleGeneratePDF = async () => {
+        if (!contextInfo) return;
 
-    const onSubmit = async (data: z.infer<typeof faturamentoSchema>) => {
-        if (!ticketId) return;
+        await generateClientInvoicePDF({
+            ticketCode: contextInfo.code,
+            clientName: contextInfo.clientName,
+            serviceType: isAlarmPlan ? 'ALARME' : 'ATENDIMENTO',
+            planName: planName || 'N/A',
+            vehiclePlate: contextInfo.plate,
+            durationHours: ticketStats.durationHours,
+            totalKm: ticketStats.totalKm,
+            baseValue,
+            includedHours,
+            includedKm,
+            extraHourRate,
+            extraKmRate,
+            extraHours,
+            extraKm,
+            discountAddition,
+            total: calculatedTotal
+        });
+    };
 
+    const onSubmit = async (data: FaturamentoFormData) => {
         setIsLoading(true);
         try {
-            const revenue_base_value = parseSafeNumber(data.revenue_base_value);
-            const revenue_included_hours = parseSafeNumber(data.revenue_included_hours);
-            const revenue_included_km = parseSafeNumber(data.revenue_included_km);
-            const revenue_extra_hour_rate = parseSafeNumber(data.revenue_extra_hour_rate);
-            const revenue_extra_km_rate = parseSafeNumber(data.revenue_extra_km_rate);
-            const revenue_discount_addition = parseSafeNumber(data.revenue_discount_addition);
+            const v_base = parseSafeNumber(data.revenue_base_value);
+            const v_inc_h = parseSafeNumber(data.revenue_included_hours);
+            const v_inc_km = parseSafeNumber(data.revenue_included_km);
+            const v_extra_h_rate = parseSafeNumber(data.revenue_extra_hour_rate);
+            const v_extra_km_rate = parseSafeNumber(data.revenue_extra_km_rate);
+            const v_adjust = parseSafeNumber(data.revenue_discount_addition);
 
-            const extraHours = Math.max(0, ticketStats.durationHours - revenue_included_hours);
-            const extraKmTotal = Math.max(0, ticketStats.totalKm - revenue_included_km);
-            
-            const finalRevenueTotal = revenue_base_value + 
-                                     (extraHours * revenue_extra_hour_rate) + 
-                                     (extraKmTotal * revenue_extra_km_rate) + 
-                                     revenue_discount_addition;
+            const ex_h = Math.max(0, ticketStats.durationHours - v_inc_h);
+            const ex_km = Math.max(0, ticketStats.totalKm - v_inc_km);
+            const finalTotal = v_base + (ex_h * v_extra_h_rate) + (ex_km * v_extra_km_rate) + v_adjust;
 
-            const { error } = await supabase
-                .from('tickets')
-                .update({
-                    revenue_base_value,
-                    revenue_included_hours,
-                    revenue_included_km,
-                    revenue_extra_hour_rate,
-                    revenue_extra_km_rate,
-                    revenue_discount_addition,
-                    revenue_total: finalRevenueTotal,
-                })
-                .eq('id', ticketId);
+            const { error } = await supabase.from('tickets').update({
+                revenue_base_value: v_base,
+                revenue_included_hours: v_inc_h,
+                revenue_included_km: v_inc_km,
+                revenue_extra_hour_rate: v_extra_h_rate,
+                revenue_extra_km_rate: v_extra_km_rate,
+                revenue_discount_addition: v_adjust,
+                revenue_total: finalTotal,
+            }).eq('id', ticketId);
 
             if (error) throw error;
 
@@ -211,187 +222,275 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             onSuccess();
             onOpenChange(false);
         } catch (error) {
-            console.error('Erro ao salvar faturamento:', error);
-            toast.error('Erro ao salvar faturamento.');
+            console.error(error);
+            toast.error('Erro ao salvar.');
         } finally {
             setIsLoading(false);
         }
     };
 
+    const formatDuration = (hours: number) => {
+        const h = Math.floor(hours);
+        const m = Math.floor((hours - h) * 60);
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>Faturamento Cliente</DialogTitle>
-                    <DialogDescription>
-                        Defina os valores de cobrança para o cliente correspondente a este chamado.
-                    </DialogDescription>
-
-                    {contextInfo && (
-                        <div className="mt-4 grid grid-cols-3 gap-2 bg-muted/50 p-3 rounded-md border border-dashed border-border">
-                            <div>
-                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Chamado</p>
-                                <p className="text-xs font-semibold">{contextInfo.code}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Cliente</p>
-                                <p className="text-xs font-semibold">{contextInfo.clientName}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Placa Cavalo</p>
-                                <p className="text-xs font-semibold">{contextInfo.plate}</p>
+            <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto p-0 gap-0 border-none bg-zinc-950 text-zinc-100">
+                <div className="p-6 bg-gradient-to-br from-zinc-900 to-zinc-950 border-b border-zinc-800/50">
+                    <DialogHeader>
+                        <div className="flex items-center justify-between mb-2">
+                            <DialogTitle className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                                <Calculator className="w-6 h-6 text-primary" />
+                                Faturamento Cliente
+                            </DialogTitle>
+                            <div className="flex gap-2">
+                                {isAlarmPlan && (
+                                    <span className="bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                                        🔔 ALARME
+                                    </span>
+                                )}
+                                <span className="bg-zinc-800 text-zinc-400 border border-zinc-700 px-3 py-1 rounded-full text-xs font-medium">
+                                    {planName || 'Plano não definido'}
+                                </span>
                             </div>
                         </div>
-                    )}
-                </DialogHeader>
+                        <DialogDescription className="text-zinc-400">
+                            Conferência e definição de valores para cobrança do cliente <strong>{contextInfo?.clientName}</strong>.
+                        </DialogDescription>
+                    </DialogHeader>
+                </div>
 
                 {isFetching ? (
-                    <div className="py-8 text-center text-muted-foreground">Carregando dados...</div>
+                    <div className="p-20 text-center text-zinc-500 flex flex-col items-center gap-4">
+                        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        Carregando dados de faturamento...
+                    </div>
                 ) : (
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <form onSubmit={form.handleSubmit(onSubmit)}>
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
+                                {/* Left Side: Details & Stats */}
+                                <div className="lg:col-span-7 p-6 space-y-8 bg-zinc-900/30">
+                                    <section>
+                                        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                            <Info className="w-3.5 h-3.5" />
+                                            Operação | Contexto
+                                        </h3>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/50">
+                                                <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Chamado</p>
+                                                <p className="text-sm font-semibold text-zinc-200">{contextInfo?.code}</p>
+                                            </div>
+                                            <div className="bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/50 text-ellipsis overflow-hidden">
+                                                <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Cliente</p>
+                                                <p className="text-sm font-semibold text-zinc-200 uppercase truncate text-nowrap">{contextInfo?.clientName}</p>
+                                            </div>
+                                            <div className="bg-zinc-900/50 p-3 rounded-lg border border-zinc-800/50 col-span-2 flex justify-between items-center">
+                                                <div>
+                                                    <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Placa do Veículo</p>
+                                                    <p className="text-sm font-semibold text-zinc-200">{contextInfo?.plate || 'Não informada'}</p>
+                                                </div>
+                                                <Car className="w-4 h-4 text-zinc-400" />
+                                            </div>
+                                        </div>
+                                    </section>
 
-                            <div className="bg-muted p-4 rounded-lg space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="font-semibold text-lg">Parâmetros de Cobrança (Cliente)</h3>
-                                    {isAlarmPlan && (
-                                        <span className="inline-flex items-center gap-1.5 bg-orange-100 text-orange-700 border border-orange-300 rounded-full px-3 py-1 text-xs font-bold">
-                                            🔔 Plano Alarme
-                                        </span>
-                                    )}
+                                    <section className="space-y-6">
+                                        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                            <Clock className="w-3.5 h-3.5" />
+                                            Detalhamento da Execução
+                                        </h3>
+
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div className="space-y-3">
+                                                <p className="text-sm font-medium text-zinc-300">Tempo de Atendimento</p>
+                                                <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800/50 text-center relative overflow-hidden group">
+                                                    <p className="text-2xl font-black text-white relative z-10">{formatDuration(ticketStats.durationHours)}</p>
+                                                    <p className="text-[10px] text-zinc-500 font-bold uppercase relative z-10">Total Horas</p>
+                                                    <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                </div>
+                                                <div className="flex justify-between text-[11px] px-1">
+                                                    <span className="text-zinc-500">Franquia: {includedHours}h</span>
+                                                    <span className={extraHours > 0 ? "text-orange-400 font-bold" : "text-zinc-600"}>
+                                                        Excedente: {extraHours.toFixed(1)}h
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <p className="text-sm font-medium text-zinc-300">Distância Total</p>
+                                                <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800/50 text-center relative overflow-hidden group">
+                                                    <p className="text-2xl font-black text-white relative z-10">{ticketStats.totalKm.toFixed(0)} KM</p>
+                                                    <p className="text-[10px] text-zinc-500 font-bold uppercase relative z-10">Percorrido</p>
+                                                    <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                </div>
+                                                <div className="flex justify-between text-[11px] px-1">
+                                                    <span className="text-zinc-500">Franquia: {includedKm}KM</span>
+                                                    <span className={extraKm > 0 ? "text-orange-400 font-bold" : "text-zinc-600"}>
+                                                        Excedente: {extraKm.toFixed(0)}KM
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-zinc-900/40 p-4 rounded-lg border border-zinc-800/50 border-dashed">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Info className="w-4 h-4 text-primary" />
+                                                <p className="text-xs font-bold text-zinc-300 uppercase">Simulação de Custos Extras</p>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-zinc-400">Total KM Extra ({extraKm.toFixed(0)}):</span>
+                                                    <span className="text-zinc-300">{costExtraKm.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                                </div>
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-zinc-400">Total Horas Extra ({extraHours.toFixed(1)}h):</span>
+                                                    <span className="text-zinc-300">{costExtraHours.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
                                 </div>
-                                <p className="text-sm text-muted-foreground leading-relaxed">
-                                    {isAlarmPlan
-                                        ? 'Valores do Plano de Acionamento de Alarme já pré-preenchidos. Verifique e ajuste se necessário.'
-                                        : 'Ajuste os valores para lidar com exceções. O sistema calcula o valor final a ser cobrado automaticamente.'}
-                                </p>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-border/50 pt-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="revenue_base_value"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Valor Base (R$)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" step="0.01" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="revenue_included_hours"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Franquia Horas (h)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" step="0.5" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="revenue_included_km"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Franquia KM</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        type="text"
-                                                        inputMode="decimal"
-                                                        {...field}
-                                                        onChange={(e) => field.onChange(parseSafeNumber(e.target.value))}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="revenue_extra_hour_rate"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Valor Hora Extra (R$)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" step="0.01" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="revenue_extra_km_rate"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Valor KM Extra (R$)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" step="0.01" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="revenue_discount_addition"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Ajustes Extras (R$)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" step="0.01" {...field} value={field.value || ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                {/* Right Side: Parameters & Total */}
+                                <div className="lg:col-span-5 p-6 space-y-6 border-l border-zinc-800/50 bg-zinc-950">
+                                    <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                                        <Calculator className="w-3.5 h-3.5" />
+                                        Valores do Faturamento
+                                    </h3>
+
+                                    <div className="space-y-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="revenue_base_value"
+                                            render={({ field }) => (
+                                                <FormItem className="space-y-1.5">
+                                                    <FormLabel className="text-[11px] text-zinc-500 font-bold uppercase tracking-wider">Valor Base (R$)</FormLabel>
+                                                    <FormControl>
+                                                        <Input className="bg-zinc-900 border-zinc-800 text-zinc-100 h-10 font-mono text-lg" type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="revenue_included_hours"
+                                                render={({ field }) => (
+                                                    <FormItem className="space-y-1.5">
+                                                        <FormLabel className="text-[11px] text-zinc-500 font-bold uppercase">Franquia Horas</FormLabel>
+                                                        <FormControl>
+                                                            <Input className="bg-zinc-900 border-zinc-800 text-zinc-100 h-10 font-mono" type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="revenue_included_km"
+                                                render={({ field }) => (
+                                                    <FormItem className="space-y-1.5">
+                                                        <FormLabel className="text-[11px] text-zinc-500 font-bold uppercase">Franquia KM</FormLabel>
+                                                        <FormControl>
+                                                            <Input className="bg-zinc-900 border-zinc-800 text-zinc-100 h-10 font-mono" type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="revenue_extra_hour_rate"
+                                                render={({ field }) => (
+                                                    <FormItem className="space-y-1.5">
+                                                        <FormLabel className="text-[11px] text-zinc-500 font-bold uppercase">R$ Hora Extra</FormLabel>
+                                                        <FormControl>
+                                                            <Input className="bg-zinc-900 border-zinc-800 text-zinc-100 h-10 font-mono" type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="revenue_extra_km_rate"
+                                                render={({ field }) => (
+                                                    <FormItem className="space-y-1.5">
+                                                        <FormLabel className="text-[11px] text-zinc-500 font-bold uppercase">R$ KM Extra</FormLabel>
+                                                        <FormControl>
+                                                            <Input className="bg-zinc-900 border-zinc-800 text-zinc-100 h-10 font-mono" type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+
+                                        <FormField
+                                            control={form.control}
+                                            name="revenue_discount_addition"
+                                            render={({ field }) => (
+                                                <FormItem className="space-y-1.5">
+                                                    <FormLabel className="text-[11px] text-zinc-500 font-bold uppercase tracking-wider">Ajustes / Acréscimos (R$)</FormLabel>
+                                                    <FormControl>
+                                                        <Input className="bg-zinc-900 border-zinc-800 text-zinc-100 h-10 font-mono" type="text" inputMode="decimal" {...field} value={field.value || ''} onChange={(e) => field.onChange(parseSafeNumber(e.target.value))} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-4 pt-4 mt-auto">
+                                        <div className="bg-primary/5 p-4 rounded-xl border border-primary/20 shadow-xl overflow-hidden relative">
+                                            <div className="flex justify-between items-center relative z-10">
+                                                <div>
+                                                    <p className="text-[10px] text-primary font-bold uppercase tracking-widest">TOTAL A COBRAR</p>
+                                                    <p className="text-3xl font-black text-white leading-tight">
+                                                        {calculatedTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                    </p>
+                                                </div>
+                                                <div className="bg-primary/10 p-3 rounded-full">
+                                                    <Calculator className="w-6 h-6 text-primary" />
+                                                </div>
+                                            </div>
+                                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[60px] rounded-full -mr-16 -mt-16" />
+                                        </div>
+
+                                        <div className="flex flex-col gap-2 pt-2">
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={handleGeneratePDF}
+                                                    disabled={isFetching || isLoading}
+                                                    className="flex-1 bg-zinc-900 border-zinc-800 hover:bg-zinc-800 text-zinc-300 gap-2 font-bold"
+                                                >
+                                                    <FileText className="w-4 h-4" />
+                                                    FATURA PDF
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => onOpenChange(false)}
+                                                    className="flex-1 bg-transparent border-zinc-800 hover:bg-zinc-900 text-zinc-500"
+                                                >
+                                                    CANCELAR
+                                                </Button>
+                                            </div>
+                                            <Button 
+                                                type="submit" 
+                                                disabled={isLoading} 
+                                                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-black tracking-widest uppercase shadow-[0_0_20px_rgba(var(--primary),0.3)] h-12"
+                                            >
+                                                {isLoading ? 'SALVANDO...' : 'SALVAR FATURAMENTO'}
+                                            </Button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-lg border border-primary/20 shadow-sm">
-                                <h3 className="text-xl font-bold mb-4 text-primary">Simulação do Faturamento</h3>
-                                <div className="space-y-3 text-sm">
-                                    <div className="flex justify-between border-b border-border pb-2">
-                                        <span>Tempo Trabalhado:</span>
-                                        <strong>{currentDurationHours.toFixed(2)} h</strong>
-                                    </div>
-                                    <div className="flex justify-between border-b border-border pb-2">
-                                        <span>Distância Rodada (Total):</span>
-                                        <strong>{currentTotalKm.toFixed(2)} km</strong>
-                                    </div>
-                                    <div className="flex justify-between text-muted-foreground pt-1">
-                                        <span>Horas Extras ({exactExtraHours.toFixed(2)} h x R$ {extraHourRate.toFixed(2)}):</span>
-                                        <span>+ R$ {costExtraHours.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-muted-foreground border-b border-border pb-2">
-                                        <span>KM Extra ({extraKm.toFixed(2)} km x R$ {extraKmRate.toFixed(2)}):</span>
-                                        <span>+ R$ {costExtraKm.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-border pb-2 pt-1 font-medium italic">
-                                        <span>Ajustes Manuais:</span>
-                                        <span>{discountAddition >= 0 ? '+' : '-'} R$ {Math.abs(discountAddition).toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-xl font-bold pt-4 text-primary">
-                                        <span>Total a Cobrar:</span>
-                                        <span className="text-2xl tracking-tight">R$ {calculatedRevenueTotal.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex justify-end gap-3 pt-4">
-                                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
-                                    Cancelar
-                                </Button>
-                                <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8">
-                                    {isLoading ? 'Salvando...' : 'Salvar Faturamento'}
-                                </Button>
-                            </div>
-
                         </form>
                     </Form>
                 )}
