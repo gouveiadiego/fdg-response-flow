@@ -246,7 +246,8 @@ const drawPremiumHeader = async (
   pdf: jsPDF,
   pageWidth: number,
   logo: { dataUrl: string; width: number; height: number } | null,
-  bg: { dataUrl: string; width: number; height: number } | null
+  bg: { dataUrl: string; width: number; height: number } | null,
+  ticketCode: string | null
 ): Promise<number> => {
   const headerH = 45; // Tall, impactful header
 
@@ -314,7 +315,8 @@ const drawPremiumHeader = async (
 
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(22);
-  pdf.text('RELATÓRIO DE ATENDIMENTO', textStartX, 18);
+  const pdfTitle = ticketCode ? `RELATÓRIO DE ATENDIMENTO - ${ticketCode}` : 'RELATÓRIO DE ATENDIMENTO';
+  pdf.text(pdfTitle, textStartX, 18);
 
   // Motto / Phrase - New
   pdf.setFont('helvetica', 'italic');
@@ -459,7 +461,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   }
 
   // ==================== PAGE 1 ====================
-  let y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg);
+  let y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg, data.code);
 
   // Summary Banner (Floating Card) with Status
   const summaryH = 22;
@@ -511,7 +513,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       pdf.addPage();
       setColor(pdf, THEME.background);
       pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-      y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg);
+      y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg, data.code);
       return true;
     }
     return false;
@@ -616,7 +618,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       pdf.addPage();
       setColor(pdf, THEME.background);
       pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-      y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg);
+      y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg, data.code);
     }
 
     // Removed "DETALHES DA OPERAÇÃO" card as requested - merging into agent cards
@@ -835,7 +837,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   setColor(pdf, THEME.background); // refill background
   pdf.rect(0, 0, pageWidth, pageHeight, 'F');
 
-  y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg);
+  y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg, data.code);
 
   // Relato Card
   if (data.detailed_report) {
@@ -880,7 +882,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
         setColor(pdf, THEME.background);
         pdf.rect(0, 0, pageWidth, pageHeight, 'F');
 
-        y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg);
+        y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg, data.code);
         textY = y + 10;
 
         // Continuation background
@@ -926,7 +928,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
       setColor(pdf, THEME.background);
       pdf.rect(0, 0, pageWidth, pageHeight, 'F');
 
-      y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg);
+      y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg, data.code);
 
       // Section Title - CENTRALIZED
       setColor(pdf, THEME.dark);

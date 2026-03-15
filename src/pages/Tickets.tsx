@@ -314,7 +314,7 @@ const Tickets = () => {
                   <div className="space-y-1 min-w-0 flex-1">
                     <CardTitle className="flex items-center gap-2 text-base">
                       <FileText className="h-5 w-5 text-primary flex-shrink-0" />
-                      <span>{ticket.code}</span>
+                      <span>{ticket.code || 'Sem ID'}</span>
                     </CardTitle>
                     <CardDescription className="truncate">{ticket.clients?.name}</CardDescription>
                   </div>
