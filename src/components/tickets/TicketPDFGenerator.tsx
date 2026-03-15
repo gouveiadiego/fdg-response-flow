@@ -4,14 +4,14 @@ import { ptBR } from 'date-fns/locale';
 
 // Company data
 const COMPANY_INFO = {
-  name: 'FDG PRONTA RESPOSTA',
+  name: 'FALCO PEREGRINUS OPERAÇÕES LOGÍSTICAS',
   cnpj: '59.355.128/0001-10',
   address: 'R. Dona Francisca, 801 Sala 05 - Saguaçu, Joinville - SC, 89221-006',
   phoneCommercial: '(47) 99135-6830',
   phoneMonitoring: '(47) 99160-7491',
-  email: 'contato@fdgprontaresposta.com.br',
-  instagram: '@fdgprontaresposta',
-  website: 'www.fdgprontaresposta.com.br',
+  email: 'contato@falcoperegrinus.com.br',
+  instagram: '@falcoperegrinus',
+  website: 'www.falcoperegrinus.com.br',
 };
 
 // Premium Brand Theme
@@ -322,7 +322,7 @@ const drawPremiumHeader = async (
   pdf.setFont('helvetica', 'italic');
   pdf.setFontSize(8.5);
   pdf.setGState(new (pdf as any).GState({ opacity: 0.8 }));
-  pdf.text('Pronta Resposta padrão alto | Atuação 24h com rede validada.', textStartX, 23);
+  pdf.text('Excelência em Operações Logísticas | Atuação 24h com rede validada.', textStartX, 23);
   pdf.setGState(new (pdf as any).GState({ opacity: 1.0 }));
 
 
@@ -342,13 +342,13 @@ const drawPremiumHeader = async (
   // Email
   currentX += (gap - 2);
   drawIconEmail(pdf, currentX, iconY - 3.5, THEME.white);
-  pdf.text('contato@fdgprontaresposta.com.br', currentX + 6, iconY);
+  pdf.text('contato@falcoperegrinus.com.br', currentX + 6, iconY);
 
   // Website
   currentX += (gap + 15);
   if (currentX + 30 < pageWidth) {
     drawIconGlobe(pdf, currentX, iconY - 3.5, THEME.white);
-    pdf.text('www.fdgprontaresposta.com.br', currentX + 6, iconY);
+    pdf.text('www.falcoperegrinus.com.br', currentX + 6, iconY);
   }
 
   return headerH + 10;

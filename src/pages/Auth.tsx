@@ -61,9 +61,9 @@ const Auth = () => {
           </div>
           <div className="text-center">
             <h1 className="text-4xl font-extrabold tracking-tight text-foreground mb-1">
-              FDG <span className="text-primary">Response</span>
+              Falco <span className="text-primary">Peregrinus</span>
             </h1>
-            <p className="text-muted-foreground font-medium">Pronta Resposta Padrão Alto</p>
+            <p className="text-muted-foreground font-medium">Operações Logísticas Padrão Alto</p>
           </div>
         </div>
 
@@ -218,7 +218,7 @@ const Auth = () => {
         </Tabs>
 
         <p className="text-center text-muted-foreground text-xs mt-8">
-          © 2026 FDG Response Flow. Todos os direitos reservados.
+          © 2026 Falco Peregrinus. Todos os direitos reservados.
         </p>
       </div>
     </div>

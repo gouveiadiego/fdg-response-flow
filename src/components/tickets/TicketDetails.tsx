@@ -487,7 +487,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
         km_total: totalKm,
         duration_hours: durationHours,
         toll_cost: tollCost,
-        operator_name: ticket.operators?.name || 'FDG',
+        operator_name: ticket.operators?.name || 'Falco Peregrinus',
       });
       toast.success('Proposta de alarme gerada com sucesso!');
     } catch (error) {

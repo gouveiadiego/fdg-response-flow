@@ -270,10 +270,10 @@ const Dashboard = () => {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <img src="/logo-fdg-premium.png" alt="Logo FDG" className="h-16 w-auto drop-shadow-lg animate-in zoom-in-75 duration-700" />
+          <img src="/logo-fdg-premium.png" alt="Logo Falco" className="h-16 w-auto drop-shadow-lg animate-in zoom-in-75 duration-700" />
           <div>
             <h1 className="text-4xl font-extrabold tracking-tight text-foreground">
-              Analytics FDG
+              Analytics Falco
             </h1>
             <p className="text-muted-foreground mt-1">
               Gestão inteligente e visualização de performance
@@ -360,7 +360,7 @@ const Dashboard = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-primary" />
-                  Status da Rede FDG
+                  Status da Rede Falco Peregrinus
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">

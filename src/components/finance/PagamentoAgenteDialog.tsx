@@ -66,6 +66,9 @@ const compensationSchema = z.object({
     compensation_extra_hour_rate: optionalNumber,
     compensation_extra_km_rate: optionalNumber,
     compensation_total: optionalNumber,
+    toll_cost: optionalNumber,
+    food_cost: optionalNumber,
+    other_costs: optionalNumber,
 });
 
 type CompensationFormData = z.infer<typeof compensationSchema>;
@@ -101,6 +104,9 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
             compensation_extra_hour_rate: 0,
             compensation_extra_km_rate: 1.50,
             compensation_total: 0,
+            toll_cost: 0,
+            food_cost: 0,
+            other_costs: 0,
         },
     });
 
@@ -159,7 +165,10 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                     incKm: ticket.main_agent_compensation_included_km,
                     extraRate: ticket.main_agent_compensation_extra_hour_rate,
                     extraKmRate: ticket.main_agent_compensation_extra_km_rate,
-                    total: ticket.main_agent_compensation_total
+                    total: ticket.main_agent_compensation_total,
+                    toll: ticket.toll_cost,
+                    food: ticket.food_cost,
+                    other: ticket.other_costs
                 };
             } else {
                 // For support agents, also fetch the ticket to get plan + service_type
@@ -200,7 +209,10 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                     incKm: supportAgent.compensation_included_km,
                     extraRate: supportAgent.compensation_extra_hour_rate,
                     extraKmRate: supportAgent.compensation_extra_km_rate,
-                    total: supportAgent.compensation_total
+                    total: supportAgent.compensation_total,
+                    toll: supportAgent.toll_cost,
+                    food: supportAgent.food_cost,
+                    other: supportAgent.other_costs
                 };
             }
 
@@ -219,6 +231,9 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                 compensation_extra_hour_rate: existingValues.extraRate ?? (isAlarme ? ALARME_PRICING.extraHourRate : pricing.extraHourRate),
                 compensation_extra_km_rate: existingValues.extraKmRate ?? (isAlarme ? ALARME_PRICING.extraKmRate : pricing.extraKmRate),
                 compensation_total: existingValues.total ?? 0,
+                toll_cost: existingValues.toll ?? 0,
+                food_cost: existingValues.food ?? 0,
+                other_costs: existingValues.other ?? 0,
             });
 
         } catch (error) {
@@ -242,7 +257,13 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
     const extraKm = Math.max(0, stats.totalKm - includedKm);
     const costExtraKm = extraKm * extraKmRate;
 
-    const calculatedTotal = baseValue + costExtraHours + costExtraKm;
+    const baseHonorario = baseValue + costExtraHours + costExtraKm;
+
+    const tollCost = form.watch('toll_cost') || 0;
+    const foodCost = form.watch('food_cost') || 0;
+    const otherCosts = form.watch('other_costs') || 0;
+
+    const calculatedTotal = baseHonorario + tollCost + foodCost + otherCosts;
 
     const onSubmit = async (data: CompensationFormData) => {
         setIsLoading(true);
@@ -254,9 +275,14 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
             const compensation_extra_hour_rate = parseSafeNumber(data.compensation_extra_hour_rate);
             const compensation_extra_km_rate = parseSafeNumber(data.compensation_extra_km_rate);
 
+            const toll_cost = parseSafeNumber(data.toll_cost);
+            const food_cost = parseSafeNumber(data.food_cost);
+            const other_costs = parseSafeNumber(data.other_costs);
+
             const extraHours = Math.max(0, stats.durationHours - compensation_included_hours);
             const extraKm = Math.max(0, stats.totalKm - compensation_included_km);
-            const finalTotal = compensation_base_value + (extraHours * compensation_extra_hour_rate) + (extraKm * compensation_extra_km_rate);
+            const honorarioTotal = compensation_base_value + (extraHours * compensation_extra_hour_rate) + (extraKm * compensation_extra_km_rate);
+            const finalTotal = honorarioTotal + toll_cost + food_cost + other_costs;
 
             if (agentRole === 'principal') {
                 const { error } = await supabase
@@ -267,7 +293,10 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                         main_agent_compensation_included_km: compensation_included_km,
                         main_agent_compensation_extra_hour_rate: compensation_extra_hour_rate,
                         main_agent_compensation_extra_km_rate: compensation_extra_km_rate,
-                        main_agent_compensation_total: finalTotal,
+                        main_agent_compensation_total: honorarioTotal,
+                        toll_cost: toll_cost,
+                        food_cost: food_cost,
+                        other_costs: other_costs
                     })
                     .eq('id', ticketId);
                 if (error) throw error;
@@ -280,7 +309,10 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                         compensation_included_km,
                         compensation_extra_hour_rate,
                         compensation_extra_km_rate,
-                        compensation_total: finalTotal,
+                        compensation_total: honorarioTotal,
+                        toll_cost,
+                        food_cost,
+                        other_costs
                     })
                     .eq('ticket_id', ticketId)
                     .eq('agent_id', agentId);
@@ -399,41 +431,19 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                                         )}
                                     />
                                 </div>
-                            </div>
-
-                            <div className="bg-primary/5 p-6 rounded-lg border border-primary/20">
-                                <h3 className="text-xl font-bold mb-4 text-primary">Simulação do Pagamento</h3>
-                                <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between border-b border-primary/10 pb-2">
-                                        <span>Tempo no Local:</span>
-                                        <strong>{stats.durationHours.toFixed(2)} h</strong>
-                                    </div>
-                                    <div className="flex justify-between border-b border-primary/10 pb-2">
-                                        <span>KM Rodado:</span>
-                                        <strong>{stats.totalKm.toFixed(2)} km</strong>
-                                    </div>
-                                    <div className="flex justify-between border-b border-primary/10 pb-2">
-                                        <span className="text-muted-foreground">Horas Extras ({exactExtraHours.toFixed(2)} h x R$ {extraHourRate.toFixed(2)}):</span>
-                                        <span className="text-muted-foreground">+ R$ {costExtraHours.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between border-b border-primary/10 pb-2">
-                                        <span className="text-muted-foreground">KM Extra ({extraKm.toFixed(2)} km x R$ {extraKmRate.toFixed(2)}):</span>
-                                        <span className="text-muted-foreground">+ R$ {costExtraKm.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-lg font-bold pt-2 text-primary">
-                                        <span>Honorários Totais:</span>
-                                        <span>R$ {calculatedTotal.toFixed(2)}</span>
-                                    </div>
+                                <div className="flex justify-end gap-2 pt-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => onOpenChange(false)}
+                                        disabled={isLoading}
+                                    >
+                                        Cancelar
+                                    </Button>
+                                    <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90">
+                                        {isLoading ? 'Salvando...' : 'Salvar Pagamento'}
+                                    </Button>
                                 </div>
-                            </div>
-
-                            <div className="flex justify-end gap-3 pt-4">
-                                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
-                                    Cancelar
-                                </Button>
-                                <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90">
-                                    {isLoading ? 'Salvando...' : 'Salvar Honorários'}
-                                </Button>
                             </div>
                         </form>
                     </Form>

@@ -41,8 +41,8 @@ export function MobileHeader() {
       </Button>
 
       <div className="flex items-center gap-2">
-        <span className="text-sm font-semibold text-sidebar-foreground">FDG</span>
-        <span className="text-xs text-sidebar-foreground/70">Pronta Resposta</span>
+        <span className="text-sm font-semibold text-sidebar-foreground">Falco Peregrinus</span>
+        <span className="text-xs text-sidebar-foreground/70">Operações Logísticas</span>
       </div>
 
       <DropdownMenu>

@@ -192,7 +192,7 @@ export default function AgentRegistration() {
                         </div>
                         <h2 className="text-2xl font-bold text-foreground">Cadastro Enviado!</h2>
                         <p className="text-muted-foreground">
-                            Seus dados foram enviados com sucesso. Aguarde a aprovação da equipe FDG Pronta Resposta.
+                            Seus dados foram enviados com sucesso. Aguarde a aprovação da equipe Falco Peregrinus Operações Logísticas.
                         </p>
                         <p className="text-sm text-muted-foreground/60">
                             Você será contatado após a análise do seu cadastro.
@@ -212,7 +212,7 @@ export default function AgentRegistration() {
                         <Shield className="h-6 w-6 text-primary-foreground" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold text-foreground">FDG Pronta Resposta</h1>
+                        <h1 className="text-xl font-bold text-foreground">Falco Peregrinus</h1>
                         <p className="text-sm text-muted-foreground">Cadastro de Agente</p>
                     </div>
                 </div>
@@ -714,7 +714,7 @@ export default function AgentRegistration() {
                 </Card>
 
                 <p className="text-center text-muted-foreground/40 text-xs mt-6">
-                    FDG Pronta Resposta © {new Date().getFullYear()} — Todos os direitos reservados
+                    Falco Peregrinus © {new Date().getFullYear()} — Todos os direitos reservados
                 </p>
             </div>
         </div>

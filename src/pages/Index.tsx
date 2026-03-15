@@ -31,8 +31,8 @@ const Index = () => {
         <div className="flex items-center justify-center mb-6 gap-3">
           <Shield className="h-16 w-16 text-primary" />
           <div className="text-left">
-            <h1 className="text-5xl font-bold text-foreground">FDG</h1>
-            <p className="text-lg text-muted-foreground">Pronta Resposta</p>
+            <h1 className="text-4xl font-bold text-foreground">Falco Peregrinus</h1>
+            <p className="text-lg text-muted-foreground">Operações Logísticas</p>
           </div>
         </div>
         

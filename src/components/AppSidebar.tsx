@@ -49,10 +49,10 @@ export function AppSidebar() {
             <img src="/logo-fdg-premium.png" alt="Logo" className="h-8 w-auto" />
             {open && (
               <div className="flex flex-col">
-                <span className="text-sm font-bold tracking-tight">FDG</span>
+                <span className="text-sm font-bold tracking-tight">Falco Peregrinus</span>
                 <span className="text-[10px] leading-none text-muted-foreground flex items-center gap-1">
                   <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
-                  Pronta Resposta
+                  Operações Logísticas
                 </span>
               </div>
             )}
