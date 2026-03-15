@@ -454,17 +454,6 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
 
                                         <div className="h-px bg-zinc-800/50 border-t border-dashed border-zinc-700/30" />
 
-                                        {/* Despesas Checkboxes/Inputs */}
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <div className="flex justify-between items-center bg-zinc-950 p-3 rounded border border-zinc-800/50 col-span-2">
-                                                <p className="text-sm font-medium text-zinc-400">Pedágio Reembolsável</p>
-                                                <p className="text-sm font-bold text-zinc-100">{tollCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                                            </div>
-                                            <div className="flex justify-between items-center bg-zinc-950 p-3 rounded border border-zinc-800/50">
-                                                <p className="text-sm font-medium text-zinc-400">Alim./Outros</p>
-                                                <p className="text-sm font-bold text-zinc-100">{(foodCost + otherCosts).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
-                                            </div>
-                                        </div>
                                     </section>
                                 </div>
 
