@@ -1478,7 +1478,7 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                                                       agent.id === field.value ? "opacity-100" : "opacity-0"
                                                     )}
                                                   />
-                                                  {agent.name}
+                                                  {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
                                                 </CommandItem>
                                               ))}
                                             </CommandGroup>

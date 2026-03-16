@@ -1189,7 +1189,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                                   <SelectContent>
                                     {agents.map((agent) => (
                                       <SelectItem key={agent.id} value={agent.id}>
-                                        {agent.name}
+                                        {agent.name} {agent.is_armed ? '(Armado)' : '(Desarmado)'}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
