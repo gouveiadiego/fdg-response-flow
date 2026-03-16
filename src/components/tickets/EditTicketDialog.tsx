@@ -772,12 +772,12 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
             toll_cost: agent.toll_cost || 0,
             food_cost: agent.food_cost || 0,
             other_costs: agent.other_costs || 0,
-            compensation_base_value: agent.compensation_base_value || 0,
-            compensation_included_hours: agent.compensation_included_hours || 0,
-            compensation_included_km: agent.compensation_included_km || 0,
-            compensation_extra_hour_rate: agent.compensation_extra_hour_rate || 0,
-            compensation_extra_km_rate: agent.compensation_extra_km_rate || 0,
-            compensation_total: agent.compensation_total || 0,
+            compensation_base_value: agent.compensation_base_value,
+            compensation_included_hours: agent.compensation_included_hours,
+            compensation_included_km: agent.compensation_included_km,
+            compensation_extra_hour_rate: agent.compensation_extra_hour_rate,
+            compensation_extra_km_rate: agent.compensation_extra_km_rate,
+            compensation_total: agent.compensation_total,
           }));
 
           // Helper to check if string is valid UUID

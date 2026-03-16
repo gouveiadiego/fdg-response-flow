@@ -227,12 +227,15 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
             const agentIsArmedByPlan = getIsArmedByPlan(ticketPlanName, agentRole, !!agent.is_armed);
             const pricing = agentIsArmedByPlan ? ARMED_PRICING : UNARMED_PRICING;
 
+            // If existing total is 0 or null, we treat it as "not set" and initialize with defaults
+            const isNotSet = !existingValues.total || existingValues.total === 0;
+
             form.reset({
-                compensation_base_value: existingValues.base ?? (isAlarme ? ALARME_PRICING.base : pricing.base),
-                compensation_included_hours: existingValues.incHours ?? (isAlarme ? ALARME_PRICING.includedHours : pricing.includedHours),
-                compensation_included_km: existingValues.incKm ?? (isAlarme ? ALARME_PRICING.includedKm : pricing.includedKm),
-                compensation_extra_hour_rate: existingValues.extraRate ?? (isAlarme ? ALARME_PRICING.extraHourRate : pricing.extraHourRate),
-                compensation_extra_km_rate: existingValues.extraKmRate ?? (isAlarme ? ALARME_PRICING.extraKmRate : pricing.extraKmRate),
+                compensation_base_value: (!isNotSet ? existingValues.base : null) ?? (isAlarme ? ALARME_PRICING.base : pricing.base),
+                compensation_included_hours: (!isNotSet ? existingValues.incHours : null) ?? (isAlarme ? ALARME_PRICING.includedHours : pricing.includedHours),
+                compensation_included_km: (!isNotSet ? existingValues.incKm : null) ?? (isAlarme ? ALARME_PRICING.includedKm : pricing.includedKm),
+                compensation_extra_hour_rate: (!isNotSet ? existingValues.extraRate : null) ?? (isAlarme ? ALARME_PRICING.extraHourRate : pricing.extraHourRate),
+                compensation_extra_km_rate: (!isNotSet ? existingValues.extraKmRate : null) ?? (isAlarme ? ALARME_PRICING.extraKmRate : pricing.extraKmRate),
                 compensation_total: existingValues.total ?? 0,
                 toll_cost: existingValues.toll ?? 0,
                 food_cost: existingValues.food ?? 0,
