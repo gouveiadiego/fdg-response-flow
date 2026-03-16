@@ -20,7 +20,7 @@ import {
 import {
     DollarSign, CheckCircle2, Clock, Search, User, Users, CreditCard, Copy, Filter,
     FileText, HandCoins, Building2, Calculator, ChevronDown, ChevronUp, History,
-    Truck
+    Truck, Ban, Clock3
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FaturamentoDialog } from '@/components/finance/FaturamentoDialog';
@@ -48,6 +48,7 @@ interface PaymentItem {
     totalCost: number;
     paymentStatus: string;
     paidAt: string | null;
+    endDatetime: string | null;
     serviceType: string;
     tractorPlate: string | null;
 }
@@ -83,7 +84,7 @@ const Financeiro = () => {
             let query = supabase
                 .from('tickets')
                 .select([
-                    'id', 'code', 'start_datetime', 'status', 'service_type',
+                    'id', 'code', 'start_datetime', 'end_datetime', 'status', 'service_type',
                     'toll_cost', 'food_cost', 'other_costs',
                     'main_agent_id',
                     'main_agent_payment_status', 'main_agent_paid_at',
@@ -145,6 +146,7 @@ const Financeiro = () => {
                         totalCost: compensation + toll + food + other,
                         paymentStatus: ticket.main_agent_payment_status || 'pendente',
                         paidAt: ticket.main_agent_paid_at,
+                        endDatetime: ticket.end_datetime,
                         serviceType: ticket.service_type || '',
                         tractorPlate: ticket.vehicles?.tractor_plate || null
                     });
@@ -180,6 +182,7 @@ const Financeiro = () => {
                                 totalCost: compensation + toll + food + other,
                                 paymentStatus: sa.payment_status || 'pendente',
                                 paidAt: sa.paid_at,
+                                endDatetime: ticket.end_datetime,
                                 serviceType: ticket.service_type || '',
                                 tractorPlate: ticket.vehicles?.tractor_plate || null
                             });
@@ -305,6 +308,32 @@ const Financeiro = () => {
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         toast.success('Copiado!');
+    };
+
+    const getDeadlineInfo = (item: PaymentItem) => {
+        if (item.serviceType !== 'alarme' || !item.endDatetime || item.paymentStatus === 'pago') return null;
+
+        const end = new Date(item.endDatetime);
+        const deadline = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+        const now = new Date();
+        const diffMs = deadline.getTime() - now.getTime();
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+        if (diffMs < 0) {
+            return {
+                label: 'PAGAMENTO ATRASADO',
+                variant: 'destructive' as const,
+                icon: <Ban className="h-3 w-3 mr-1" />
+            };
+        }
+
+        return {
+            label: `Pagar em ${diffHours}h ${diffMins}m`,
+            variant: 'outline' as const,
+            className: diffHours < 4 ? 'text-red-600 border-red-200 bg-red-50 animate-pulse' : 'text-orange-600 border-orange-200 bg-orange-50',
+            icon: <Clock3 className="h-3 w-3 mr-1" />
+        };
     };
 
     const matchesAgentSearch = (item: PaymentItem) =>
@@ -491,9 +520,20 @@ const Financeiro = () => {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-[10px]">
-                                                    ⏳ Pendente
-                                                </Badge>
+                                                <div className="flex flex-col items-end gap-1">
+                                                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-[10px]">
+                                                        ⏳ Pendente
+                                                    </Badge>
+                                                    {getDeadlineInfo(item) && (
+                                                        <Badge 
+                                                            variant={getDeadlineInfo(item)?.variant} 
+                                                            className={`text-[9px] py-0 h-4 ${getDeadlineInfo(item)?.className || ''}`}
+                                                        >
+                                                            {getDeadlineInfo(item)?.icon}
+                                                            {getDeadlineInfo(item)?.label}
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                             </div>
                                         </CardHeader>
                                         

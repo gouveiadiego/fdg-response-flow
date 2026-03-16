@@ -17,7 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { parseSafeNumber } from '@/lib/numberUtils';
-import { Clock, MapPin, Calculator, Info, User, Car, FileText } from 'lucide-react';
+import { Clock, MapPin, Calculator, Info, User, Car, FileText, Ban, Clock3 } from 'lucide-react';
 import { generateAgentPaymentPDF } from './AgentPaymentPDFGenerator';
 
 const optionalNumber = z.number().or(z.string().transform(v => v === '' ? undefined : Number(v))).optional();
@@ -399,6 +399,17 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
                                 {/* Left Side: Details & Stats */}
                                 <div className="lg:col-span-7 p-6 space-y-8 bg-zinc-900/30">
+                                    {isAlarmPlan && (
+                                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3 flex items-start gap-3 animate-pulse mb-6">
+                                            <div className="bg-orange-500/20 p-1.5 rounded-full mt-0.5">
+                                                <Clock3 className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-orange-700 dark:text-orange-400">Prazo de Pagamento: 24 Horas</p>
+                                                <p className="text-xs text-orange-600/80 dark:text-orange-400/80">Este chamado é de Alarme. O pagamento deve ser realizado em até 24h após a finalização.</p>
+                                            </div>
+                                        </div>
+                                    )}
                                     
                                     {/* Detalhes | A Pagar Section */}
                                     <section>
