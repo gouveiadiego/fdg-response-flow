@@ -336,6 +336,17 @@ const Financeiro = () => {
         };
     };
 
+    const groupPaymentsByTicket = (paymentItems: PaymentItem[]) => {
+        const groups: Record<string, PaymentItem[]> = {};
+        paymentItems.forEach(item => {
+            if (!groups[item.ticketId]) groups[item.ticketId] = [];
+            groups[item.ticketId].push(item);
+        });
+        return Object.values(groups).sort((a, b) => 
+            new Date(b[0].startDatetime).getTime() - new Date(a[0].startDatetime).getTime()
+        );
+    };
+
     const matchesAgentSearch = (item: PaymentItem) =>
         !searchTerm ||
         item.agentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -343,9 +354,12 @@ const Financeiro = () => {
         item.clientName.toLowerCase().includes(searchTerm.toLowerCase());
 
     const pendingItems = items.filter(i => i.paymentStatus === 'pendente' && matchesAgentSearch(i));
+    const groupedPending = groupPaymentsByTicket(pendingItems);
+    
     const paidItems = items
         .filter(i => i.paymentStatus === 'pago' && matchesAgentSearch(i))
         .sort((a, b) => new Date(b.paidAt || 0).getTime() - new Date(a.paidAt || 0).getTime());
+    const groupedPaid = groupPaymentsByTicket(paidItems);
 
     const pendingCount = items.filter(i => i.paymentStatus === 'pendente').length;
     const paidCount = items.filter(i => i.paymentStatus === 'pago').length;
@@ -490,208 +504,240 @@ const Financeiro = () => {
                             </CardContent>
                         </Card>
                     ) : (
-                        <div className="space-y-6">
+                        <div className="space-y-8">
                             {/* Pending Payments */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {pendingItems.map((item, idx) => (
-                                    <Card
-                                        key={`${item.ticketId}-${item.agentRole}-${idx}`}
-                                        className="transition-all hover:shadow-md border-border bg-card overflow-hidden"
-                                    >
-                                        <CardHeader className="pb-3 border-b border-border/50 bg-muted/10">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <div className="flex items-center gap-2">
-                                                    <div className={`p-1.5 rounded-lg ${item.agentRole === 'principal' ? 'bg-primary/10' : 'bg-muted'}`}>
-                                                        {item.agentRole === 'principal'
-                                                            ? <User className="h-4 w-4 text-primary" />
-                                                            : <Users className="h-4 w-4 text-muted-foreground" />}
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                                            {item.agentName}
-                                                            <Badge variant="outline" className="text-[9px] h-4 py-0 font-normal uppercase opacity-70">
-                                                                {item.agentRoleLabel}
-                                                            </Badge>
-                                                        </CardTitle>
-                                                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase font-medium mt-0.5">
-                                                            <span>Chamado <strong>{item.ticketCode}</strong></span>
-                                                            <span>•</span>
-                                                            <span>{item.isArmed ? 'Armado' : 'Desarmado'}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-col items-end gap-1">
-                                                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-[10px]">
-                                                        ⏳ Pendente
-                                                    </Badge>
-                                                    {getDeadlineInfo(item) && (
-                                                        <Badge 
-                                                            variant={getDeadlineInfo(item)?.variant} 
-                                                            className={`text-[9px] py-0 h-4 ${getDeadlineInfo(item)?.className || ''}`}
-                                                        >
-                                                            {getDeadlineInfo(item)?.icon}
-                                                            {getDeadlineInfo(item)?.label}
-                                                        </Badge>
-                                                    )}
-                                                </div>
+                            <div className="space-y-4">
+                                {groupedPending.map((group) => (
+                                    <div key={`group-pending-${group[0].ticketId}`} className="space-y-3 p-4 border rounded-xl bg-primary/5 dark:bg-primary/5 border-primary/20">
+                                        <div className="flex items-center justify-between border-b border-primary/10 pb-2">
+                                            <div className="flex items-center gap-3">
+                                                <Badge className="bg-primary/10 text-primary hover:bg-primary/10 border-primary/20 font-black px-2.5 py-1">
+                                                    CHAMADO {group[0].ticketCode}
+                                                </Badge>
+                                                <span className="text-sm font-bold text-foreground opacity-90">{group[0].clientName}</span>
                                             </div>
-                                        </CardHeader>
-                                        
-                                        <CardContent className="pt-4 space-y-4">
-                                            {/* Info: Client and Vehicle */}
-                                            <div className="space-y-2">
-                                                <div className="flex items-center justify-between bg-accent/30 rounded px-2.5 py-1.5 border border-primary/10">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[9px] uppercase text-muted-foreground font-bold tracking-tighter">Cliente</span>
-                                                        <span className="text-sm font-bold text-foreground leading-tight">{item.clientName}</span>
-                                                    </div>
-                                                    <div className="text-right flex flex-col items-end">
-                                                        <span className="text-[9px] uppercase text-muted-foreground font-bold tracking-tighter">Data</span>
-                                                        <span className="text-[11px] font-medium">{format(new Date(item.startDatetime), 'dd/MM/yyyy')}</span>
-                                                    </div>
-                                                </div>
-
-                                                {item.serviceType !== 'alarme' && item.tractorPlate && (
-                                                    <div className="flex items-center gap-2 px-2.5 py-1.5 bg-blue-50/50 dark:bg-blue-950/20 rounded border border-blue-200/50 dark:border-blue-900/30">
-                                                        <Truck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[9px] uppercase text-blue-600/70 dark:text-blue-400/70 font-bold leading-none">Placa Cavalo</span>
-                                                            <span className="text-xs font-black text-blue-800 dark:text-blue-300">{item.tractorPlate}</span>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                            <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase opacity-70">
+                                                <Clock className="h-3 w-3" />
+                                                {format(new Date(group[0].startDatetime), 'dd/MM/yyyy')}
                                             </div>
-
-                                            {/* Total vs Compensation */}
-                                            <div className="flex items-center justify-between bg-primary/5 dark:bg-primary/10 rounded-lg p-3.5 border border-primary/10">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">Custo Total</span>
-                                                    <span className="text-2xl font-black text-primary tracking-tighter">
-                                                        {item.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                                    </span>
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className="text-[9px] text-muted-foreground uppercase font-bold block mb-0.5">Honorários</span>
-                                                    <span className="text-sm font-bold text-foreground">
-                                                        {(item.compensationTotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {/* Bank / PIX Info */}
-                                            {(item.pixKey || item.bankName) && (
-                                                <div className="bg-muted/40 rounded-lg p-2.5 space-y-1 mt-1 border border-dashed border-muted-foreground/20">
-                                                    <div className="flex items-center gap-1.5 mb-1">
-                                                        <CreditCard className="h-3 w-3 text-muted-foreground" />
-                                                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Dados Bancários</span>
-                                                    </div>
-                                                    {item.pixKey && (
-                                                        <div className="flex items-center justify-between">
-                                                            <span className="text-xs font-medium">PIX: {item.pixKey}</span>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-6 px-2 text-primary hover:text-primary hover:bg-primary/10 transition-colors"
-                                                                onClick={() => copyToClipboard(item.pixKey!)}
-                                                            >
-                                                                <Copy className="h-3 w-3 mr-1" />
-                                                                <span className="text-[10px]">Copiar</span>
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                    {item.bankName && (
-                                                        <p className="text-[11px] text-muted-foreground">
-                                                            {item.bankName} • Ag: {item.bankAgency || '-'} • Conta: {item.bankAccount || '-'}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* Footer Actions */}
-                                            <div className="flex justify-end gap-2 pt-2 border-t border-border/50">
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="gap-2 border-primary/20 hover:bg-primary/5 text-primary font-bold shadow-sm"
-                                                    onClick={() => {
-                                                        setSelectedTicketId(item.ticketId);
-                                                        setSelectedAgentId(item.agentId);
-                                                        setSelectedAgentRole(item.agentRole);
-                                                        setPagamentoAgenteDialogOpen(true);
-                                                    }}
-                                                >
-                                                    <Calculator className="h-4 w-4" />
-                                                    Calculadora
-                                                </Button>
-
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-600/20 px-5 transition-all active:scale-95">
-                                                            <CheckCircle2 className="h-4 w-4" />
-                                                            Pagar
-                                                        </Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Confirmar Pagamento</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                Deseja marcar o pagamento de <strong>{item.agentName}</strong> (Chamado {item.ticketCode}) como pago?
-                                                                <br /><br />
-                                                                <strong>Total: {item.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Voltar</AlertDialogCancel>
-                                                            <AlertDialogAction
-                                                                onClick={() => handleMarkAsPaid(item)}
-                                                                className="bg-emerald-600 hover:bg-emerald-700"
-                                                            >
-                                                                Marcar como Pago
-                                                            </AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
-
-                            {/* Paid History */}
-                            {paidItems.length > 0 && (
-                                <div className="mt-8 border border-border rounded-lg overflow-hidden">
-                                    <button
-                                        className="w-full flex items-center justify-between px-4 py-3 bg-muted/50 hover:bg-muted transition-colors text-sm font-semibold"
-                                        onClick={() => setShowPaidHistory(v => !v)}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <History className="h-4 w-4 text-emerald-600" />
-                                            <span>Histórico de Pagamentos Realizados</span>
-                                            <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-0.5 rounded-full">{paidItems.length}</span>
                                         </div>
-                                        {showPaidHistory ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                    </button>
-                                    {showPaidHistory && (
-                                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {paidItems.map((item, idx) => (
-                                                <Card key={`paid-${idx}`} className="border-emerald-500/10 bg-emerald-500/5 opacity-80 shadow-none">
-                                                    <CardContent className="p-4 space-y-3">
-                                                        <div className="flex justify-between items-start">
-                                                            <div>
-                                                                <h4 className="font-bold text-sm">{item.agentName}</h4>
-                                                                <p className="text-[10px] uppercase text-muted-foreground font-medium">Chamado {item.ticketCode} • {item.clientName}</p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {group.map((item, idx) => (
+                                                <Card
+                                                    key={`${item.ticketId}-${item.agentRole}-${idx}`}
+                                                    className="transition-all hover:shadow-md border-border bg-card overflow-hidden"
+                                                >
+                                                    <CardHeader className="pb-3 border-b border-border/50 bg-muted/10">
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className={`p-1.5 rounded-lg ${item.agentRole === 'principal' ? 'bg-primary/10' : 'bg-muted'}`}>
+                                                                    {item.agentRole === 'principal'
+                                                                        ? <User className="h-4 w-4 text-primary" />
+                                                                        : <Users className="h-4 w-4 text-muted-foreground" />}
+                                                                </div>
+                                                                <div className="flex flex-col">
+                                                                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                                                        {item.agentName}
+                                                                        <Badge variant="outline" className="text-[9px] h-4 py-0 font-normal uppercase opacity-70">
+                                                                            {item.agentRoleLabel}
+                                                                        </Badge>
+                                                                    </CardTitle>
+                                                                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase font-medium mt-0.5">
+                                                                        <span>{item.isArmed ? 'Armado' : 'Desarmado'}</span>
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-[10px] border-emerald-200">✅ Pago</Badge>
+                                                            <div className="flex flex-col items-end gap-1">
+                                                                <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-[10px]">
+                                                                    ⏳ Pendente
+                                                                </Badge>
+                                                                {getDeadlineInfo(item) && (
+                                                                    <Badge 
+                                                                        variant={getDeadlineInfo(item)?.variant} 
+                                                                        className={`text-[9px] py-0 h-4 ${getDeadlineInfo(item)?.className || ''}`}
+                                                                    >
+                                                                        {getDeadlineInfo(item)?.icon}
+                                                                        {getDeadlineInfo(item)?.label}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                        <div className="flex justify-between items-center text-xs">
-                                                            <span className="font-bold text-emerald-700">{item.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                                                            <span className="text-[10px] text-muted-foreground italic">pago em {item.paidAt ? format(new Date(item.paidAt), 'dd/MM/yy HH:mm') : '-'}</span>
+                                                    </CardHeader>
+                                                    
+                                                    <CardContent className="pt-4 space-y-4">
+                                                        {/* Info: Vehicle if available */}
+                                                        {item.serviceType !== 'alarme' && item.tractorPlate && (
+                                                            <div className="flex items-center gap-2 px-2.5 py-1.5 bg-blue-50/50 dark:bg-blue-950/20 rounded border border-blue-200/50 dark:border-blue-900/30">
+                                                                <Truck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[9px] uppercase text-blue-600/70 dark:text-blue-400/70 font-bold leading-none">Placa Cavalo</span>
+                                                                    <span className="text-xs font-black text-blue-800 dark:text-blue-300">{item.tractorPlate}</span>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Total vs Compensation */}
+                                                        <div className="flex items-center justify-between bg-primary/5 dark:bg-primary/10 rounded-lg p-3.5 border border-primary/10">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">Custo Total</span>
+                                                                <span className="text-xl font-black text-primary tracking-tighter">
+                                                                    {item.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <span className="text-[9px] text-muted-foreground uppercase font-bold block mb-0.5">Honorários</span>
+                                                                <span className="text-sm font-bold text-foreground">
+                                                                    {(item.compensationTotal || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                        <div className="pt-2 border-t border-emerald-500/10 flex justify-end">
-                                                            <Button size="sm" variant="ghost" className="h-7 text-[10px] text-muted-foreground hover:text-destructive" onClick={() => handleUndoPayment(item)}>Reverter</Button>
+
+                                                        {/* Bank / PIX Info */}
+                                                        {(item.pixKey || item.bankName) && (
+                                                            <div className="bg-muted/40 rounded-lg p-2.5 space-y-1 mt-1 border border-dashed border-muted-foreground/20">
+                                                                <div className="flex items-center gap-1.5 mb-1">
+                                                                    <CreditCard className="h-3 w-3 text-muted-foreground" />
+                                                                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Dados Bancários</span>
+                                                                </div>
+                                                                {item.pixKey && (
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="text-xs font-medium truncate max-w-[150px]">PIX: {item.pixKey}</span>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            className="h-6 px-2 text-primary hover:text-primary hover:bg-primary/10 transition-colors"
+                                                                            onClick={() => copyToClipboard(item.pixKey!)}
+                                                                        >
+                                                                            <Copy className="h-3 w-3 mr-1" />
+                                                                            <span className="text-[10px]">Copiar</span>
+                                                                        </Button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Actions */}
+                                                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/50">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-9 gap-1.5 text-xs font-bold border-primary/20 text-primary hover:bg-primary/5"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedAgentId(item.agentId);
+                                                                    setSelectedAgentRole(item.agentRole);
+                                                                    setSelectedTicketId(item.ticketId);
+                                                                    setPagamentoAgenteDialogOpen(true);
+                                                                }}
+                                                            >
+                                                                <Calculator className="h-3.5 w-3.5" />
+                                                                Calculadora
+                                                            </Button>
+
+                                                            <AlertDialog>
+                                                                <AlertDialogTrigger asChild>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        className="h-9 gap-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700"
+                                                                    >
+                                                                        <CheckCircle2 className="h-3.5 w-3.5" />
+                                                                        Pagar
+                                                                    </Button>
+                                                                </AlertDialogTrigger>
+                                                                <AlertDialogContent>
+                                                                    <AlertDialogHeader>
+                                                                        <AlertDialogTitle>Confirmar Pagamento</AlertDialogTitle>
+                                                                        <AlertDialogDescription>
+                                                                            Confirma o pagamento de {item.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} para o agente {item.agentName}?
+                                                                        </AlertDialogDescription>
+                                                                    </AlertDialogHeader>
+                                                                    <AlertDialogFooter>
+                                                                        <AlertDialogCancel>Voltar</AlertDialogCancel>
+                                                                        <AlertDialogAction
+                                                                            onClick={() => handleMarkAsPaid(item)}
+                                                                            className="bg-emerald-600 hover:bg-emerald-700"
+                                                                        >
+                                                                            Confirmar Pagamento
+                                                                        </AlertDialogAction>
+                                                                    </AlertDialogFooter>
+                                                                </AlertDialogContent>
+                                                            </AlertDialog>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Paid Payments History */}
+                            {groupedPaid.length > 0 && (
+                                <div className="space-y-4">
+                                    <Button
+                                        variant="ghost"
+                                        className="w-full flex items-center justify-between py-6 px-4 bg-muted/30 hover:bg-muted/50 rounded-xl"
+                                        onClick={() => setShowPaidHistory(!showPaidHistory)}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="bg-emerald-500/10 p-2 rounded-lg">
+                                                <History className="h-5 w-5 text-emerald-600" />
+                                            </div>
+                                            <div className="text-left">
+                                                <span className="font-bold text-foreground">Histórico de Pagamentos Realizados</span>
+                                                <p className="text-xs text-muted-foreground">{paidItems.length} honorários pagos no período</p>
+                                            </div>
+                                        </div>
+                                        {showPaidHistory ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                                    </Button>
+
+                                    {showPaidHistory && (
+                                        <div className="space-y-4 animate-in slide-in-from-top-4 duration-300">
+                                            {groupedPaid.map((group) => (
+                                                <div key={`group-paid-${group[0].ticketId}`} className="space-y-3 p-4 border rounded-xl bg-emerald-500/5 border-emerald-500/20">
+                                                    <div className="flex items-center justify-between border-b border-emerald-500/10 pb-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10 border-emerald-500/20 font-black px-2.5 py-1 uppercase">
+                                                                {group[0].ticketCode}
+                                                            </Badge>
+                                                            <span className="text-sm font-bold text-foreground opacity-90">{group[0].clientName}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase opacity-70">
+                                                            <Clock className="h-3 w-3" />
+                                                            {format(new Date(group[0].startDatetime), 'dd/MM/yyyy')}
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                        {group.map((item, idx) => (
+                                                            <Card key={`paid-${idx}`} className="bg-card/50 border-emerald-500/10 shadow-none">
+                                                                <CardContent className="p-3">
+                                                                    <div className="flex items-center justify-between mb-2">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <User className="h-3 w-3 text-muted-foreground" />
+                                                                            <span className="text-xs font-bold">{item.agentName}</span>
+                                                                        </div>
+                                                                        <Badge className="bg-emerald-100 text-emerald-700 text-[8px] h-3.5 px-1 font-bold">PAGO</Badge>
+                                                                    </div>
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="text-[10px] text-muted-foreground uppercase font-bold">{item.agentRoleLabel}</span>
+                                                                        <span className="text-sm font-black text-emerald-700">
+                                                                            {item.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="mt-2 text-[8px] text-muted-foreground flex items-center justify-between border-t border-emerald-500/5 pt-1.5 uppercase font-bold tracking-tight">
+                                                                        <span>Pago em {item.paidAt ? format(new Date(item.paidAt), 'dd/MM/yy HH:mm') : '-'}</span>
+                                                                        <button 
+                                                                            onClick={() => handleUndoPayment(item)}
+                                                                            className="text-emerald-700 hover:underline"
+                                                                        >
+                                                                            Estornar
+                                                                        </button>
+                                                                    </div>
+                                                                </CardContent>
+                                                            </Card>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             ))}
                                         </div>
                                     )}
