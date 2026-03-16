@@ -36,7 +36,6 @@ import {
 } from 'lucide-react';
 import { AddPhotosDialog } from './AddPhotosDialog';
 import { generateTicketPDF, type TicketPDFData } from './TicketPDFGenerator';
-import { generateAlarmePropostaPDF } from './AlarmePropostaGenerator';
 
 interface TicketDetailsProps {
   ticketId: string | null;
@@ -161,7 +160,6 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
   const [loading, setLoading] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
-  const [generatingAlarmeProposta, setGeneratingAlarmeProposta] = useState(false);
   const [addPhotosOpen, setAddPhotosOpen] = useState(false);
 
   useEffect(() => {
@@ -462,41 +460,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
     return `R$ ${value.toFixed(2).replace('.', ',')}`;
   };
 
-  const handleGenerateAlarmeProposta = async () => {
-    if (!ticket) return;
-    setGeneratingAlarmeProposta(true);
-    try {
-      // Calculate KM and duration from ticket data
-      let totalKm = 0;
-      if (ticket.km_start && ticket.km_end) {
-        totalKm = Number(ticket.km_end) - Number(ticket.km_start);
-      }
-      let durationHours = 0;
-      if (ticket.main_agent_arrival && ticket.main_agent_departure) {
-        durationHours = (new Date(ticket.main_agent_departure).getTime() - new Date(ticket.main_agent_arrival).getTime()) / (1000 * 60 * 60);
-      }
-      const tollCost = Number(ticket.toll_cost ?? 0);
 
-      await generateAlarmePropostaPDF({
-        code: ticket.code,
-        client_name: ticket.clients?.name || 'Cliente',
-        city: ticket.city,
-        state: ticket.state,
-        start_datetime: ticket.start_datetime,
-        end_datetime: ticket.end_datetime,
-        km_total: totalKm,
-        duration_hours: durationHours,
-        toll_cost: tollCost,
-        operator_name: ticket.operators?.name || 'Falco Peregrinus',
-      });
-      toast.success('Proposta de alarme gerada com sucesso!');
-    } catch (error) {
-      console.error('Erro ao gerar proposta de alarme:', error);
-      toast.error('Erro ao gerar proposta de alarme.');
-    } finally {
-      setGeneratingAlarmeProposta(false);
-    }
-  };
 
   if (loading || !ticket) {
     return (
@@ -1030,17 +994,7 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                 {generatingPDF ? 'Gerando...' : 'Gerar PDF'}
               </Button>
 
-              {ticket.service_type === 'alarme' && (
-                <Button
-                  variant="outline"
-                  className="border-orange-400 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/30"
-                  onClick={handleGenerateAlarmeProposta}
-                  disabled={generatingAlarmeProposta}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  {generatingAlarmeProposta ? 'Gerando...' : 'Gerar Proposta Alarme'}
-                </Button>
-              )}
+
 
               {ticket.status === 'aberto' && (
                 <Button
