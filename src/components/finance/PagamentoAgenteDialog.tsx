@@ -22,39 +22,13 @@ import { generateAgentPaymentPDF } from './AgentPaymentPDFGenerator';
 
 const optionalNumber = z.number().or(z.string().transform(v => v === '' ? undefined : Number(v))).optional();
 
-const ALARME_PRICING = {
-    base: 100,
-    includedHours: 0.5,
-    includedKm: 50,
-    extraHourRate: 20,
-    extraKmRate: 1.50,
-};
-
-// Pricing per agent role based on armed/unarmed
-const ARMED_PRICING = { base: 300, includedHours: 3, includedKm: 50, extraHourRate: 45, extraKmRate: 1.50 };
-const UNARMED_PRICING = { base: 280, includedHours: 3, includedKm: 50, extraHourRate: 40, extraKmRate: 1.50 };
-
-/**
- * Determine if the agent acting in a given role should be priced as ARMED or UNARMED,
- * based on the plan name and their role (principal or support).
- */
-function getIsArmedByPlan(
-    planName: string | null | undefined,
-    agentRole: 'principal' | 'apoio_1' | 'apoio_2',
-    agentIsArmed: boolean
-): boolean {
-    if (!planName) return agentIsArmed;
-    const name = planName.toLowerCase();
-    const isSupport = agentRole !== 'principal';
-
-    if (name.includes('armado + 1 desarmado') || name.includes('armado+1 desarmado')) {
-        return !isSupport; // principal=armed, support=unarmed
-    }
-    if (name.includes('2 agente') && name.includes('armado')) return true;  // 2 armed
-    if (name.includes('1 agente') && name.includes('armado') && !name.includes('desarmado')) return true;
-    if (name.includes('1 agente') && name.includes('desarmado') && !name.includes('armado + ')) return false;
-    return agentIsArmed; // fallback
-}
+import { 
+    ARMED_PRICING, 
+    UNARMED_PRICING, 
+    ALARME_PRICING, 
+    getIsArmedByPlan,
+    calculateAgentHonorary
+} from '@/lib/pricingUtils';
 
 const compensationSchema = z.object({
     compensation_base_value: optionalNumber,
@@ -287,9 +261,13 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
             const val_food = parseSafeNumber(data.food_cost);
             const val_other = parseSafeNumber(data.other_costs);
 
-            const ex_h = Math.max(0, detailedStats.durationHours - val_inc_h);
-            const ex_km = Math.max(0, detailedStats.totalKm - val_inc_km);
-            const totalHon = val_base + (ex_h * val_extra_h_rate) + (ex_km * val_extra_km_rate);
+            const totalHon = calculateAgentHonorary({
+                planName,
+                agentRole,
+                agentIsArmed: !!agentInfo?.isArmed,
+                durationHours: detailedStats.durationHours,
+                totalKm: detailedStats.totalKm,
+            });
 
             if (agentRole === 'principal') {
                 const { error } = await supabase.from('tickets').update({

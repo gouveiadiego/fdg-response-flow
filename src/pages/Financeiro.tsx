@@ -25,6 +25,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FaturamentoDialog } from '@/components/finance/FaturamentoDialog';
 import { PagamentoAgenteDialog } from '@/components/finance/PagamentoAgenteDialog';
+import { calculateAgentHonorary } from '@/lib/pricingUtils';
 
 interface PaymentItem {
     ticketId: string;
@@ -51,6 +52,11 @@ interface PaymentItem {
     endDatetime: string | null;
     serviceType: string;
     tractorPlate: string | null;
+    planName: string | null;
+    kmStart: number;
+    kmEnd: number;
+    arrival: string | null;
+    departure: string | null;
 }
 
 const Financeiro = () => {
@@ -87,13 +93,16 @@ const Financeiro = () => {
                     'id', 'code', 'start_datetime', 'end_datetime', 'status', 'service_type',
                     'toll_cost', 'food_cost', 'other_costs',
                     'main_agent_id',
+                    'main_agent_arrival', 'main_agent_departure',
+                    'km_start', 'km_end',
                     'main_agent_payment_status', 'main_agent_paid_at',
                     'main_agent_compensation_total',
                     'revenue_status', 'revenue_paid_at', 'revenue_total',
+                    'plans(name)',
                     'clients(name)',
                     'vehicles(tractor_plate)',
                     'main_agent:agents!tickets_main_agent_id_fkey(name,is_armed,pix_key,bank_name,bank_agency,bank_account,bank_account_type)',
-                    'ticket_support_agents(agent_id,toll_cost,food_cost,other_costs,payment_status,paid_at,compensation_total,agent:agents(name,is_armed,pix_key,bank_name,bank_agency,bank_account,bank_account_type))'
+                    'ticket_support_agents(agent_id,arrival,departure,km_start,km_end,toll_cost,food_cost,other_costs,payment_status,paid_at,compensation_total,agent:agents(name,is_armed,pix_key,bank_name,bank_agency,bank_account,bank_account_type))'
                 ].join(','))
                 .eq('status', 'finalizado')
                 .order('start_datetime', { ascending: false });
@@ -120,7 +129,27 @@ const Financeiro = () => {
             (data || []).forEach((ticket: any) => {
                 // Main agent
                 if (ticket.main_agent) {
-                    const compensation = Number(ticket.main_agent_compensation_total) || 0;
+                    const startKm = Number(ticket.km_start) || 0;
+                    const endKm = Number(ticket.km_end) || 0;
+                    const totalKm = Math.max(0, endKm - startKm);
+                    
+                    const arrival = ticket.main_agent_arrival ? new Date(ticket.main_agent_arrival) : null;
+                    const departure = ticket.main_agent_departure ? new Date(ticket.main_agent_departure) : null;
+                    const durationHours = arrival && departure ? (departure.getTime() - arrival.getTime()) / (1000 * 60 * 60) : 0;
+
+                    let compensation = Number(ticket.main_agent_compensation_total) || 0;
+                    
+                    // IF zero, calculate automatically
+                    if (compensation === 0) {
+                        compensation = calculateAgentHonorary({
+                            planName: ticket.plans?.name,
+                            agentRole: 'principal',
+                            agentIsArmed: !!ticket.main_agent.is_armed,
+                            durationHours,
+                            totalKm
+                        });
+                    }
+
                     const toll = Number(ticket.toll_cost) || 0;
                     const food = Number(ticket.food_cost) || 0;
                     const other = Number(ticket.other_costs) || 0;
@@ -148,7 +177,12 @@ const Financeiro = () => {
                         paidAt: ticket.main_agent_paid_at,
                         endDatetime: ticket.end_datetime,
                         serviceType: ticket.service_type || '',
-                        tractorPlate: ticket.vehicles?.tractor_plate || null
+                        tractorPlate: ticket.vehicles?.tractor_plate || null,
+                        planName: ticket.plans?.name || null,
+                        kmStart: Number(ticket.km_start) || 0,
+                        kmEnd: Number(ticket.km_end) || 0,
+                        arrival: ticket.main_agent_arrival || null,
+                        departure: ticket.main_agent_departure || null
                     });
                 }
 
@@ -156,7 +190,27 @@ const Financeiro = () => {
                 if (ticket.ticket_support_agents && ticket.ticket_support_agents.length > 0) {
                     ticket.ticket_support_agents.forEach((sa: any, index: number) => {
                         if (sa.agent) {
-                            const compensation = Number(sa.compensation_total) || 0;
+                            const startKm = Number(sa.km_start) || 0;
+                            const endKm = Number(sa.km_end) || 0;
+                            const totalKm = Math.max(0, endKm - startKm);
+                            
+                            const arrival = sa.arrival ? new Date(sa.arrival) : null;
+                            const departure = sa.departure ? new Date(sa.departure) : null;
+                            const durationHours = arrival && departure ? (departure.getTime() - arrival.getTime()) / (1000 * 60 * 60) : 0;
+
+                            let compensation = Number(sa.compensation_total) || 0;
+
+                            // IF zero, calculate automatically
+                            if (compensation === 0) {
+                                compensation = calculateAgentHonorary({
+                                    planName: ticket.plans?.name,
+                                    agentRole: `apoio_${index + 1}`,
+                                    agentIsArmed: !!sa.agent.is_armed,
+                                    durationHours,
+                                    totalKm
+                                });
+                            }
+
                             const toll = Number(sa.toll_cost) || 0;
                             const food = Number(sa.food_cost) || 0;
                             const other = Number(sa.other_costs) || 0;
@@ -184,7 +238,12 @@ const Financeiro = () => {
                                 paidAt: sa.paid_at,
                                 endDatetime: ticket.end_datetime,
                                 serviceType: ticket.service_type || '',
-                                tractorPlate: ticket.vehicles?.tractor_plate || null
+                                tractorPlate: ticket.vehicles?.tractor_plate || null,
+                                planName: ticket.plans?.name || null,
+                                kmStart: Number(sa.km_start) || 0,
+                                kmEnd: Number(sa.km_end) || 0,
+                                arrival: sa.arrival || null,
+                                departure: sa.departure || null
                             });
                         }
                     });
