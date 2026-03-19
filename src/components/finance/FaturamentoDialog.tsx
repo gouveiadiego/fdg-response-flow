@@ -120,42 +120,42 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             let totalDiffMs = 0;
             const breakdown: { name: string; role: string; hours: number; km: number }[] = [];
 
-            if (ticket.main_agent_arrival && ticket.main_agent_departure) {
-                const diff = new Date(ticket.main_agent_departure).getTime() - new Date(ticket.main_agent_arrival).getTime();
-                totalDiffMs += diff;
-                
-                const startKm = Number(ticket.km_start) || 0;
-                const endKm = Number(ticket.km_end) || 0;
-                const km = Math.max(0, endKm - startKm);
+            // Main Agent
+            const m_arrival = ticket.main_agent_arrival;
+            const m_departure = ticket.main_agent_departure;
+            const m_startKm = Number(ticket.km_start) || 0;
+            const m_endKm = Number(ticket.km_end) || 0;
+            const m_diff = m_arrival && m_departure ? new Date(m_departure).getTime() - new Date(m_arrival).getTime() : 0;
+            const m_km = Math.max(0, m_endKm - m_startKm);
 
-                breakdown.push({
-                    name: (ticket as any).main_agent?.name || 'Agente Principal',
-                    role: 'Principal',
-                    hours: diff > 0 ? diff / (1000 * 60 * 60) : 0,
-                    km: km
-                });
-            }
-            ticket.ticket_support_agents?.forEach((sa: any, idx: number) => {
-                if (sa.arrival && sa.departure) {
-                    const diff = new Date(sa.departure).getTime() - new Date(sa.arrival).getTime();
-                    totalDiffMs += diff;
-
-                    const startKm = Number(sa.km_start) || 0;
-                    const endKm = Number(sa.km_end) || 0;
-                    const km = Math.max(0, endKm - startKm);
-
-                    breakdown.push({
-                        name: sa.agent?.name || `Apoio ${idx + 1}`,
-                        role: `Apoio ${idx + 1}`,
-                        hours: diff > 0 ? diff / (1000 * 60 * 60) : 0,
-                        km: km
-                    });
-                }
+            totalDiffMs += m_diff > 0 ? m_diff : 0;
+            breakdown.push({
+                name: (ticket as any).main_agent?.name || 'Agente Principal',
+                role: 'Principal',
+                hours: m_diff > 0 ? m_diff / (1000 * 60 * 60) : 0,
+                km: m_km
             });
-            const durationHours = totalDiffMs > 0 ? totalDiffMs / (1000 * 60 * 60) : 0;
 
-            // Calculate total KM
-            let totalKmList = breakdown.reduce((sum, item) => sum + item.km, 0);
+            // Support Agents
+            ticket.ticket_support_agents?.forEach((sa: any, idx: number) => {
+                const s_arrival = sa.arrival;
+                const s_departure = sa.departure;
+                const s_startKm = Number(sa.km_start) || 0;
+                const s_endKm = Number(sa.km_end) || 0;
+                const s_diff = s_arrival && s_departure ? new Date(s_departure).getTime() - new Date(s_arrival).getTime() : 0;
+                const s_km = Math.max(0, s_endKm - s_startKm);
+
+                totalDiffMs += s_diff > 0 ? s_diff : 0;
+                breakdown.push({
+                    name: sa.agent?.name || `Apoio ${idx + 1}`,
+                    role: `Apoio ${idx + 1}`,
+                    hours: s_diff > 0 ? s_diff / (1000 * 60 * 60) : 0,
+                    km: s_km
+                });
+            });
+
+            const durationHours = totalDiffMs > 0 ? totalDiffMs / (1000 * 60 * 60) : 0;
+            const totalKmList = breakdown.reduce((sum, item) => sum + item.km, 0);
 
             setAgentBreakdown(breakdown);
             setTicketStats({ durationHours, totalKm: totalKmList });
