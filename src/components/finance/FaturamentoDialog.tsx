@@ -53,6 +53,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
     const [isAlarmPlan, setIsAlarmPlan] = useState(false);
     const [planName, setPlanName] = useState<string | null>(null);
     const [contextInfo, setContextInfo] = useState<{ clientName: string; plate: string; code: string } | null>(null);
+    const [agentBreakdown, setAgentBreakdown] = useState<{ name: string; role: string; hours: number; km: number }[]>([]);
 
     // Real stats from the ticket to calculate over
     const [ticketStats, setTicketStats] = useState({
@@ -90,11 +91,13 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                   revenue_base_value, revenue_included_hours, revenue_included_km,
                   revenue_extra_hour_rate, revenue_extra_km_rate, revenue_discount_addition,
                   revenue_total,
+                  main_agent:agents!tickets_main_agent_id_fkey ( name ),
                   plans ( name ),
                   clients ( name ),
                   vehicles ( tractor_plate ),
                   ticket_support_agents (
-                    arrival, departure, km_start, km_end
+                    arrival, departure, km_start, km_end,
+                    agent:agents ( name )
                   )
                 `)
                 .eq('id', ticketId)
@@ -113,29 +116,48 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                 code: ticket.code || '-'
             });
 
-            // Calculate total duration
+            // Calculate total duration and breakdown
             let totalDiffMs = 0;
+            const breakdown: { name: string; role: string; hours: number; km: number }[] = [];
+
             if (ticket.main_agent_arrival && ticket.main_agent_departure) {
-                totalDiffMs += new Date(ticket.main_agent_departure).getTime() - new Date(ticket.main_agent_arrival).getTime();
+                const diff = new Date(ticket.main_agent_departure).getTime() - new Date(ticket.main_agent_arrival).getTime();
+                totalDiffMs += diff;
+                
+                const startKm = Number(ticket.km_start) || 0;
+                const endKm = Number(ticket.km_end) || 0;
+                const km = Math.max(0, endKm - startKm);
+
+                breakdown.push({
+                    name: (ticket as any).main_agent?.name || 'Agente Principal',
+                    role: 'Principal',
+                    hours: diff > 0 ? diff / (1000 * 60 * 60) : 0,
+                    km: km
+                });
             }
-            ticket.ticket_support_agents?.forEach((agent: any) => {
-                if (agent.arrival && agent.departure) {
-                    totalDiffMs += new Date(agent.departure).getTime() - new Date(agent.arrival).getTime();
+            ticket.ticket_support_agents?.forEach((sa: any, idx: number) => {
+                if (sa.arrival && sa.departure) {
+                    const diff = new Date(sa.departure).getTime() - new Date(sa.arrival).getTime();
+                    totalDiffMs += diff;
+
+                    const startKm = Number(sa.km_start) || 0;
+                    const endKm = Number(sa.km_end) || 0;
+                    const km = Math.max(0, endKm - startKm);
+
+                    breakdown.push({
+                        name: sa.agent?.name || `Apoio ${idx + 1}`,
+                        role: `Apoio ${idx + 1}`,
+                        hours: diff > 0 ? diff / (1000 * 60 * 60) : 0,
+                        km: km
+                    });
                 }
             });
             const durationHours = totalDiffMs > 0 ? totalDiffMs / (1000 * 60 * 60) : 0;
 
             // Calculate total KM
-            let totalKmList = 0;
-            if (ticket.km_start && ticket.km_end) {
-                totalKmList += Number(ticket.km_end) - Number(ticket.km_start);
-            }
-            ticket.ticket_support_agents?.forEach((agent: any) => {
-                if (agent.km_start && agent.km_end) {
-                    totalKmList += Number(agent.km_end) - Number(agent.km_start);
-                }
-            });
+            let totalKmList = breakdown.reduce((sum, item) => sum + item.km, 0);
 
+            setAgentBreakdown(breakdown);
             setTicketStats({ durationHours, totalKm: totalKmList });
 
             form.reset({
@@ -188,7 +210,8 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             extraHours,
             extraKm,
             discountAddition,
-            total: calculatedTotal
+            total: calculatedTotal,
+            agentBreakdown: agentBreakdown
         });
     };
 
@@ -332,6 +355,36 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                                                         Excedente: {extraKm.toFixed(0)}KM
                                                     </span>
                                                 </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-zinc-900/40 p-4 rounded-lg border border-zinc-800/50 border-dashed">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <Info className="w-4 h-4 text-primary" />
+                                                <p className="text-xs font-bold text-zinc-300 uppercase">Detalhamento por Agente</p>
+                                            </div>
+                                            <div className="space-y-3">
+                                                {agentBreakdown.map((agent, i) => (
+                                                    <div key={i} className="flex flex-col gap-1 p-2 rounded bg-zinc-950/50 border border-zinc-800/30">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-[11px] font-bold text-zinc-200 uppercase flex items-center gap-1.5">
+                                                                <User className="w-3 h-3 text-zinc-500" />
+                                                                {agent.name}
+                                                                <span className="text-[9px] text-zinc-600 font-normal">({agent.role})</span>
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex gap-4 mt-1">
+                                                            <div className="flex items-center gap-1 text-[10px] text-zinc-400">
+                                                                <Clock className="w-2.5 h-2.5 opacity-50" />
+                                                                {formatDuration(agent.hours)}
+                                                            </div>
+                                                            <div className="flex items-center gap-1 text-[10px] text-zinc-400">
+                                                                <Car className="w-2.5 h-2.5 opacity-50" />
+                                                                {agent.km.toFixed(0)} KM
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
 

@@ -40,6 +40,12 @@ interface InvoicePDFData {
   extraKm: number;
   discountAddition: number;
   total: number;
+  agentBreakdown: {
+    name: string;
+    role: string;
+    hours: number;
+    km: number;
+  }[];
 }
 
 // Helpers
@@ -195,6 +201,34 @@ export async function generateClientInvoicePDF(data: InvoicePDFData): Promise<vo
   pdf.text('BRASIL', cx + colW * 2, cy2 + 5);
 
   y += 42;
+
+  // --- DETALHAMENTO POR AGENTE ---
+  if (data.agentBreakdown && data.agentBreakdown.length > 0) {
+    setColor(pdf, THEME.white);
+    drawRoundedRect(pdf, margin, y, contentWidth, 8 + (data.agentBreakdown.length * 7), 2, 'F');
+    
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(8);
+    setColor(pdf, THEME.primary);
+    pdf.text('DETALHAMENTO POR AGENTE', margin + 6, y + 7);
+    
+    let ay = y + 14;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(7.5);
+    setColor(pdf, THEME.text);
+
+    data.agentBreakdown.forEach((agent) => {
+      const hours = Math.floor(agent.hours);
+      const mins = Math.floor((agent.hours - hours) * 60);
+      const timeStr = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
+      
+      pdf.text(`${agent.name} (${agent.role})`, margin + 8, ay);
+      pdf.text(`${timeStr} • ${agent.km.toFixed(0)} km`, margin + contentWidth - 8, ay, { align: 'right' });
+      ay += 6;
+    });
+
+    y += 12 + (data.agentBreakdown.length * 6);
+  }
 
   // --- MEMÓRIA DE CÁLCULO (TABLE STYLE) ---
   setColor(pdf, THEME.white);
