@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 // v3 - force build
 import { useForm } from 'react-hook-form';
+import { format } from 'date-fns';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
@@ -54,7 +55,16 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
     const [isAlarmPlan, setIsAlarmPlan] = useState(false);
     const [planName, setPlanName] = useState<string | null>(null);
     const [contextInfo, setContextInfo] = useState<{ clientName: string; plate: string; code: string } | null>(null);
-    const [agentBreakdown, setAgentBreakdown] = useState<{ name: string; role: string; hours: number; km: number }[]>([]);
+    const [agentBreakdown, setAgentBreakdown] = useState<{ 
+        name: string; 
+        role: string; 
+        hours: number; 
+        km: number;
+        startTime: Date | null;
+        endTime: Date | null;
+        startKm: number;
+        endKm: number;
+    }[]>([]);
 
     // Real stats from the ticket to calculate over
     const [ticketStats, setTicketStats] = useState({
@@ -119,7 +129,16 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
 
             // Calculate total duration and breakdown
             let totalDiffMs = 0;
-            const breakdown: { name: string; role: string; hours: number; km: number }[] = [];
+            const breakdown: { 
+                name: string; 
+                role: string; 
+                hours: number; 
+                km: number;
+                startTime: Date | null;
+                endTime: Date | null;
+                startKm: number;
+                endKm: number;
+            }[] = [];
 
             // Main Agent
             const m_arrival = ticket.main_agent_arrival;
@@ -134,7 +153,11 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                 name: (ticket as any).main_agent?.name || 'Agente Principal',
                 role: 'Principal',
                 hours: m_diff > 0 ? m_diff / (1000 * 60 * 60) : 0,
-                km: m_km
+                km: m_km,
+                startTime: m_arrival ? new Date(m_arrival) : null,
+                endTime: m_departure ? new Date(m_departure) : null,
+                startKm: m_startKm,
+                endKm: m_endKm
             });
 
             // Support Agents
@@ -151,7 +174,11 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                     name: sa.agent?.name || `Apoio ${idx + 1}`,
                     role: `Apoio ${idx + 1}`,
                     hours: s_diff > 0 ? s_diff / (1000 * 60 * 60) : 0,
-                    km: s_km
+                    km: s_km,
+                    startTime: s_arrival ? new Date(s_arrival) : null,
+                    endTime: s_departure ? new Date(s_departure) : null,
+                    startKm: s_startKm,
+                    endKm: s_endKm
                 });
             });
 
@@ -256,7 +283,8 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
     const formatDuration = (hours: number) => {
         const h = Math.floor(hours);
         const m = Math.floor((hours - h) * 60);
-        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+        const s = Math.floor(((hours - h) * 60 - m) * 60);
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
     return (
@@ -267,7 +295,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                         <div className="flex items-center justify-between mb-2">
                             <DialogTitle className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
                                 <Calculator className="w-6 h-6 text-primary" />
-                                Faturamento Cliente
+                                Faturamento Cliente (VERSÃO ATUALIZADA)
                             </DialogTitle>
                             <div className="flex gap-2">
                                 {isAlarmPlan && (
@@ -366,22 +394,38 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                                             </div>
                                             <div className="space-y-3">
                                                 {agentBreakdown.map((agent, i) => (
-                                                    <div key={i} className="flex flex-col gap-1 p-2 rounded bg-zinc-950/50 border border-zinc-800/30">
-                                                        <div className="flex justify-between items-center">
+                                                    <div key={i} className="flex flex-col gap-3 p-3 rounded-lg bg-zinc-950/50 border border-zinc-800/30">
+                                                        <div className="flex justify-between items-center border-b border-zinc-800/30 pb-2">
                                                             <span className="text-[11px] font-bold text-zinc-200 uppercase flex items-center gap-1.5">
-                                                                <User className="w-3 h-3 text-zinc-500" />
+                                                                <User className="w-3.5 h-3.5 text-primary" />
                                                                 {agent.name}
-                                                                <span className="text-[9px] text-zinc-600 font-normal">({agent.role})</span>
+                                                                <span className="text-[9px] text-zinc-500 font-normal">({agent.role})</span>
                                                             </span>
                                                         </div>
-                                                        <div className="flex gap-4 mt-1">
-                                                            <div className="flex items-center gap-1 text-[10px] text-zinc-400">
-                                                                <Clock className="w-2.5 h-2.5 opacity-50" />
-                                                                {formatDuration(agent.hours)}
+                                                        
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="space-y-1.5">
+                                                                <div className="flex items-center gap-1.5 text-[9px] text-zinc-500 uppercase font-bold">
+                                                                    <Clock className="w-2.5 h-2.5" />
+                                                                    Período
+                                                                </div>
+                                                                <div className="text-[10px] text-zinc-300 space-y-0.5">
+                                                                    <p>Início: {agent.startTime ? format(agent.startTime, "HH:mm:ss") : "--:--:--"}</p>
+                                                                    <p>Fim: {agent.endTime ? format(agent.endTime, "HH:mm:ss") : "--:--:--"}</p>
+                                                                    <p className="text-primary font-bold mt-1">Total: {formatDuration(agent.hours)}</p>
+                                                                </div>
                                                             </div>
-                                                            <div className="flex items-center gap-1 text-[10px] text-zinc-400">
-                                                                <Car className="w-2.5 h-2.5 opacity-50" />
-                                                                {agent.km.toFixed(0)} KM
+
+                                                            <div className="space-y-1.5 border-l border-zinc-800/30 pl-4">
+                                                                <div className="flex items-center gap-1.5 text-[9px] text-zinc-500 uppercase font-bold">
+                                                                    <Car className="w-2.5 h-2.5" />
+                                                                    Quilometragem
+                                                                </div>
+                                                                <div className="text-[10px] text-zinc-300 space-y-0.5">
+                                                                    <p>Início: {agent.startKm.toFixed(0)} KM</p>
+                                                                    <p>Fim: {agent.endKm.toFixed(0)} KM</p>
+                                                                    <p className="text-primary font-bold mt-1">Total: {agent.km.toFixed(0)} KM</p>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>

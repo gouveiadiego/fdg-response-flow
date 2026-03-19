@@ -46,6 +46,10 @@ interface InvoicePDFData {
     role: string;
     hours: number;
     km: number;
+    startTime: Date | null;
+    endTime: Date | null;
+    startKm: number;
+    endKm: number;
   }[];
 }
 
@@ -205,8 +209,11 @@ export async function generateClientInvoicePDF(data: InvoicePDFData): Promise<vo
 
   // --- DETALHAMENTO POR AGENTE ---
   if (data.agentBreakdown && data.agentBreakdown.length > 0) {
+    const rowHeight = 12;
+    const totalBreakdownHeight = 10 + (data.agentBreakdown.length * rowHeight);
+    
     setColor(pdf, THEME.white);
-    drawRoundedRect(pdf, margin, y, contentWidth, 8 + (data.agentBreakdown.length * 7), 2, 'F');
+    drawRoundedRect(pdf, margin, y, contentWidth, totalBreakdownHeight, 2, 'F');
     
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(8);
@@ -214,21 +221,43 @@ export async function generateClientInvoicePDF(data: InvoicePDFData): Promise<vo
     pdf.text('DETALHAMENTO POR AGENTE', margin + 6, y + 7);
     
     let ay = y + 14;
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(7.5);
-    setColor(pdf, THEME.text);
-
+    pdf.setFontSize(7);
+    
     data.agentBreakdown.forEach((agent) => {
+      // Header: Name and Role
+      pdf.setFont('helvetica', 'bold');
+      setColor(pdf, THEME.primary);
+      pdf.text(`${agent.name.toUpperCase()} (${agent.role})`, margin + 8, ay);
+      
+      // Details: Times and KM
+      ay += 4;
+      pdf.setFont('helvetica', 'normal');
+      setColor(pdf, THEME.secondaryText);
+      
+      const timeStr = `Início: ${agent.startTime ? format(agent.startTime, 'HH:mm:ss') : '--:--'} | Fim: ${agent.endTime ? format(agent.endTime, 'HH:mm:ss') : '--:--'}`;
+      const kmStr = `KM inicial: ${agent.startKm.toFixed(0)} | KM final: ${agent.endKm.toFixed(0)}`;
+      
+      pdf.text(timeStr, margin + 8, ay);
+      
+      // Totals on the right
       const hours = Math.floor(agent.hours);
       const mins = Math.floor((agent.hours - hours) * 60);
-      const timeStr = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:00`;
+      const secs = Math.floor(((agent.hours - hours) * 60 - mins) * 60);
+      const durationStr = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
       
-      pdf.text(`${agent.name} (${agent.role})`, margin + 8, ay);
-      pdf.text(`${timeStr} • ${agent.km.toFixed(0)} km`, margin + contentWidth - 8, ay, { align: 'right' });
-      ay += 6;
+      pdf.setFont('helvetica', 'bold');
+      setColor(pdf, THEME.primary);
+      pdf.text(`${durationStr} • ${agent.km.toFixed(0)} km`, margin + contentWidth - 8, ay, { align: 'right' });
+      
+      ay += 4;
+      pdf.setFont('helvetica', 'normal');
+      setColor(pdf, THEME.secondaryText);
+      pdf.text(kmStr, margin + 8, ay);
+      
+      ay += 6; // Space between agents
     });
 
-    y += 12 + (data.agentBreakdown.length * 6);
+    y += totalBreakdownHeight + 5;
   }
 
   // --- MEMÓRIA DE CÁLCULO (TABLE STYLE) ---
