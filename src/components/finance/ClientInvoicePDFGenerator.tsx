@@ -254,6 +254,16 @@ export async function generateClientInvoicePDF(data: InvoicePDFData): Promise<vo
       setColor(pdf, THEME.secondaryText);
       pdf.text(kmStr, margin + 8, ay);
       
+      const agentExtraKm = data.totalKm > 0 ? (agent.km / data.totalKm) * data.extraKm : 0;
+      const agentExtraHours = data.durationHours > 0 ? (agent.hours / data.durationHours) * data.extraHours : 0;
+      const agentCost = (agentExtraKm * data.extraKmRate) + (agentExtraHours * data.extraHourRate);
+
+      if (agentCost > 0) {
+        pdf.setFont('helvetica', 'bold');
+        setColor(pdf, {r: 249, g: 115, b: 22});
+        pdf.text(`Custo Extra: ${formatCurrency(agentCost)}`, margin + contentWidth - 8, ay, { align: 'right' });
+      }
+      
       ay += 6; // Space between agents
     });
 

@@ -453,6 +453,20 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                                                                 {agent.name}
                                                                 <span className="text-[9px] text-zinc-500 font-normal">({agent.role})</span>
                                                             </span>
+                                                            {(() => {
+                                                                const agentExtraKm = ticketStats.totalKm > 0 ? (agent.km / ticketStats.totalKm) * extraKm : 0;
+                                                                const agentExtraHours = ticketStats.durationHours > 0 ? (agent.hours / ticketStats.durationHours) * extraHours : 0;
+                                                                const agentTotalCost = (agentExtraKm * extraKmRate) + (agentExtraHours * extraHourRate);
+                                                                
+                                                                if (agentTotalCost > 0) {
+                                                                    return (
+                                                                        <span className="text-[10px] font-bold text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded-full border border-orange-500/20">
+                                                                            Custo: {agentTotalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                                        </span>
+                                                                    );
+                                                                }
+                                                                return null;
+                                                            })()}
                                                         </div>
                                                         
                                                         <div className="grid grid-cols-2 gap-4">
