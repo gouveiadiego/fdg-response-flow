@@ -509,7 +509,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
           client_id: data.client_id || null,
           vehicle_id: data.vehicle_id || null,
           plan_id: data.plan_id || null,
-          service_type: data.service_type,
+          service_type: data.service_type as any,
           main_agent_id: data.main_agent_id,
           main_agent_arrival: toSupabaseTimestamp(data.main_agent_arrival),
           main_agent_departure: toSupabaseTimestamp(data.main_agent_departure),

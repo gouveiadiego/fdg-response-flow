@@ -886,6 +886,7 @@ export type Database = {
         | "averiguacao"
         | "preservacao"
         | "acompanhamento_logistico"
+        | "sindicancia"
       ticket_status: "aberto" | "em_andamento" | "finalizado" | "cancelado"
     }
     CompositeTypes: {
@@ -1030,6 +1031,7 @@ export const Constants = {
         "averiguacao",
         "preservacao",
         "acompanhamento_logistico",
+        "sindicancia",
       ],
       ticket_status: ["aberto", "em_andamento", "finalizado", "cancelado"],
     },
