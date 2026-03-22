@@ -292,6 +292,63 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
+    const renderProgressBar = (consumed: number, included: number, isKm: boolean) => {
+        const extra = Math.max(0, consumed - included);
+        const maxVal = Math.max(consumed, included) || 1;
+        
+        if (extra <= 0) {
+            const pctConsumed = Math.min((consumed / maxVal) * 100, 100);
+            return (
+                <div className="space-y-1.5 mt-2">
+                    <div className="flex justify-between text-[10px] uppercase font-bold px-1">
+                        <span className="text-zinc-500">Consumo Franquia</span>
+                        <span className="text-zinc-400">{pctConsumed.toFixed(0)}%</span>
+                    </div>
+                    <div className="h-2 w-full bg-zinc-900 rounded-full overflow-hidden flex shadow-inner">
+                        <div 
+                            className="h-full bg-emerald-500/80 transition-all duration-500" 
+                            style={{ width: `${pctConsumed}%` }}
+                        />
+                    </div>
+                    <div className="flex justify-between text-[11px] px-1 pt-0.5">
+                        <span className="text-zinc-500">Franquia: {included}{isKm ? 'KM' : 'h'}</span>
+                        <span className="text-zinc-500">Restante: {(included - consumed).toFixed(isKm ? 0 : 1)}{isKm ? 'KM' : 'h'}</span>
+                    </div>
+                </div>
+            );
+        }
+        
+        const pctFranchise = (included / maxVal) * 100;
+        const pctExtra = (extra / maxVal) * 100;
+        
+        return (
+            <div className="space-y-1.5 mt-2">
+                <div className="flex justify-between text-[10px] uppercase font-bold px-1">
+                    <span className="text-zinc-500">Franquia Excedida</span>
+                    <span className="text-orange-400">Excedente ({extra.toFixed(isKm ? 0 : 1)}{isKm ? ' KM' : 'h'})</span>
+                </div>
+                <div className="h-2 w-full bg-zinc-900 rounded-full overflow-hidden flex relative shadow-inner">
+                    <div 
+                        className="h-full bg-zinc-600 transition-all duration-500" 
+                        style={{ width: `${pctFranchise}%` }}
+                    />
+                    <div 
+                        className="h-full bg-orange-500 transition-all duration-500" 
+                        style={{ width: `${pctExtra}%` }}
+                    />
+                    <div 
+                        className="absolute top-0 bottom-0 w-0.5 bg-zinc-950" 
+                        style={{ left: `${pctFranchise}%` }}
+                    />
+                </div>
+                <div className="flex justify-between text-[11px] px-1 pt-0.5">
+                    <span className="text-zinc-500">Franquia: {included}{isKm ? 'KM' : 'h'}</span>
+                    <span className="text-orange-400 font-bold">Total: {consumed.toFixed(isKm ? 0 : 1)}{isKm ? 'KM' : 'h'}</span>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto p-0 gap-0 border-none bg-zinc-950 text-zinc-100">
@@ -368,12 +425,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                                                     <p className="text-[10px] text-zinc-500 font-bold uppercase relative z-10">Total Horas</p>
                                                     <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                 </div>
-                                                <div className="flex justify-between text-[11px] px-1">
-                                                    <span className="text-zinc-500">Franquia: {includedHours}h</span>
-                                                    <span className={extraHours > 0 ? "text-orange-400 font-bold" : "text-zinc-600"}>
-                                                        Excedente: {extraHours.toFixed(1)}h
-                                                    </span>
-                                                </div>
+                                                {renderProgressBar(ticketStats.durationHours, includedHours, false)}
                                             </div>
 
                                             <div className="space-y-3">
@@ -383,12 +435,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                                                     <p className="text-[10px] text-zinc-500 font-bold uppercase relative z-10">Percorrido</p>
                                                     <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                 </div>
-                                                <div className="flex justify-between text-[11px] px-1">
-                                                    <span className="text-zinc-500">Franquia: {includedKm}KM</span>
-                                                    <span className={extraKm > 0 ? "text-orange-400 font-bold" : "text-zinc-600"}>
-                                                        Excedente: {extraKm.toFixed(0)}KM
-                                                    </span>
-                                                </div>
+                                                {renderProgressBar(ticketStats.totalKm, includedKm, true)}
                                             </div>
                                         </div>
 
