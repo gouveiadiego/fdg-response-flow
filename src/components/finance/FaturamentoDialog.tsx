@@ -116,13 +116,16 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
 
             if (error) throw error;
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const ticketPlanName = (ticket as any).plans?.name ?? null;
             setPlanName(ticketPlanName);
             const isAlarme = ticketPlanName?.toLowerCase().includes('alarme') ?? false;
             setIsAlarmPlan(isAlarme);
 
             setContextInfo({
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 clientName: (ticket as any).clients?.name || 'Não informado',
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 plate: (ticket as any).vehicles?.tractor_plate || 'Sem placa',
                 code: ticket.code || '-'
             });
@@ -150,6 +153,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
 
             totalDiffMs += m_diff > 0 ? m_diff : 0;
             breakdown.push({
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 name: (ticket as any).main_agent?.name || 'Agente Principal',
                 role: 'Principal',
                 hours: m_diff > 0 ? m_diff / (1000 * 60 * 60) : 0,
@@ -161,6 +165,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             });
 
             // Support Agents
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             ticket.ticket_support_agents?.forEach((sa: any, idx: number) => {
                 const s_arrival = sa.arrival;
                 const s_departure = sa.departure;

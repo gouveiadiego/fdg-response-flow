@@ -111,7 +111,7 @@ export async function generateClientInvoicePDF(data: InvoicePDFData): Promise<vo
   } catch (e) {
     try {
       logoImg = await loadImage('/logo-fdg.png');
-    } catch (fe) {}
+    } catch (fe) { /* ignore */ }
   }
 
   // --- HEADER ---
@@ -175,7 +175,7 @@ export async function generateClientInvoicePDF(data: InvoicePDFData): Promise<vo
   pdf.line(margin + 6, y + 9, margin + 45, y + 9);
 
   const colW = (contentWidth - 12) / 3;
-  let cx = margin + 6;
+  const cx = margin + 6;
   const cy = y + 16;
 
   // Overview info
