@@ -14,6 +14,114 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_registrations: {
+        Row: {
+          address: string | null
+          bank_account: string | null
+          bank_account_type: string | null
+          bank_agency: string | null
+          bank_name: string | null
+          cep: string | null
+          city: string | null
+          created_at: string
+          document: string | null
+          email: string | null
+          has_alarm_skill: boolean | null
+          has_auditing_skill: boolean | null
+          has_investigation_skill: boolean | null
+          has_logistics_skill: boolean | null
+          has_preservation_skill: boolean | null
+          id: string
+          is_armed: boolean | null
+          latitude: number | null
+          longitude: number | null
+          name: string
+          neighborhood: string | null
+          notes: string | null
+          phone: string
+          pix_key: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          state: string | null
+          status: string
+          street: string | null
+          street_number: string | null
+          updated_at: string
+          vehicle_plate: string | null
+          vehicle_type: string | null
+        }
+        Insert: {
+          address?: string | null
+          bank_account?: string | null
+          bank_account_type?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
+          cep?: string | null
+          city?: string | null
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          has_alarm_skill?: boolean | null
+          has_auditing_skill?: boolean | null
+          has_investigation_skill?: boolean | null
+          has_logistics_skill?: boolean | null
+          has_preservation_skill?: boolean | null
+          id?: string
+          is_armed?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          neighborhood?: string | null
+          notes?: string | null
+          phone: string
+          pix_key?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          state?: string | null
+          status?: string
+          street?: string | null
+          street_number?: string | null
+          updated_at?: string
+          vehicle_plate?: string | null
+          vehicle_type?: string | null
+        }
+        Update: {
+          address?: string | null
+          bank_account?: string | null
+          bank_account_type?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
+          cep?: string | null
+          city?: string | null
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          has_alarm_skill?: boolean | null
+          has_auditing_skill?: boolean | null
+          has_investigation_skill?: boolean | null
+          has_logistics_skill?: boolean | null
+          has_preservation_skill?: boolean | null
+          id?: string
+          is_armed?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          neighborhood?: string | null
+          notes?: string | null
+          phone?: string
+          pix_key?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          state?: string | null
+          status?: string
+          street?: string | null
+          street_number?: string | null
+          updated_at?: string
+          vehicle_plate?: string | null
+          vehicle_type?: string | null
+        }
+        Relationships: []
+      }
       agents: {
         Row: {
           address: string | null
@@ -22,164 +130,100 @@ export type Database = {
           bank_agency: string | null
           bank_name: string | null
           cep: string | null
+          city: string | null
           created_at: string
-          document: string
+          document: string | null
           email: string | null
+          has_alarm_skill: boolean | null
+          has_auditing_skill: boolean | null
+          has_investigation_skill: boolean | null
+          has_logistics_skill: boolean | null
+          has_preservation_skill: boolean | null
           id: string
           is_armed: boolean | null
-          name: string
-          notes: string | null
-          phone: string
-          pix_key: string | null
-          status: Database["public"]["Enums"]["agent_status"]
-          updated_at: string
-          vehicle_plate: string | null
-          performance_level: Database["public"]["Enums"]["agent_performance_level"]
-          vehicle_type: Database["public"]["Enums"]["agent_vehicle_type"] | null
-          has_alarm_skill: boolean
-          has_investigation_skill: boolean
-          has_preservation_skill: boolean
-          has_logistics_skill: boolean
-          has_auditing_skill: boolean
           latitude: number | null
           longitude: number | null
-        }
-        Insert: {
-          address?: string | null
-          bank_account?: string | null
-          bank_account_type?: string | null
-          bank_agency?: string | null
-          bank_name?: string | null
-          cep?: string | null
-          created_at?: string
-          document: string
-          email?: string | null
-          id?: string
-          is_armed?: boolean | null
           name: string
-          notes?: string | null
+          neighborhood: string | null
+          notes: string | null
+          performance_level: string | null
           phone: string
-          pix_key?: string | null
-          status?: Database["public"]["Enums"]["agent_status"]
-          updated_at?: string
-          vehicle_plate?: string | null
-          performance_level?: Database["public"]["Enums"]["agent_performance_level"]
-          vehicle_type?: Database["public"]["Enums"]["agent_vehicle_type"] | null
-        }
-        Update: {
-          address?: string | null
-          bank_account?: string | null
-          bank_account_type?: string | null
-          bank_agency?: string | null
-          bank_name?: string | null
-          cep?: string | null
-          created_at?: string
-          document?: string
-          email?: string | null
-          id?: string
-          is_armed?: boolean | null
-          name?: string
-          notes?: string | null
-          phone?: string
-          pix_key?: string | null
-          status?: Database["public"]["Enums"]["agent_status"]
-          updated_at?: string
-          vehicle_plate?: string | null
-          performance_level?: Database["public"]["Enums"]["agent_performance_level"]
-          vehicle_type?: Database["public"]["Enums"]["agent_vehicle_type"] | null
-        }
-        Relationships: []
-      }
-      agent_registrations: {
-        Row: {
-          id: string
-          name: string
-          document: string
-          phone: string
-          email: string | null
-          address: string | null
-          cep: string | null
-          is_armed: boolean
+          pix_key: string | null
+          state: string | null
+          status: Database["public"]["Enums"]["agent_status"]
+          street: string | null
+          street_number: string | null
+          updated_at: string
           vehicle_plate: string | null
           vehicle_type: string | null
-          has_alarm_skill: boolean
-          has_investigation_skill: boolean
-          has_preservation_skill: boolean
-          has_logistics_skill: boolean
-          has_auditing_skill: boolean
-          pix_key: string | null
-          bank_name: string | null
-          bank_agency: string | null
-          bank_account: string | null
-          bank_account_type: string | null
-          notes: string | null
-          latitude: number | null
-          longitude: number | null
-          status: string
-          reviewed_at: string | null
-          reviewed_by: string | null
-          created_at: string
-          updated_at: string
         }
         Insert: {
-          id?: string
-          name: string
-          document: string
-          phone: string
-          email?: string | null
           address?: string | null
-          cep?: string | null
-          is_armed?: boolean
-          vehicle_plate?: string | null
-          vehicle_type?: string | null
-          has_alarm_skill?: boolean
-          has_investigation_skill?: boolean
-          has_preservation_skill?: boolean
-          has_logistics_skill?: boolean
-          has_auditing_skill?: boolean
-          pix_key?: string | null
-          bank_name?: string | null
-          bank_agency?: string | null
           bank_account?: string | null
           bank_account_type?: string | null
-          notes?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
+          cep?: string | null
+          city?: string | null
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          has_alarm_skill?: boolean | null
+          has_auditing_skill?: boolean | null
+          has_investigation_skill?: boolean | null
+          has_logistics_skill?: boolean | null
+          has_preservation_skill?: boolean | null
+          id?: string
+          is_armed?: boolean | null
           latitude?: number | null
           longitude?: number | null
-          status?: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          created_at?: string
+          name: string
+          neighborhood?: string | null
+          notes?: string | null
+          performance_level?: string | null
+          phone: string
+          pix_key?: string | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["agent_status"]
+          street?: string | null
+          street_number?: string | null
           updated_at?: string
+          vehicle_plate?: string | null
+          vehicle_type?: string | null
         }
         Update: {
-          id?: string
-          name?: string
-          document?: string
-          phone?: string
-          email?: string | null
           address?: string | null
-          cep?: string | null
-          is_armed?: boolean
-          vehicle_plate?: string | null
-          vehicle_type?: string | null
-          has_alarm_skill?: boolean
-          has_investigation_skill?: boolean
-          has_preservation_skill?: boolean
-          has_logistics_skill?: boolean
-          has_auditing_skill?: boolean
-          pix_key?: string | null
-          bank_name?: string | null
-          bank_agency?: string | null
           bank_account?: string | null
           bank_account_type?: string | null
-          notes?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
+          cep?: string | null
+          city?: string | null
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          has_alarm_skill?: boolean | null
+          has_auditing_skill?: boolean | null
+          has_investigation_skill?: boolean | null
+          has_logistics_skill?: boolean | null
+          has_preservation_skill?: boolean | null
+          id?: string
+          is_armed?: boolean | null
           latitude?: number | null
           longitude?: number | null
-          status?: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          created_at?: string
+          name?: string
+          neighborhood?: string | null
+          notes?: string | null
+          performance_level?: string | null
+          phone?: string
+          pix_key?: string | null
+          state?: string | null
+          status?: Database["public"]["Enums"]["agent_status"]
+          street?: string | null
+          street_number?: string | null
           updated_at?: string
+          vehicle_plate?: string | null
+          vehicle_type?: string | null
         }
         Relationships: []
       }
@@ -197,8 +241,11 @@ export type Database = {
           document: string
           id: string
           name: string
+          neighborhood: string | null
           notes: string | null
           state: string
+          street: string | null
+          street_number: string | null
           updated_at: string
         }
         Insert: {
@@ -214,8 +261,11 @@ export type Database = {
           document: string
           id?: string
           name: string
+          neighborhood?: string | null
           notes?: string | null
           state: string
+          street?: string | null
+          street_number?: string | null
           updated_at?: string
         }
         Update: {
@@ -231,9 +281,36 @@ export type Database = {
           document?: string
           id?: string
           name?: string
+          neighborhood?: string | null
           notes?: string | null
           state?: string
+          street?: string | null
+          street_number?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      operators: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -261,30 +338,6 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
-        }
-        Relationships: []
-      }
-      system_settings: {
-        Row: {
-          created_at: string | null
-          id: string
-          key: string
-          updated_at: string | null
-          value: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          key: string
-          updated_at?: string | null
-          value: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          key?: string
-          updated_at?: string | null
-          value?: string
         }
         Relationships: []
       }
@@ -352,84 +405,86 @@ export type Database = {
       }
       ticket_support_agents: {
         Row: {
-          id: string
-          ticket_id: string
           agent_id: string
           arrival: string | null
-          departure: string | null
-          km_start: number | null
-          km_end: number | null
-          toll_cost: number | null
-          food_cost: number | null
-          other_costs: number | null
-          payment_status: string | null
-          paid_at: string | null
-          created_at: string
-          updated_at: string
           compensation_base_value: number | null
-          compensation_included_hours: number | null
-          compensation_included_km: number | null
           compensation_extra_hour_rate: number | null
           compensation_extra_km_rate: number | null
+          compensation_included_hours: number | null
+          compensation_included_km: number | null
           compensation_total: number | null
+          created_at: string | null
+          departure: string | null
+          food_cost: number | null
+          id: string
+          km_end: number | null
+          km_start: number | null
+          other_costs: number | null
+          paid_at: string | null
+          payment_status: string | null
+          ticket_id: string
+          toll_cost: number | null
+          updated_at: string | null
         }
         Insert: {
-          id?: string
-          ticket_id: string
           agent_id: string
           arrival?: string | null
-          departure?: string | null
-          km_start?: number | null
-          km_end?: number | null
-          toll_cost?: number | null
-          food_cost?: number | null
-          other_costs?: number | null
-          payment_status?: string | null
-          paid_at?: string | null
-          created_at?: string
-          updated_at?: string
           compensation_base_value?: number | null
-          compensation_included_hours?: number | null
-          compensation_included_km?: number | null
           compensation_extra_hour_rate?: number | null
           compensation_extra_km_rate?: number | null
+          compensation_included_hours?: number | null
+          compensation_included_km?: number | null
           compensation_total?: number | null
+          created_at?: string | null
+          departure?: string | null
+          food_cost?: number | null
+          id?: string
+          km_end?: number | null
+          km_start?: number | null
+          other_costs?: number | null
+          paid_at?: string | null
+          payment_status?: string | null
+          ticket_id: string
+          toll_cost?: number | null
+          updated_at?: string | null
         }
         Update: {
-          id?: string
-          ticket_id?: string
           agent_id?: string
           arrival?: string | null
-          departure?: string | null
-          km_start?: number | null
-          km_end?: number | null
-          toll_cost?: number | null
-          food_cost?: number | null
-          other_costs?: number | null
-          payment_status?: string | null
-          paid_at?: string | null
-          created_at?: string
-          updated_at?: string
           compensation_base_value?: number | null
-          compensation_included_hours?: number | null
-          compensation_included_km?: number | null
           compensation_extra_hour_rate?: number | null
           compensation_extra_km_rate?: number | null
+          compensation_included_hours?: number | null
+          compensation_included_km?: number | null
           compensation_total?: number | null
+          created_at?: string | null
+          departure?: string | null
+          food_cost?: number | null
+          id?: string
+          km_end?: number | null
+          km_start?: number | null
+          other_costs?: number | null
+          paid_at?: string | null
+          payment_status?: string | null
+          ticket_id?: string
+          toll_cost?: number | null
+          updated_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "ticket_support_agents_agent_id_fkey"
             columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "ticket_support_agents_ticket_id_fkey"
             columns: ["ticket_id"]
+            isOneToOne: false
             referencedRelation: "tickets"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       tickets: {
@@ -449,36 +504,57 @@ export type Database = {
           km_end: number | null
           km_start: number | null
           main_agent_arrival: string | null
+          main_agent_compensation_base_value: number | null
+          main_agent_compensation_extra_hour_rate: number | null
+          main_agent_compensation_extra_km_rate: number | null
+          main_agent_compensation_included_hours: number | null
+          main_agent_compensation_included_km: number | null
+          main_agent_compensation_total: number | null
           main_agent_departure: string | null
           main_agent_id: string
+          main_agent_paid_at: string | null
+          main_agent_payment_status: string
+          operator_id: string | null
           other_costs: number | null
           plan_id: string
+          revenue_base_value: number | null
+          revenue_discount_addition: number | null
+          revenue_extra_hour_rate: number | null
+          revenue_extra_km_rate: number | null
+          revenue_included_hours: number | null
+          revenue_included_km: number | null
+          revenue_paid_at: string | null
+          revenue_status: string | null
+          revenue_total: number | null
           service_type: Database["public"]["Enums"]["service_type"]
           start_datetime: string
           state: string
           status: Database["public"]["Enums"]["ticket_status"]
           summary: string | null
+          support_agent_1_arrival: string | null
+          support_agent_1_departure: string | null
+          support_agent_1_food_cost: number | null
+          support_agent_1_id: string | null
+          support_agent_1_km_end: number | null
+          support_agent_1_km_start: number | null
+          support_agent_1_other_costs: number | null
+          support_agent_1_paid_at: string | null
+          support_agent_1_payment_status: string
+          support_agent_1_toll_cost: number | null
+          support_agent_2_arrival: string | null
+          support_agent_2_departure: string | null
+          support_agent_2_food_cost: number | null
+          support_agent_2_id: string | null
+          support_agent_2_km_end: number | null
+          support_agent_2_km_start: number | null
+          support_agent_2_other_costs: number | null
+          support_agent_2_paid_at: string | null
+          support_agent_2_payment_status: string
+          support_agent_2_toll_cost: number | null
           toll_cost: number | null
           total_cost: number | null
           updated_at: string
-          main_agent_payment_status: string
-          main_agent_paid_at: string | null
           vehicle_id: string
-          revenue_base_value: number | null
-          revenue_included_hours: number | null
-          revenue_included_km: number | null
-          revenue_extra_hour_rate: number | null
-          revenue_extra_km_rate: number | null
-          revenue_discount_addition: number | null
-          revenue_total: number | null
-          revenue_status: string | null
-          revenue_paid_at: string | null
-          main_agent_compensation_base_value: number | null
-          main_agent_compensation_included_hours: number | null
-          main_agent_compensation_included_km: number | null
-          main_agent_compensation_extra_hour_rate: number | null
-          main_agent_compensation_extra_km_rate: number | null
-          main_agent_compensation_total: number | null
         }
         Insert: {
           city: string
@@ -496,36 +572,57 @@ export type Database = {
           km_end?: number | null
           km_start?: number | null
           main_agent_arrival?: string | null
+          main_agent_compensation_base_value?: number | null
+          main_agent_compensation_extra_hour_rate?: number | null
+          main_agent_compensation_extra_km_rate?: number | null
+          main_agent_compensation_included_hours?: number | null
+          main_agent_compensation_included_km?: number | null
+          main_agent_compensation_total?: number | null
           main_agent_departure?: string | null
           main_agent_id: string
+          main_agent_paid_at?: string | null
+          main_agent_payment_status?: string
+          operator_id?: string | null
           other_costs?: number | null
           plan_id: string
+          revenue_base_value?: number | null
+          revenue_discount_addition?: number | null
+          revenue_extra_hour_rate?: number | null
+          revenue_extra_km_rate?: number | null
+          revenue_included_hours?: number | null
+          revenue_included_km?: number | null
+          revenue_paid_at?: string | null
+          revenue_status?: string | null
+          revenue_total?: number | null
           service_type: Database["public"]["Enums"]["service_type"]
           start_datetime: string
           state: string
           status?: Database["public"]["Enums"]["ticket_status"]
           summary?: string | null
+          support_agent_1_arrival?: string | null
+          support_agent_1_departure?: string | null
+          support_agent_1_food_cost?: number | null
+          support_agent_1_id?: string | null
+          support_agent_1_km_end?: number | null
+          support_agent_1_km_start?: number | null
+          support_agent_1_other_costs?: number | null
+          support_agent_1_paid_at?: string | null
+          support_agent_1_payment_status?: string
+          support_agent_1_toll_cost?: number | null
+          support_agent_2_arrival?: string | null
+          support_agent_2_departure?: string | null
+          support_agent_2_food_cost?: number | null
+          support_agent_2_id?: string | null
+          support_agent_2_km_end?: number | null
+          support_agent_2_km_start?: number | null
+          support_agent_2_other_costs?: number | null
+          support_agent_2_paid_at?: string | null
+          support_agent_2_payment_status?: string
+          support_agent_2_toll_cost?: number | null
           toll_cost?: number | null
           total_cost?: number | null
           updated_at?: string
-          main_agent_payment_status?: string
-          main_agent_paid_at?: string | null
           vehicle_id: string
-          revenue_base_value?: number | null
-          revenue_included_hours?: number | null
-          revenue_included_km?: number | null
-          revenue_extra_hour_rate?: number | null
-          revenue_extra_km_rate?: number | null
-          revenue_discount_addition?: number | null
-          revenue_total?: number | null
-          revenue_status?: string | null
-          revenue_paid_at?: string | null
-          main_agent_compensation_base_value?: number | null
-          main_agent_compensation_included_hours?: number | null
-          main_agent_compensation_included_km?: number | null
-          main_agent_compensation_extra_hour_rate?: number | null
-          main_agent_compensation_extra_km_rate?: number | null
-          main_agent_compensation_total?: number | null
         }
         Update: {
           city?: string
@@ -543,36 +640,57 @@ export type Database = {
           km_end?: number | null
           km_start?: number | null
           main_agent_arrival?: string | null
+          main_agent_compensation_base_value?: number | null
+          main_agent_compensation_extra_hour_rate?: number | null
+          main_agent_compensation_extra_km_rate?: number | null
+          main_agent_compensation_included_hours?: number | null
+          main_agent_compensation_included_km?: number | null
+          main_agent_compensation_total?: number | null
           main_agent_departure?: string | null
           main_agent_id?: string
+          main_agent_paid_at?: string | null
+          main_agent_payment_status?: string
+          operator_id?: string | null
           other_costs?: number | null
           plan_id?: string
+          revenue_base_value?: number | null
+          revenue_discount_addition?: number | null
+          revenue_extra_hour_rate?: number | null
+          revenue_extra_km_rate?: number | null
+          revenue_included_hours?: number | null
+          revenue_included_km?: number | null
+          revenue_paid_at?: string | null
+          revenue_status?: string | null
+          revenue_total?: number | null
           service_type?: Database["public"]["Enums"]["service_type"]
           start_datetime?: string
           state?: string
           status?: Database["public"]["Enums"]["ticket_status"]
           summary?: string | null
+          support_agent_1_arrival?: string | null
+          support_agent_1_departure?: string | null
+          support_agent_1_food_cost?: number | null
+          support_agent_1_id?: string | null
+          support_agent_1_km_end?: number | null
+          support_agent_1_km_start?: number | null
+          support_agent_1_other_costs?: number | null
+          support_agent_1_paid_at?: string | null
+          support_agent_1_payment_status?: string
+          support_agent_1_toll_cost?: number | null
+          support_agent_2_arrival?: string | null
+          support_agent_2_departure?: string | null
+          support_agent_2_food_cost?: number | null
+          support_agent_2_id?: string | null
+          support_agent_2_km_end?: number | null
+          support_agent_2_km_start?: number | null
+          support_agent_2_other_costs?: number | null
+          support_agent_2_paid_at?: string | null
+          support_agent_2_payment_status?: string
+          support_agent_2_toll_cost?: number | null
           toll_cost?: number | null
           total_cost?: number | null
           updated_at?: string
-          main_agent_payment_status?: string
-          main_agent_paid_at?: string | null
           vehicle_id?: string
-          revenue_base_value?: number | null
-          revenue_included_hours?: number | null
-          revenue_included_km?: number | null
-          revenue_extra_hour_rate?: number | null
-          revenue_extra_km_rate?: number | null
-          revenue_discount_addition?: number | null
-          revenue_total?: number | null
-          revenue_status?: string | null
-          revenue_paid_at?: string | null
-          main_agent_compensation_base_value?: number | null
-          main_agent_compensation_included_hours?: number | null
-          main_agent_compensation_included_km?: number | null
-          main_agent_compensation_extra_hour_rate?: number | null
-          main_agent_compensation_extra_km_rate?: number | null
-          main_agent_compensation_total?: number | null
         }
         Relationships: [
           {
@@ -590,10 +708,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tickets_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "operators"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tickets_plan_id_fkey"
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_support_agent_1_id_fkey"
+            columns: ["support_agent_1_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_support_agent_2_id_fkey"
+            columns: ["support_agent_2_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
             referencedColumns: ["id"]
           },
           {
@@ -602,7 +741,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vehicles"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       user_roles: {
@@ -626,33 +765,6 @@ export type Database = {
         }
         Relationships: []
       }
-      operators: {
-        Row: {
-          id: string
-          name: string
-          email: string | null
-          active: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          email?: string | null
-          active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          email?: string | null
-          active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       vehicles: {
         Row: {
           client_id: string
@@ -666,16 +778,16 @@ export type Database = {
           tractor_model: string | null
           tractor_plate: string | null
           trailer1_body_type:
-          | Database["public"]["Enums"]["body_type_enum"]
-          | null
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
           trailer1_plate: string | null
           trailer2_body_type:
-          | Database["public"]["Enums"]["body_type_enum"]
-          | null
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
           trailer2_plate: string | null
           trailer3_body_type:
-          | Database["public"]["Enums"]["body_type_enum"]
-          | null
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
           trailer3_plate: string | null
           type: string | null
           updated_at: string
@@ -693,16 +805,16 @@ export type Database = {
           tractor_model?: string | null
           tractor_plate?: string | null
           trailer1_body_type?:
-          | Database["public"]["Enums"]["body_type_enum"]
-          | null
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
           trailer1_plate?: string | null
           trailer2_body_type?:
-          | Database["public"]["Enums"]["body_type_enum"]
-          | null
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
           trailer2_plate?: string | null
           trailer3_body_type?:
-          | Database["public"]["Enums"]["body_type_enum"]
-          | null
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
           trailer3_plate?: string | null
           type?: string | null
           updated_at?: string
@@ -720,16 +832,16 @@ export type Database = {
           tractor_model?: string | null
           tractor_plate?: string | null
           trailer1_body_type?:
-          | Database["public"]["Enums"]["body_type_enum"]
-          | null
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
           trailer1_plate?: string | null
           trailer2_body_type?:
-          | Database["public"]["Enums"]["body_type_enum"]
-          | null
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
           trailer2_plate?: string | null
           trailer3_body_type?:
-          | Database["public"]["Enums"]["body_type_enum"]
-          | null
+            | Database["public"]["Enums"]["body_type_enum"]
+            | null
           trailer3_plate?: string | null
           type?: string | null
           updated_at?: string
@@ -759,24 +871,21 @@ export type Database = {
       }
     }
     Enums: {
-      agent_performance_level: "ruim" | "bom" | "otimo"
-      agent_vehicle_type: "carro" | "moto"
       agent_status: "ativo" | "inativo"
       app_role: "admin" | "operador" | "agente" | "cliente_visualizacao"
       body_type_enum:
-      | "grade_baixa"
-      | "grade_alta"
-      | "bau"
-      | "sider"
-      | "frigorifico"
-      | "container"
-      | "prancha"
+        | "grade_baixa"
+        | "grade_alta"
+        | "bau"
+        | "sider"
+        | "frigorifico"
+        | "container"
+        | "prancha"
       service_type:
-      | "alarme"
-      | "averiguacao"
-      | "preservacao"
-      | "acompanhamento_logistico"
-      | "sindicancia"
+        | "alarme"
+        | "averiguacao"
+        | "preservacao"
+        | "acompanhamento_logistico"
       ticket_status: "aberto" | "em_andamento" | "finalizado" | "cancelado"
     }
     CompositeTypes: {
@@ -791,116 +900,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-  : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-  ? R
-  : never
+    ? R
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-  ? R
-  : never
-  : never
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
+      Insert: infer I
+    }
+    ? I
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
-  ? U
-  : never
+      Update: infer U
+    }
+    ? U
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Update: infer U
-  }
-  ? U
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {
