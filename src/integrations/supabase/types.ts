@@ -862,6 +862,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_ticket_tracking_info: { Args: { p_ticket_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
