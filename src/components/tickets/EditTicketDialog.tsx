@@ -119,7 +119,7 @@ const ticketSchema = z.object({
   food_cost: optionalNumber,
   other_costs: optionalNumber,
   summary: z.string().max(500).optional(),
-  detailed_report: z.string().max(5000).optional(),
+  detailed_report: z.string().max(10000).optional(),
   operator_id: z.string().optional(),
   revenue_base_value: optionalNumber,
   revenue_included_hours: optionalNumber,
@@ -1668,9 +1668,9 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                             <FormLabel>Descrição do Evento</FormLabel>
                             <FormControl>
                               <Textarea
-                                placeholder="Relatório detalhado do atendimento..."
-                                className="resize-none min-h-[100px]"
-                                rows={6}
+                                placeholder="Relatório detalhado do atendimento (sem limite de tamanho)..."
+                                className="resize-none min-h-[200px]"
+                                rows={12}
                                 {...field}
                               />
                             </FormControl>

@@ -837,15 +837,18 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
 
   drawFooter(pdf, pageWidth, pageHeight);
 
-  // ==================== PAGE 2: RELATO ====================
-  pdf.addPage();
-  setColor(pdf, THEME.background); // refill background
-  pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-
-  y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg, data.code);
-
-  // Relato Card
+  // ==================== PAGE : RELATO ====================
   if (data.detailed_report) {
+    // Check if we need a new page for the report title
+    const reportTitleH = 25;
+    if (y + reportTitleH > pageHeight - 50) {
+      drawFooter(pdf, pageWidth, pageHeight);
+      pdf.addPage();
+      setColor(pdf, THEME.background);
+      pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+      y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg, data.code);
+    }
+
     const reportTitle = 'RELATÓRIO DETALHADO DA OCORRÊNCIA';
     setColor(pdf, THEME.primary);
     pdf.setFontSize(14);
@@ -858,47 +861,51 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
     setColor(pdf, THEME.border);
     pdf.rect(margin + 20, y + 14, contentWidth - 20, 0.5, 'F');
 
-    y += 25;
+    y += 22;
 
-    // Paper Effect for Text
-    const textMargin = margin;
-    const textWidth = contentWidth;
-
-    // Draw white paper background behind text
-    // We estimate height or just fill page
-    const remainingH = pageHeight - y - 30;
-    drawShadowRect(pdf, textMargin, y, textWidth, remainingH, 1);
-    setColor(pdf, THEME.white);
-    drawRoundedRect(pdf, textMargin, y, textWidth, remainingH, 1, 'F');
-
-    // Text Content
+    // Text Content Setup
     setColor(pdf, THEME.text);
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
 
-    const lines = pdf.splitTextToSize(data.detailed_report, textWidth - 10);
+    const lines = pdf.splitTextToSize(data.detailed_report, contentWidth - 10);
     let textY = y + 8;
+    
+    // Draw initial background paper
+    const drawPageBackground = (startY: number) => {
+      const remainingSpace = pageHeight - startY - 20;
+      drawShadowRect(pdf, margin, startY, contentWidth, remainingSpace, 1);
+      setColor(pdf, THEME.white);
+      drawRoundedRect(pdf, margin, startY, contentWidth, remainingSpace, 1, 'F');
+      setColor(pdf, THEME.text); // Reset text color
+    };
+
+    drawPageBackground(y);
 
     for (const line of lines) {
-      if (textY > pageHeight - 40) {
+      if (textY > pageHeight - 35) {
         // Footer & New Page
         drawFooter(pdf, pageWidth, pageHeight);
         pdf.addPage();
         setColor(pdf, THEME.background);
         pdf.rect(0, 0, pageWidth, pageHeight, 'F');
 
-        y = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg, data.code);
-        textY = y + 10;
+        const newY = await drawPremiumHeader(pdf, pageWidth, logoImg, headerBgImg, data.code);
+        
+        // Reset font settings for the next page
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        setColor(pdf, THEME.text);
 
-        // Continuation background
-        const contH = pageHeight - textY - 30;
-        drawShadowRect(pdf, textMargin, textY - 5, textWidth, contH, 1);
-        setColor(pdf, THEME.white);
-        drawRoundedRect(pdf, textMargin, textY - 5, textWidth, contH, 1, 'F');
+        textY = newY + 12;
+        drawPageBackground(newY + 4);
       }
-      pdf.text(line, textMargin + 5, textY);
+
+      pdf.text(line, margin + 5, textY);
       textY += 6;
     }
+    
+    y = textY + 5; // Update y for next section
   }
 
   drawFooter(pdf, pageWidth, pageHeight);

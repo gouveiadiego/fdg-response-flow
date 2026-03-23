@@ -97,7 +97,7 @@ const ticketSchema = z.object({
   food_cost: z.number().optional(),
   other_costs: z.number().optional(),
   summary: z.string().max(500).optional(),
-  detailed_report: z.string().optional(),
+  detailed_report: z.string().max(10000).optional(),
   operator_id: z.string().optional(),
   revenue_base_value: optionalNumber,
   revenue_included_hours: optionalNumber,
@@ -1378,8 +1378,9 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                           <FormLabel>Descrição do Evento</FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Descreva os detalhes do atendimento..."
-                              className="min-h-[100px]"
+                              placeholder="Descreva os detalhes do atendimento (sem limite de tamanho)..."
+                              className="min-h-[200px]"
+                              rows={12}
                               {...field}
                             />
                           </FormControl>

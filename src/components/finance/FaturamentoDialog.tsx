@@ -17,7 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { parseSafeNumber } from '@/lib/numberUtils';
 import { Button } from '@/components/ui/button';
-import { Calculator, Info, Car, Clock, FileText, User } from 'lucide-react';
+import { Calculator, Info, Car, Clock, FileText, User, Link as LinkIcon, Copy } from 'lucide-react';
 import { generateClientInvoicePDF } from './ClientInvoicePDFGenerator';
 
 const optionalNumber = z.number().or(z.string().transform(v => v === '' ? undefined : Number(v))).optional();
@@ -644,6 +644,18 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                                                     CANCELAR
                                                 </Button>
                                             </div>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(`${window.location.origin}/acompanhamento/${ticketId}`);
+                                                    toast.success('Link de acompanhamento copiado!');
+                                                }}
+                                                className="w-full bg-zinc-900 border-zinc-800 hover:bg-zinc-800 text-primary gap-2 font-bold mb-1"
+                                            >
+                                                <LinkIcon className="w-4 h-4" />
+                                                COPIAR LINK DE ACOMPANHAMENTO
+                                            </Button>
                                             <Button 
                                                 type="submit" 
                                                 disabled={isLoading} 

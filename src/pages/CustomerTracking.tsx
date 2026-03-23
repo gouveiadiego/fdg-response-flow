@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Truck, CheckCircle2, Clock, Info, ExternalLink, RefreshCw, XCircle } from 'lucide-react';
+import { MapPin, Truck, CheckCircle2, Clock, Info, ExternalLink, RefreshCw, XCircle, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface TrackingData {
@@ -24,6 +24,11 @@ interface TrackingData {
   vehicle_description: string | null;
   vehicle_plate: string | null;
   main_agent_first_name: string | null;
+  photos: {
+    file_url: string;
+    caption: string | null;
+    created_at: string;
+  }[] | null;
 }
 
 const serviceTypeLabels: Record<string, string> = {
@@ -310,6 +315,46 @@ const CustomerTracking = () => {
           </Card>
         )}
 
+        {/* Photo Gallery Section */}
+        {data.photos && data.photos.length > 0 && (
+          <Card className="shadow-lg border-0 rounded-xl overflow-hidden">
+            <CardHeader className="bg-slate-50/50 border-b pb-4 px-6 flex flex-row items-center gap-2">
+              <ImageIcon className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg font-bold text-slate-800">Registros Fotográficos</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {data.photos.map((photo, i) => (
+                  <div key={i} className="group relative aspect-square rounded-lg overflow-hidden border bg-slate-100 ring-offset-2 hover:ring-2 hover:ring-primary transition-all">
+                    <img 
+                      src={photo.file_url} 
+                      alt={photo.caption || `Foto ${i + 1}`} 
+                      className="w-full h-full object-cover cursor-pointer"
+                      onClick={() => window.open(photo.file_url, '_blank')}
+                    />
+                    {photo.caption && (
+                      <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white p-2 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
+                        {photo.caption}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-slate-400 mt-4 text-center italic">
+                Clique nas fotos para ampliar
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Footer info */}
+        <div className="text-center space-y-2 pt-4">
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Powered by Falco Peregrinus</p>
+          <p className="text-[9px] text-slate-400 px-8 text-balance">
+            Este link é privado e destinado apenas ao acompanhamento deste chamado específico. 
+            Não compartilhe com pessoas não autorizadas.
+          </p>
+        </div>
       </div>
     </div>
   );

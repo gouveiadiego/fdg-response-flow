@@ -25,7 +25,16 @@ BEGIN
     'client_name', c.name,
     'vehicle_description', v.description,
     'vehicle_plate', v.tractor_plate,
-    'main_agent_first_name', split_part(a.name, ' ', 1)
+    'main_agent_first_name', split_part(a.name, ' ', 1),
+    'photos', (
+      SELECT json_agg(json_build_object(
+        'file_url', p.file_url,
+        'caption', p.caption,
+        'created_at', p.created_at
+      ))
+      FROM ticket_photos p
+      WHERE p.ticket_id = t.id
+    )
   ) INTO v_result
   FROM tickets t
   LEFT JOIN clients c ON t.client_id = c.id
