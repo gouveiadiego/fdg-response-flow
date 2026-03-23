@@ -8,6 +8,7 @@ import { Plus, Search, Building2, MapPin, Trash2, FileSpreadsheet } from 'lucide
 import { toast } from 'sonner';
 import { NewClientDialog } from '@/components/clients/NewClientDialog';
 import { EditClientDialog } from '@/components/clients/EditClientDialog';
+import { Badge } from '@/components/ui/badge';
 import { DeleteAlertDialog } from '@/components/DeleteAlertDialog';
 import { exportClientsToExcel } from '@/utils/exportClientsToExcel';
 
@@ -25,6 +26,7 @@ interface Client {
   city: string;
   state: string;
   notes: string | null;
+  vehicles: { plate_main: string }[];
 }
 
 const Clients = () => {
@@ -49,7 +51,7 @@ const Clients = () => {
     try {
       const { data, error } = await supabase
         .from('clients')
-        .select('id, name, document, contact_name, contact_phone, contact_email, cep, street, street_number, neighborhood, city, state, notes')
+        .select('id, name, document, contact_name, contact_phone, contact_email, cep, street, street_number, neighborhood, city, state, notes, vehicles(plate_main)')
         .order('name');
 
       if (error) throw error;
@@ -77,11 +79,14 @@ const Clients = () => {
     if (!clientToDelete) return;
     setDeleteLoading(true);
     try {
-      const { count: vehiclesCount, error: vehiclesError } = await supabase
-        .from('vehicles').select('id', { count: 'exact', head: true }).eq('client_id', clientToDelete);
+      const { data: clientVehicles, error: vehiclesError } = await supabase
+        .from('vehicles').select('id, plate_main').eq('client_id', clientToDelete);
       if (vehiclesError) throw vehiclesError;
-      if (vehiclesCount && vehiclesCount > 0) {
-        toast.error(`Não é possível excluir: Cliente possui ${vehiclesCount} veículo(s). Exclua os veículos primeiro.`);
+      
+      const isAlarmeOnly = clientVehicles && clientVehicles.length === 1 && clientVehicles[0].plate_main === 'ALARME';
+
+      if (clientVehicles && clientVehicles.length > 0 && !isAlarmeOnly) {
+        toast.error(`Não é possível excluir: Cliente possui ${clientVehicles.length} veículo(s). Exclua os veículos primeiro.`);
         return;
       }
 
@@ -91,6 +96,10 @@ const Clients = () => {
       if (ticketsCount && ticketsCount > 0) {
         toast.error(`Não é possível excluir: Cliente possui ${ticketsCount} chamado(s). Exclua os chamados primeiro.`);
         return;
+      }
+
+      if (isAlarmeOnly) {
+        await supabase.from('vehicles').delete().eq('id', clientVehicles[0].id);
       }
 
       const { error, count } = await supabase.from('clients').delete({ count: 'exact' }).eq('id', clientToDelete);
@@ -194,6 +203,9 @@ const Clients = () => {
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Building2 className="h-5 w-5 text-primary flex-shrink-0" />
                   <span className="truncate">{client.name}</span>
+                  {client.vehicles?.some(v => v.plate_main === 'ALARME') && (
+                    <Badge variant="outline" className="bg-orange-500/10 text-orange-400 border-orange-500/20 text-[10px] px-1.5 py-0 h-4">ALARME</Badge>
+                  )}
                 </CardTitle>
                 <CardDescription className="font-mono text-xs">{client.document}</CardDescription>
               </CardHeader>

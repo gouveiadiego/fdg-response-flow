@@ -33,6 +33,7 @@ import {
   Clock3,
   Ban,
   FileEdit,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { AddPhotosDialog } from './AddPhotosDialog';
 import { generateTicketPDF, type TicketPDFData } from './TicketPDFGenerator';
@@ -484,9 +485,23 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                 <FileText className="h-5 w-5 text-primary" />
                 {ticket.code}
               </DialogTitle>
-              <Badge className={statusColors[ticket.status]}>
-                {statusLabels[ticket.status]}
-              </Badge>
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/acompanhamento/${ticket.id}`);
+                    toast.success('Link copiado para a área de transferência');
+                  }}
+                  className="hidden sm:flex text-primary hover:text-primary/90 border-primary/20 hover:bg-primary/5"
+                >
+                  <LinkIcon className="h-4 w-4 mr-2" />
+                  Link p/ Cliente
+                </Button>
+                <Badge className={statusColors[ticket.status]}>
+                  {statusLabels[ticket.status]}
+                </Badge>
+              </div>
             </div>
             {ticket.operators && (
               <p className="text-sm text-muted-foreground mt-1">
@@ -514,39 +529,41 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <Truck className="h-4 w-4 text-primary" />
-                    Veículo
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1">
-                  <p className="font-semibold text-primary">Cavalo Mecânico</p>
-                  {ticket.vehicles?.tractor_plate && (
-                    <p className="text-sm">
-                      Placa: <span className="font-bold">{ticket.vehicles.tractor_plate}</span>
-                      {ticket.vehicles.tractor_brand && ` - ${ticket.vehicles.tractor_brand}`}
-                      {ticket.vehicles.tractor_model && ` ${ticket.vehicles.tractor_model}`}
-                    </p>
-                  )}
-                  {ticket.vehicles?.trailer1_plate && (
-                    <p className="text-xs text-muted-foreground">
-                      Carreta 01: {ticket.vehicles.trailer1_plate} ({bodyTypeLabels[ticket.vehicles.trailer1_body_type || ''] || ticket.vehicles.trailer1_body_type})
-                    </p>
-                  )}
-                  {ticket.vehicles?.trailer2_plate && (
-                    <p className="text-xs text-muted-foreground">
-                      Carreta 02: {ticket.vehicles.trailer2_plate} ({bodyTypeLabels[ticket.vehicles.trailer2_body_type || ''] || ticket.vehicles.trailer2_body_type})
-                    </p>
-                  )}
-                  {ticket.vehicles?.trailer3_plate && (
-                    <p className="text-xs text-muted-foreground">
-                      Carreta 03: {ticket.vehicles.trailer3_plate} ({bodyTypeLabels[ticket.vehicles.trailer3_body_type || ''] || ticket.vehicles.trailer3_body_type})
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+              {ticket.service_type !== 'alarme' && ticket.vehicles?.description !== 'Base do Cliente' && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Truck className="h-4 w-4 text-primary" />
+                      Veículo
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                    <p className="font-semibold text-primary">Cavalo Mecânico</p>
+                    {ticket.vehicles?.tractor_plate && (
+                      <p className="text-sm">
+                        Placa: <span className="font-bold">{ticket.vehicles.tractor_plate}</span>
+                        {ticket.vehicles.tractor_brand && ` - ${ticket.vehicles.tractor_brand}`}
+                        {ticket.vehicles.tractor_model && ` ${ticket.vehicles.tractor_model}`}
+                      </p>
+                    )}
+                    {ticket.vehicles?.trailer1_plate && (
+                      <p className="text-xs text-muted-foreground">
+                        Carreta 01: {ticket.vehicles.trailer1_plate} ({bodyTypeLabels[ticket.vehicles.trailer1_body_type || ''] || ticket.vehicles.trailer1_body_type})
+                      </p>
+                    )}
+                    {ticket.vehicles?.trailer2_plate && (
+                      <p className="text-xs text-muted-foreground">
+                        Carreta 02: {ticket.vehicles.trailer2_plate} ({bodyTypeLabels[ticket.vehicles.trailer2_body_type || ''] || ticket.vehicles.trailer2_body_type})
+                      </p>
+                    )}
+                    {ticket.vehicles?.trailer3_plate && (
+                      <p className="text-xs text-muted-foreground">
+                        Carreta 03: {ticket.vehicles.trailer3_plate} ({bodyTypeLabels[ticket.vehicles.trailer3_body_type || ''] || ticket.vehicles.trailer3_body_type})
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               <Card>
                 <CardHeader className="pb-2">

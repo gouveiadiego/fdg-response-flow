@@ -19,6 +19,7 @@ import Performance from "./pages/Performance";
 import Financeiro from "./pages/Financeiro";
 import NotFound from "./pages/NotFound";
 import AgentRegistration from "./pages/AgentRegistration";
+import CustomerTracking from "./pages/CustomerTracking";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/cadastro-agente" element={<AgentRegistration />} />
+              <Route path="/acompanhamento/:id" element={<CustomerTracking />} />
               <Route element={<DashboardLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/performance" element={<Performance />} />

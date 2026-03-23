@@ -522,16 +522,19 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   const cardH = 75;
 
 
+  const isAlarme = data.service_type.toLowerCase() === 'alarme' || data.vehicle.description === 'Base do Cliente';
+  const clientCardWidth = isAlarme ? contentWidth : colWidth;
+
   // Card: SOLICITANTE
-  drawCard(pdf, colOneX, y, colWidth, cardH, 'DADOS DO SOLICITANTE');
+  drawCard(pdf, colOneX, y, clientCardWidth, cardH, 'DADOS DO SOLICITANTE');
   let cy = y + 16;
-  cy = drawField(pdf, 'Cliente', data.client.name, colOneX + 6, cy, colWidth - 10);
-  cy = drawField(pdf, 'Telefone', data.client.contact_phone || '-', colOneX + 6, cy, colWidth - 10);
+  cy = drawField(pdf, 'Cliente', data.client.name, colOneX + 6, cy, clientCardWidth - 10);
+  cy = drawField(pdf, 'Telefone', data.client.contact_phone || '-', colOneX + 6, cy, clientCardWidth - 10);
   // Highlighted Local do Sinistro - Minimalist style
   cy += 4;
   // Clean gray background
   setColor(pdf, { r: 245, g: 245, b: 247 });
-  drawRoundedRect(pdf, colOneX + 6, cy, colWidth - 12, 24, 2, 'F');
+  drawRoundedRect(pdf, colOneX + 6, cy, clientCardWidth - 12, 24, 2, 'F');
   // Left accent line
   setColor(pdf, THEME.primary);
   pdf.rect(colOneX + 6, cy, 1.5, 24, 'F');
@@ -558,36 +561,38 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   pdf.text(coordsCoords, colOneX + 12 + pdf.getTextWidth('COORDENADAS '), locY + 2);
 
   // Card: VEÍCULO / ALVO
-  drawCard(pdf, colTwoX, y, colWidth, cardH, 'VEÍCULO / ALVO');
-  cy = y + 16;
+  if (!isAlarme) {
+    drawCard(pdf, colTwoX, y, colWidth, cardH, 'VEÍCULO / ALVO');
+    let vcy = y + 16;
 
-  setColor(pdf, THEME.primary);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(8);
-  pdf.text('CAVALO MECÂNICO', colTwoX + 6, cy);
-  cy += 5;
+    setColor(pdf, THEME.primary);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(8);
+    pdf.text('CAVALO MECÂNICO', colTwoX + 6, vcy);
+    vcy += 5;
 
-  let plateInfo = data.vehicle.tractor_plate || '-';
-  if (data.vehicle.tractor_brand) plateInfo += ` • ${data.vehicle.tractor_brand}`;
-  if (data.vehicle.tractor_model) plateInfo += ` • ${data.vehicle.tractor_model}`;
-  cy = drawField(pdf, 'Placa / Marca', plateInfo, colTwoX + 6, cy, colWidth - 10);
+    let plateInfo = data.vehicle.tractor_plate || '-';
+    if (data.vehicle.tractor_brand) plateInfo += ` • ${data.vehicle.tractor_brand}`;
+    if (data.vehicle.tractor_model) plateInfo += ` • ${data.vehicle.tractor_model}`;
+    vcy = drawField(pdf, 'Placa / Marca', plateInfo, colTwoX + 6, vcy, colWidth - 10);
 
-  if (data.vehicle.trailer1_plate) {
-    let t1Info = data.vehicle.trailer1_plate;
-    if (data.vehicle.trailer1_body_type) t1Info += ` (${bodyTypeLabels[data.vehicle.trailer1_body_type] || data.vehicle.trailer1_body_type})`;
-    cy = drawField(pdf, 'Carreta 01', t1Info, colTwoX + 6, cy, colWidth - 10);
-  }
+    if (data.vehicle.trailer1_plate) {
+      let t1Info = data.vehicle.trailer1_plate;
+      if (data.vehicle.trailer1_body_type) t1Info += ` (${bodyTypeLabels[data.vehicle.trailer1_body_type] || data.vehicle.trailer1_body_type})`;
+      vcy = drawField(pdf, 'Carreta 01', t1Info, colTwoX + 6, vcy, colWidth - 10);
+    }
 
-  if (data.vehicle.trailer2_plate) {
-    let t2Info = data.vehicle.trailer2_plate;
-    if (data.vehicle.trailer2_body_type) t2Info += ` (${bodyTypeLabels[data.vehicle.trailer2_body_type] || data.vehicle.trailer2_body_type})`;
-    cy = drawField(pdf, 'Carreta 02', t2Info, colTwoX + 6, cy, colWidth - 10);
-  }
+    if (data.vehicle.trailer2_plate) {
+      let t2Info = data.vehicle.trailer2_plate;
+      if (data.vehicle.trailer2_body_type) t2Info += ` (${bodyTypeLabels[data.vehicle.trailer2_body_type] || data.vehicle.trailer2_body_type})`;
+      vcy = drawField(pdf, 'Carreta 02', t2Info, colTwoX + 6, vcy, colWidth - 10);
+    }
 
-  if (data.vehicle.trailer3_plate) {
-    let t3Info = data.vehicle.trailer3_plate;
-    if (data.vehicle.trailer3_body_type) t3Info += ` (${bodyTypeLabels[data.vehicle.trailer3_body_type] || data.vehicle.trailer3_body_type})`;
-    cy = drawField(pdf, 'Carreta 03', t3Info, colTwoX + 6, cy, colWidth - 10);
+    if (data.vehicle.trailer3_plate) {
+      let t3Info = data.vehicle.trailer3_plate;
+      if (data.vehicle.trailer3_body_type) t3Info += ` (${bodyTypeLabels[data.vehicle.trailer3_body_type] || data.vehicle.trailer3_body_type})`;
+      vcy = drawField(pdf, 'Carreta 03', t3Info, colTwoX + 6, vcy, colWidth - 10);
+    }
   }
 
   y += cardH + 10;

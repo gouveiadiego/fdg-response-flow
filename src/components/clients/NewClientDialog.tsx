@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 
 const clientSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(255),
@@ -38,6 +39,7 @@ const clientSchema = z.object({
   city: z.string().min(1, 'Cidade é obrigatória').max(100),
   state: z.string().min(2, 'Estado é obrigatório').max(2),
   notes: z.string().max(1000).optional(),
+  is_alarme: z.boolean().default(false),
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
@@ -58,6 +60,7 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
       name: '', document: '', contact_name: '', contact_phone: '',
       contact_email: '', cep: '', street: '', street_number: '',
       neighborhood: '', city: '', state: '', notes: '',
+      is_alarme: false,
     },
   });
 
@@ -89,7 +92,7 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
       const fullAddress = [data.street, data.street_number, data.neighborhood, data.city, data.state]
         .filter(Boolean).join(', ');
 
-      const { error } = await supabase.from('clients').insert({
+      const { data: insertedClient, error } = await supabase.from('clients').insert({
         name: data.name,
         document: data.document,
         contact_name: data.contact_name || null,
@@ -103,9 +106,23 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
         city: data.city,
         state: data.state,
         notes: data.notes || null,
-      } as any);
+      } as any).select().single();
 
       if (error) throw error;
+      
+      if (data.is_alarme && insertedClient) {
+        const { error: vehicleError } = await supabase.from('vehicles').insert({
+          client_id: insertedClient.id,
+          plate_main: 'ALARME',
+          description: 'Base do Cliente',
+          type: 'outro'
+        });
+        if (vehicleError) {
+          console.error('Erro ao criar veículo de alarme:', vehicleError);
+          toast.warning('Cliente criado, mas falhou ao criar veículo de alarme.');
+        }
+      }
+
       toast.success('Cliente cadastrado com sucesso!');
       form.reset();
       onOpenChange(false);
@@ -252,6 +269,23 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
                     <Textarea placeholder="Observações sobre o cliente..." className="resize-none" rows={3} {...field} />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )} />
+              
+              <FormField control={form.control} name="is_alarme" render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-orange-500/5 border-orange-500/20">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base text-orange-400">Cliente Exclusivo de Alarme</FormLabel>
+                    <DialogDescription className="text-xs">
+                      Marca este cliente para não exigir veículo na criação de chamados.
+                    </DialogDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
                 </FormItem>
               )} />
 

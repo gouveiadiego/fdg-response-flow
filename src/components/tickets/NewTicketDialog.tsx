@@ -305,9 +305,15 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
         form.setValue('state', selectedClient.state);
       }
 
-      const currentVehicle = form.getValues('vehicle_id');
-      if (currentVehicle && !clientVehicles.some(v => v.id === currentVehicle)) {
-        form.setValue('vehicle_id', '');
+      if (clientVehicles.length === 1 && clientVehicles[0].plate_main === 'ALARME') {
+        setTimeout(() => {
+          form.setValue('vehicle_id', clientVehicles[0].id, { shouldValidate: true, shouldDirty: true });
+        }, 0);
+      } else {
+        const currentVehicle = form.getValues('vehicle_id');
+        if (currentVehicle && !clientVehicles.some(v => v.id === currentVehicle)) {
+          form.setValue('vehicle_id', '');
+        }
       }
     } else {
       setFilteredVehicles([]);
@@ -697,30 +703,34 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                     <FormField
                       control={form.control}
                       name="vehicle_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Veículo *</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                            disabled={!selectedClientId}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder={selectedClientId ? "Selecione o veículo" : "Selecione um cliente primeiro"} />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {filteredVehicles.map((vehicle) => (
-                                <SelectItem key={vehicle.id} value={vehicle.id}>
-                                  {vehicle.description} - {vehicle.plate_main}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                      render={({ field }) => {
+                        const isAlarmeOnly = filteredVehicles.length === 1 && filteredVehicles[0].plate_main === 'ALARME';
+                        
+                        return (
+                          <FormItem className={isAlarmeOnly ? "hidden lg:block lg:opacity-50 lg:pointer-events-none" : ""}>
+                            <FormLabel>{isAlarmeOnly ? "Veículo (Alarme Padrão)" : "Veículo *"}</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value}
+                              disabled={!selectedClientId || isAlarmeOnly}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder={selectedClientId ? "Selecione o veículo" : "Selecione um cliente primeiro"} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {filteredVehicles.map((vehicle) => (
+                                  <SelectItem key={vehicle.id} value={vehicle.id}>
+                                    {vehicle.description} - {vehicle.plate_main}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
                     />
 
                     <FormField
