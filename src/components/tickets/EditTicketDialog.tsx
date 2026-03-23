@@ -723,7 +723,7 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           main_agent_arrival: toSupabaseTimestamp(data.main_agent_arrival),
           main_agent_departure: toSupabaseTimestamp(data.main_agent_departure),
           plan_id: data.plan_id,
-          service_type: data.service_type as any,
+          service_type: data.service_type,
           city: data.city,
           state: data.state,
           start_datetime: toSupabaseTimestamp(data.main_agent_arrival) || toSupabaseTimestamp(data.start_datetime),
