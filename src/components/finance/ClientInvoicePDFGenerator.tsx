@@ -224,10 +224,16 @@ export async function generateClientInvoicePDF(data: InvoicePDFData): Promise<vo
     pdf.setFontSize(7);
     
     data.agentBreakdown.forEach((agent) => {
-      // Header: Name and Role
+      // Header: Generic Role (No real names for client PDF)
       pdf.setFont('helvetica', 'bold');
       setColor(pdf, THEME.primary);
-      pdf.text(`${agent.name.toUpperCase()} (${agent.role})`, margin + 8, ay);
+      
+      const roleStr = agent.role.toUpperCase();
+      const displayName = roleStr === 'PRINCIPAL' 
+        ? 'AGENTE PRINCIPAL' 
+        : `AGENTE DE ${roleStr}`;
+        
+      pdf.text(displayName, margin + 8, ay);
       
       // Details: Times and KM
       ay += 4;
