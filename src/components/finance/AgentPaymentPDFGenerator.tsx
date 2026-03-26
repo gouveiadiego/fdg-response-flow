@@ -153,9 +153,9 @@ export async function generateAgentPaymentPDF(data: PaymentPDFData): Promise<voi
 
   // --- IDENTIFICAÇÃO DO AGENTE ---
   setColor(pdf, THEME.white);
-  drawRoundedRect(pdf, margin, y, contentWidth, 25, 2, 'F');
+  drawRoundedRect(pdf, margin, y, contentWidth, 38, 2, 'F');
   setColor(pdf, THEME.primary);
-  pdf.rect(margin, y, 1.5, 25, 'F');
+  pdf.rect(margin, y, 1.5, 38, 'F');
 
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(7);
@@ -167,10 +167,20 @@ export async function generateAgentPaymentPDF(data: PaymentPDFData): Promise<voi
   pdf.text(data.agentName.toUpperCase(), margin + 6, y + 13);
   
   setColor(pdf, THEME.secondaryText);
-  pdf.setFontSize(8);
-  pdf.text(`CPF/CNPJ: ${data.agentDocument || 'N/A'}`, margin + 6, y + 19);
+  pdf.setFontSize(8.5);
+  pdf.text(`CPF/CNPJ: ${data.agentDocument || 'N/A'}`, margin + 6, y + 20);
 
-  y += 32;
+  // PIX & Bank info moved here
+  pdf.setFontSize(8.5);
+  let identY = y + 26;
+  if (data.bankingInfo.pixKey) {
+    pdf.text(`PIX: ${data.bankingInfo.pixKey}`, margin + 6, identY);
+    identY += 5;
+  }
+  const bankDetailsShort = `${data.bankingInfo.bankName || 'N/A'} | Ag: ${data.bankingInfo.bankAgency || '-'} | Cta: ${data.bankingInfo.bankAccount || '-'}`;
+  pdf.text(bankDetailsShort.toUpperCase(), margin + 6, identY);
+
+  y += 45;
 
   // --- DETALHES DA OPERAÇÃO ---
   setColor(pdf, THEME.white);
@@ -311,28 +321,6 @@ export async function generateAgentPaymentPDF(data: PaymentPDFData): Promise<voi
   pdf.text(formatCurrency(data.total), pageWidth - 19, y + 8, { align: 'right' });
 
   y += 18;
-
-  // --- DADOS BANCÁRIOS ---
-  setColor(pdf, {r: 255, g: 247, b: 237}); // Light amber
-  drawRoundedRect(pdf, margin, y, contentWidth, 30, 2, 'F');
-  
-  setColor(pdf, THEME.accent);
-  pdf.setFontSize(9);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('DADOS PARA PAGAMENTO', margin + 6, y + 8);
-
-  setColor(pdf, THEME.text);
-  pdf.setFontSize(8);
-  pdf.setFont('helvetica', 'normal');
-  
-  let bankY = y + 16;
-  if (data.bankingInfo.pixKey) {
-    pdf.text(`CHAVE PIX: ${data.bankingInfo.pixKey}`, margin + 6, bankY);
-    bankY += 5;
-  }
-  
-  const bankDetails = `${data.bankingInfo.bankName || 'N/A'} | Ag: ${data.bankingInfo.bankAgency || '-'} | Conta: ${data.bankingInfo.bankAccount || '-'} (${data.bankingInfo.bankAccountType || ''})`;
-  pdf.text(bankDetails.toUpperCase(), margin + 6, bankY);
 
   // --- FOOTER ---
   const footerY = pageHeight - 20;
