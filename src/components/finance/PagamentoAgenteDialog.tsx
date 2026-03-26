@@ -504,7 +504,9 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
                                                 </div>
                                                 <div className="bg-zinc-950 p-3 rounded border border-zinc-800/50 text-center">
                                                     <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Horas Excedentes</p>
-                                                    <p className={`text-lg font-bold ${extraHours > 0 ? 'text-orange-400' : 'text-zinc-600'}`}>{extraHours.toFixed(2)}</p>
+                                                    <p className={`text-lg font-bold ${extraHours > 0 ? 'text-orange-400' : 'text-zinc-600'}`}>
+                                                        {extraHours > 0 ? formatDuration(extraHours) : '00:00:00'}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>

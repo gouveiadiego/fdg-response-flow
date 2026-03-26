@@ -69,6 +69,13 @@ const formatCurrency = (val: number) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 };
 
+const formatHoursToHMS = (hours: number) => {
+  const h = Math.floor(hours);
+  const m = Math.floor((hours - h) * 60);
+  const s = Math.round(((hours - h) * 60 - m) * 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+};
+
 const loadImage = (url: string): Promise<{ dataUrl: string; width: number; height: number }> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -243,7 +250,8 @@ export async function generateAgentPaymentPDF(data: PaymentPDFData): Promise<voi
   setColor(pdf, THEME.text);
 
   // BASE
-  pdf.text('Honorário Base (Franquia)', margin + 8, rowY);
+  const baseLabel = data.serviceType === 'ALARME' ? 'Pacote Franquia 30 min' : 'Pacote Franquia 3 horas';
+  pdf.text(baseLabel, margin + 8, rowY);
   pdf.text('1 un', margin + 70, rowY);
   pdf.text(formatCurrency(data.baseValue), margin + 100, rowY);
   pdf.text(formatCurrency(data.baseValue), margin + contentWidth - 8, rowY, { align: 'right' });
@@ -252,7 +260,7 @@ export async function generateAgentPaymentPDF(data: PaymentPDFData): Promise<voi
   rowY += 8;
   if (data.extraHours > 0) {
     pdf.text('Horas Excedentes', margin + 8, rowY);
-    pdf.text(`${data.extraHours.toFixed(1)} h`, margin + 70, rowY);
+    pdf.text(formatHoursToHMS(data.extraHours), margin + 70, rowY);
     pdf.text(formatCurrency(data.extraHourRate), margin + 100, rowY);
     pdf.text(formatCurrency(data.extraHours * data.extraHourRate), margin + contentWidth - 8, rowY, { align: 'right' });
   } else {

@@ -50,6 +50,7 @@ import {
 import { cn } from '@/lib/utils';
 import { AgentMap } from '@/components/agents/AgentMap';
 import { MapPin, Search, Loader2, Upload, X, Camera, Trash2, Check, ChevronsUpDown, Plus } from 'lucide-react';
+import { ALARME_PRICING, ARMED_PRICING, UNARMED_PRICING, getIsArmedByPlan } from '@/lib/pricingUtils';
 
 // Converts a UTC ISO string from Supabase to a local datetime-local input value (YYYY-MM-DDTHH:mm)
 // WITHOUT re-converting to UTC — preserves the local (BRT) time the user entered
@@ -421,11 +422,11 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           toll_cost: sa.toll_cost || 0,
           food_cost: sa.food_cost || 0,
           other_costs: sa.other_costs || 0,
-          compensation_base_value: sa.compensation_base_value,
-          compensation_included_hours: sa.compensation_included_hours,
-          compensation_included_km: sa.compensation_included_km,
-          compensation_extra_hour_rate: sa.compensation_extra_hour_rate,
-          compensation_extra_km_rate: sa.compensation_extra_km_rate,
+          compensation_base_value: sa.compensation_base_value !== null ? sa.compensation_base_value : (data.service_type === 'alarme' ? ALARME_PRICING.base : (agents.find(a => a.id === sa.agent_id)?.is_armed ? ARMED_PRICING.base : UNARMED_PRICING.base)),
+          compensation_included_hours: sa.compensation_included_hours !== null ? sa.compensation_included_hours : (data.service_type === 'alarme' ? ALARME_PRICING.includedHours : (agents.find(a => a.id === sa.agent_id)?.is_armed ? ARMED_PRICING.includedHours : UNARMED_PRICING.includedHours)),
+          compensation_included_km: sa.compensation_included_km !== null ? sa.compensation_included_km : (data.service_type === 'alarme' ? ALARME_PRICING.includedKm : (agents.find(a => a.id === sa.agent_id)?.is_armed ? ARMED_PRICING.includedKm : UNARMED_PRICING.includedKm)),
+          compensation_extra_hour_rate: sa.compensation_extra_hour_rate !== null ? sa.compensation_extra_hour_rate : (data.service_type === 'alarme' ? ALARME_PRICING.extraHourRate : (agents.find(a => a.id === sa.agent_id)?.is_armed ? ARMED_PRICING.extraHourRate : UNARMED_PRICING.extraHourRate)),
+          compensation_extra_km_rate: sa.compensation_extra_km_rate !== null ? sa.compensation_extra_km_rate : (data.service_type === 'alarme' ? ALARME_PRICING.extraKmRate : (agents.find(a => a.id === sa.agent_id)?.is_armed ? ARMED_PRICING.extraKmRate : UNARMED_PRICING.extraKmRate)),
           compensation_total: sa.compensation_total,
         })) || [];
 
@@ -461,11 +462,11 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
           revenue_extra_km_rate: ticket.revenue_extra_km_rate !== null ? Number(ticket.revenue_extra_km_rate) : 2.50,
           revenue_discount_addition: ticket.revenue_discount_addition !== null ? Number(ticket.revenue_discount_addition) : 0.00,
           revenue_total: ticket.revenue_total !== null ? Number(ticket.revenue_total) : 500.00,
-          main_agent_compensation_base_value: ticket.main_agent_compensation_base_value !== null ? Number(ticket.main_agent_compensation_base_value) : 0,
-          main_agent_compensation_included_hours: ticket.main_agent_compensation_included_hours !== null ? Number(ticket.main_agent_compensation_included_hours) : 0,
-          main_agent_compensation_included_km: ticket.main_agent_compensation_included_km !== null ? Number(ticket.main_agent_compensation_included_km) : 0,
-          main_agent_compensation_extra_hour_rate: ticket.main_agent_compensation_extra_hour_rate !== null ? Number(ticket.main_agent_compensation_extra_hour_rate) : 0,
-          main_agent_compensation_extra_km_rate: ticket.main_agent_compensation_extra_km_rate !== null ? Number(ticket.main_agent_compensation_extra_km_rate) : 0,
+          main_agent_compensation_base_value: ticket.main_agent_compensation_base_value !== null ? Number(ticket.main_agent_compensation_base_value) : (ticket.service_type === 'alarme' ? ALARME_PRICING.base : (agents.find(a => a.id === ticket.main_agent_id)?.is_armed ? ARMED_PRICING.base : UNARMED_PRICING.base)),
+          main_agent_compensation_included_hours: ticket.main_agent_compensation_included_hours !== null ? Number(ticket.main_agent_compensation_included_hours) : (ticket.service_type === 'alarme' ? ALARME_PRICING.includedHours : (agents.find(a => a.id === ticket.main_agent_id)?.is_armed ? ARMED_PRICING.includedHours : UNARMED_PRICING.includedHours)),
+          main_agent_compensation_included_km: ticket.main_agent_compensation_included_km !== null ? Number(ticket.main_agent_compensation_included_km) : (ticket.service_type === 'alarme' ? ALARME_PRICING.includedKm : (agents.find(a => a.id === ticket.main_agent_id)?.is_armed ? ARMED_PRICING.includedKm : UNARMED_PRICING.includedKm)),
+          main_agent_compensation_extra_hour_rate: ticket.main_agent_compensation_extra_hour_rate !== null ? Number(ticket.main_agent_compensation_extra_hour_rate) : (ticket.service_type === 'alarme' ? ALARME_PRICING.extraHourRate : (agents.find(a => a.id === ticket.main_agent_id)?.is_armed ? ARMED_PRICING.extraHourRate : UNARMED_PRICING.extraHourRate)),
+          main_agent_compensation_extra_km_rate: ticket.main_agent_compensation_extra_km_rate !== null ? Number(ticket.main_agent_compensation_extra_km_rate) : (ticket.service_type === 'alarme' ? ALARME_PRICING.extraKmRate : (agents.find(a => a.id === ticket.main_agent_id)?.is_armed ? ARMED_PRICING.extraKmRate : UNARMED_PRICING.extraKmRate)),
           main_agent_compensation_total: ticket.main_agent_compensation_total !== null ? Number(ticket.main_agent_compensation_total) : 0,
         });
       }

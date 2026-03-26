@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useGeocoding } from '@/hooks/useGeocoding';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { ALARME_PRICING, ARMED_PRICING, UNARMED_PRICING, getIsArmedByPlan } from '@/lib/pricingUtils';
 
 import {
   Dialog,
@@ -106,6 +107,12 @@ const ticketSchema = z.object({
   revenue_extra_km_rate: optionalNumber,
   revenue_discount_addition: optionalNumber,
   revenue_total: optionalNumber,
+  main_agent_compensation_base_value: optionalNumber,
+  main_agent_compensation_included_hours: optionalNumber,
+  main_agent_compensation_included_km: optionalNumber,
+  main_agent_compensation_extra_hour_rate: optionalNumber,
+  main_agent_compensation_extra_km_rate: optionalNumber,
+  main_agent_compensation_total: optionalNumber,
 });
 
 type TicketFormData = z.infer<typeof ticketSchema>;
@@ -195,6 +202,12 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
       revenue_extra_km_rate: 2.50,
       revenue_discount_addition: 0.00,
       revenue_total: 500.00,
+      main_agent_compensation_base_value: 0,
+      main_agent_compensation_included_hours: 3,
+      main_agent_compensation_included_km: 50,
+      main_agent_compensation_extra_hour_rate: 0,
+      main_agent_compensation_extra_km_rate: 0,
+      main_agent_compensation_total: 0,
     },
   });
 
@@ -543,6 +556,11 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
           revenue_extra_km_rate: data.revenue_extra_km_rate || 0,
           revenue_discount_addition: data.revenue_discount_addition || 0,
           revenue_total: data.revenue_total || 0,
+          main_agent_compensation_base_value: data.service_type === 'alarme' ? ALARME_PRICING.base : (agents.find(a => a.id === data.main_agent_id)?.is_armed ? ARMED_PRICING.base : UNARMED_PRICING.base),
+          main_agent_compensation_included_hours: data.service_type === 'alarme' ? ALARME_PRICING.includedHours : (agents.find(a => a.id === data.main_agent_id)?.is_armed ? ARMED_PRICING.includedHours : UNARMED_PRICING.includedHours),
+          main_agent_compensation_included_km: data.service_type === 'alarme' ? ALARME_PRICING.includedKm : (agents.find(a => a.id === data.main_agent_id)?.is_armed ? ARMED_PRICING.includedKm : UNARMED_PRICING.includedKm),
+          main_agent_compensation_extra_hour_rate: data.service_type === 'alarme' ? ALARME_PRICING.extraHourRate : (agents.find(a => a.id === data.main_agent_id)?.is_armed ? ARMED_PRICING.extraHourRate : UNARMED_PRICING.extraHourRate),
+          main_agent_compensation_extra_km_rate: data.service_type === 'alarme' ? ALARME_PRICING.extraKmRate : (agents.find(a => a.id === data.main_agent_id)?.is_armed ? ARMED_PRICING.extraKmRate : UNARMED_PRICING.extraKmRate),
         })
         .select()
         .single();
@@ -566,6 +584,11 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
             toll_cost: agent.toll_cost || null,
             food_cost: agent.food_cost || null,
             other_costs: agent.other_costs || null,
+            compensation_base_value: data.service_type === 'alarme' ? ALARME_PRICING.base : (agents.find(a => a.id === agent.agent_id)?.is_armed ? ARMED_PRICING.base : UNARMED_PRICING.base),
+            compensation_included_hours: data.service_type === 'alarme' ? ALARME_PRICING.includedHours : (agents.find(a => a.id === agent.agent_id)?.is_armed ? ARMED_PRICING.includedHours : UNARMED_PRICING.includedHours),
+            compensation_included_km: data.service_type === 'alarme' ? ALARME_PRICING.includedKm : (agents.find(a => a.id === agent.agent_id)?.is_armed ? ARMED_PRICING.includedKm : UNARMED_PRICING.includedKm),
+            compensation_extra_hour_rate: data.service_type === 'alarme' ? ALARME_PRICING.extraHourRate : (agents.find(a => a.id === agent.agent_id)?.is_armed ? ARMED_PRICING.extraHourRate : UNARMED_PRICING.extraHourRate),
+            compensation_extra_km_rate: data.service_type === 'alarme' ? ALARME_PRICING.extraKmRate : (agents.find(a => a.id === agent.agent_id)?.is_armed ? ARMED_PRICING.extraKmRate : UNARMED_PRICING.extraKmRate),
           }));
 
           const { error: supportAgentsError } = await supabase
