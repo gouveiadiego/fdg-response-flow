@@ -316,9 +316,9 @@ export async function generateAgentPaymentPDF(data: PaymentPDFData): Promise<voi
   setColor(pdf, THEME.white);
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(8);
-  pdf.text('TOTAL A RECEBER', pageWidth - 76, y + 8);
+  pdf.text('TOTAL A RECEBER', pageWidth - 80, y + 8);
   pdf.setFontSize(11);
-  pdf.text(formatCurrency(data.total), pageWidth - 19, y + 8, { align: 'right' });
+  pdf.text(formatCurrency(data.total), pageWidth - 18, y + 8, { align: 'right' });
 
   y += 18;
 

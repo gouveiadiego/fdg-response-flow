@@ -356,9 +356,9 @@ export async function generateClientInvoicePDF(data: InvoicePDFData): Promise<vo
   setColor(pdf, THEME.white);
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(8);
-  pdf.text('VALOR TOTAL DA OPERAÇÃO', pageWidth - 76, y + 8);
+  pdf.text('TOTAL DA OPERAÇÃO', pageWidth - 82, y + 8);
   pdf.setFontSize(11);
-  pdf.text(formatCurrency(data.total), pageWidth - 19, y + 8, { align: 'right' });
+  pdf.text(formatCurrency(data.total), pageWidth - 18, y + 8, { align: 'right' });
 
   y += 25;
 
