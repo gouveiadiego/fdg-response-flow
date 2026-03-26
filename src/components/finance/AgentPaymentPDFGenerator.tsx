@@ -320,11 +320,11 @@ export async function generateAgentPaymentPDF(data: PaymentPDFData): Promise<voi
   // TOTAL BOX
   y += 82;
   setColor(pdf, THEME.primary);
-  drawRoundedRect(pdf, pageWidth - 95, y, 80, 12, 1, 'F');
+  drawRoundedRect(pdf, pageWidth - 105, y, 90, 12, 1, 'F');
   setColor(pdf, THEME.white);
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(8);
-  pdf.text('TOTAL A RECEBER', pageWidth - 92, y + 8);
+  pdf.text('TOTAL A RECEBER', pageWidth - 102, y + 8);
   pdf.setFontSize(11);
   pdf.text(formatCurrency(data.total), pageWidth - 18, y + 8, { align: 'right' });
 
