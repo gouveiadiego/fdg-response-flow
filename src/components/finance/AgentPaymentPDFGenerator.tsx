@@ -167,16 +167,24 @@ export async function generateAgentPaymentPDF(data: PaymentPDFData): Promise<voi
   pdf.text(data.agentName.toUpperCase(), margin + 6, y + 13);
   
   setColor(pdf, THEME.secondaryText);
-  pdf.setFontSize(8.5);
-  pdf.text(`CPF/CNPJ: ${data.agentDocument || 'N/A'}`, margin + 6, y + 20);
+  pdf.setFontSize(8);
+  pdf.text(`CPF/CNPJ: ${data.agentDocument || 'N/A'}`, margin + 6, y + 19);
 
-  // PIX & Bank info moved here
-  pdf.setFontSize(8.5);
+  // PIX & Bank info Highlighted
   let identY = y + 26;
   if (data.bankingInfo.pixKey) {
+    setColor(pdf, {r: 255, g: 247, b: 237}); // Light amber bg
+    pdf.roundedRect(margin + 4, identY - 4, contentWidth - 8, 6, 0.5, 0.5, 'F');
+    setColor(pdf, THEME.accent); // Amber text
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(9);
     pdf.text(`PIX: ${data.bankingInfo.pixKey}`, margin + 6, identY);
-    identY += 5;
+    identY += 7;
   }
+  
+  setColor(pdf, THEME.text);
+  pdf.setFontSize(7.5);
+  pdf.setFont('helvetica', 'normal');
   const bankDetailsShort = `${data.bankingInfo.bankName || 'N/A'} | Ag: ${data.bankingInfo.bankAgency || '-'} | Cta: ${data.bankingInfo.bankAccount || '-'}`;
   pdf.text(bankDetailsShort.toUpperCase(), margin + 6, identY);
 
@@ -312,11 +320,11 @@ export async function generateAgentPaymentPDF(data: PaymentPDFData): Promise<voi
   // TOTAL BOX
   y += 82;
   setColor(pdf, THEME.primary);
-  drawRoundedRect(pdf, pageWidth - 80, y, 65, 12, 1, 'F');
+  drawRoundedRect(pdf, pageWidth - 95, y, 80, 12, 1, 'F');
   setColor(pdf, THEME.white);
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(8);
-  pdf.text('TOTAL A RECEBER', pageWidth - 80, y + 8);
+  pdf.text('TOTAL A RECEBER', pageWidth - 92, y + 8);
   pdf.setFontSize(11);
   pdf.text(formatCurrency(data.total), pageWidth - 18, y + 8, { align: 'right' });
 

@@ -352,11 +352,11 @@ export async function generateClientInvoicePDF(data: InvoicePDFData): Promise<vo
   // TOTAL BOX
   y += 82;
   setColor(pdf, THEME.primary);
-  drawRoundedRect(pdf, pageWidth - 80, y, 65, 12, 1, 'F');
+  drawRoundedRect(pdf, pageWidth - 100, y, 85, 12, 1, 'F');
   setColor(pdf, THEME.white);
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(8);
-  pdf.text('TOTAL DA OPERAÇÃO', pageWidth - 82, y + 8);
+  pdf.text('TOTAL DA OPERAÇÃO', pageWidth - 97, y + 8);
   pdf.setFontSize(11);
   pdf.text(formatCurrency(data.total), pageWidth - 18, y + 8, { align: 'right' });
 
