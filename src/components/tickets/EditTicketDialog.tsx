@@ -4,6 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useQuery } from '@tanstack/react-query';
 import { useGeocoding } from '@/hooks/useGeocoding';
 import { toast } from 'sonner';
 import {
@@ -189,6 +191,7 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
   const { user } = useAuth();
   const { reverseGeocode, isLoading: isGeocoding } = useGeocoding();
   const [isLoading, setIsLoading] = useState(false);
+  const { isAdmin, isOperador } = useUserRole();
   const [activeTab, setActiveTab] = useState('cliente');
   const [clients, setClients] = useState<Client[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -1336,68 +1339,70 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                          <FormField
-                            control={form.control}
-                            name="toll_cost"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs">Pedágio (R$)</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    className="h-8 text-xs"
-                                    {...field}
-                                    value={field.value ?? 0}
-                                    onChange={(e) => field.onChange(Number(e.target.value))}
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="food_cost"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs">Alimentação (R$)</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    className="h-8 text-xs"
-                                    {...field}
-                                    value={field.value ?? 0}
-                                    onChange={(e) => field.onChange(Number(e.target.value))}
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="other_costs"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs">Outros (R$)</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    className="h-8 text-xs"
-                                    {...field}
-                                    value={field.value ?? 0}
-                                    onChange={(e) => field.onChange(Number(e.target.value))}
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          <div className="space-y-2">
-                            <Label className="text-xs">Total Agente</Label>
-                            <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold">
-                              {totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        {(isAdmin || isOperador) && (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <FormField
+                              control={form.control}
+                              name="toll_cost"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs">Pedágio (R$)</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      className="h-8 text-xs"
+                                      {...field}
+                                      value={field.value ?? 0}
+                                      onChange={(e) => field.onChange(Number(e.target.value))}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="food_cost"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs">Alimentação (R$)</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      className="h-8 text-xs"
+                                      {...field}
+                                      value={field.value ?? 0}
+                                      onChange={(e) => field.onChange(Number(e.target.value))}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="other_costs"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-xs">Outros (R$)</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      className="h-8 text-xs"
+                                      {...field}
+                                      value={field.value ?? 0}
+                                      onChange={(e) => field.onChange(Number(e.target.value))}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <div className="space-y-2">
+                              <Label className="text-xs">Total Agente</Label>
+                              <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold">
+                                {totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        )}
                       </div>
 
                       <div className="flex justify-between items-center mt-4 border-b pb-2">
@@ -1573,91 +1578,95 @@ export function EditTicketDialog({ ticketId, open, onOpenChange, onSuccess }: Ed
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                              <FormField
-                                control={form.control}
-                                name={`support_agents.${index}.toll_cost`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel className="text-xs">Pedágio (R$)</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        className="h-8 text-xs"
-                                        {...field}
-                                        value={field.value ?? 0}
-                                        onChange={(e) => field.onChange(Number(e.target.value))}
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name={`support_agents.${index}.food_cost`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel className="text-xs">Alimentação (R$)</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        className="h-8 text-xs"
-                                        {...field}
-                                        value={field.value ?? 0}
-                                        onChange={(e) => field.onChange(Number(e.target.value))}
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name={`support_agents.${index}.other_costs`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel className="text-xs">Outros (R$)</FormLabel>
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        className="h-8 text-xs"
-                                        {...field}
-                                        value={field.value ?? 0}
-                                        onChange={(e) => field.onChange(Number(e.target.value))}
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
-                              <div className="space-y-2">
-                                <Label className="text-xs">Total Apoio {index + 1}</Label>
-                                <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold">
-                                  {totalCusto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                </div>
-                              </div>
-                            </div>
+                             {(isAdmin || isOperador) && (
+                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                 <FormField
+                                   control={form.control}
+                                   name={`support_agents.${index}.toll_cost`}
+                                   render={({ field }) => (
+                                     <FormItem>
+                                       <FormLabel className="text-xs">Pedágio (R$)</FormLabel>
+                                       <FormControl>
+                                         <Input
+                                           type="number"
+                                           className="h-8 text-xs"
+                                           {...field}
+                                           value={field.value ?? 0}
+                                           onChange={(e) => field.onChange(Number(e.target.value))}
+                                         />
+                                       </FormControl>
+                                     </FormItem>
+                                   )}
+                                 />
+                                 <FormField
+                                   control={form.control}
+                                   name={`support_agents.${index}.food_cost`}
+                                   render={({ field }) => (
+                                     <FormItem>
+                                       <FormLabel className="text-xs">Alimentação (R$)</FormLabel>
+                                       <FormControl>
+                                         <Input
+                                           type="number"
+                                           className="h-8 text-xs"
+                                           {...field}
+                                           value={field.value ?? 0}
+                                           onChange={(e) => field.onChange(Number(e.target.value))}
+                                         />
+                                       </FormControl>
+                                     </FormItem>
+                                   )}
+                                 />
+                                 <FormField
+                                   control={form.control}
+                                   name={`support_agents.${index}.other_costs`}
+                                   render={({ field }) => (
+                                     <FormItem>
+                                       <FormLabel className="text-xs">Outros (R$)</FormLabel>
+                                       <FormControl>
+                                         <Input
+                                           type="number"
+                                           className="h-8 text-xs"
+                                           {...field}
+                                           value={field.value ?? 0}
+                                           onChange={(e) => field.onChange(Number(e.target.value))}
+                                         />
+                                       </FormControl>
+                                     </FormItem>
+                                   )}
+                                 />
+                                 <div className="space-y-2">
+                                   <Label className="text-xs">Total Apoio {index + 1}</Label>
+                                   <div className="h-8 flex items-center px-3 rounded-md border bg-muted/50 text-xs font-bold">
+                                     {totalCusto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                   </div>
+                                 </div>
+                               </div>
+                             )}
                           </div>
                         );
                       })}
                     </div>
 
                     {/* Resumo Geral da Operação */}
-                    <div className="bg-secondary/10 p-4 rounded-lg border border-secondary/30 space-y-3">
-                      <h4 className="font-bold text-sm text-secondary uppercase tracking-wider">Resumo Geral da Operação</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="p-3 bg-white rounded-md border shadow-sm">
-                          <Label className="text-xs text-muted-foreground">KM TOTAL RODADO (EQUIPE)</Label>
-                          <div className="text-2xl font-black text-primary">
-                            {totalKmGeral} <span className="text-sm">km</span>
+                    {(isAdmin || isOperador) && (
+                      <div className="bg-secondary/10 p-4 rounded-lg border border-secondary/30 space-y-3">
+                        <h4 className="font-bold text-sm text-secondary uppercase tracking-wider">Resumo Geral da Operação</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="p-3 bg-white rounded-md border shadow-sm">
+                            <Label className="text-xs text-muted-foreground">KM TOTAL RODADO (EQUIPE)</Label>
+                            <div className="text-2xl font-black text-primary">
+                              {totalKmGeral} <span className="text-sm">km</span>
+                            </div>
                           </div>
-                        </div>
-                        <div className="p-3 bg-white rounded-md border shadow-sm">
-                          <Label className="text-xs text-muted-foreground">CUSTO TOTAL DA OPERAÇÃO</Label>
-                          <div className="text-2xl font-black text-success">
-                            {totalCustoGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          <div className="p-3 bg-white rounded-md border shadow-sm">
+                            <Label className="text-xs text-muted-foreground">CUSTO TOTAL DA OPERAÇÃO</Label>
+                            <div className="text-2xl font-black text-success">
+                              {totalCustoGeral.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Descrição do Evento */}
                     <div className="space-y-4 pt-4 border-t">

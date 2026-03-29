@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import {
     Users, UserCheck, Clock, TrendingUp, Calendar,
-    BarChart3, Award, Zap, Timer
+    BarChart3, Award, Zap, Timer, PieChart as PieChartIcon
 } from 'lucide-react';
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
 } from 'recharts';
 import { format, subDays, startOfMonth, startOfYear, isWithinInterval, differenceInMinutes, parseISO } from 'date-fns';
 import { DatePickerWithRange } from '@/components/dashboard/DateRangePicker';
@@ -14,12 +14,28 @@ import { DateRange } from "react-day-picker";
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
+import { useUserRole } from '@/hooks/useUserRole';
+import { MapPin, Building2, Truck } from 'lucide-react';
+
+const serviceTypeLabels: Record<string, string> = {
+    alarme: 'Alarme',
+    averiguacao: 'Averiguação',
+    preservacao: 'Preservação',
+    acompanhamento_logistico: 'Acompanhamento Logístico',
+    sindicancia: 'Sindicância',
+};
 
 interface AgentPerformance {
     id: string;
     name: string;
     count: number;
     avgTime: number;
+}
+
+interface RegionPerformance {
+    city: string;
+    state: string;
+    count: number;
 }
 
 interface OperatorPerformance {
@@ -31,6 +47,7 @@ interface OperatorPerformance {
 type FilterRange = '7days' | 'month' | 'year' | 'all' | 'custom';
 
 const Performance = () => {
+    const { isAdmin } = useUserRole();
     const [loading, setLoading] = useState(true);
     const [range, setRange] = useState<FilterRange>('month');
     const [date, setDate] = useState<DateRange | undefined>({
@@ -40,10 +57,14 @@ const Performance = () => {
 
     const [agentRanking, setAgentRanking] = useState<AgentPerformance[]>([]);
     const [operatorRanking, setOperatorRanking] = useState<OperatorPerformance[]>([]);
+    const [regionRanking, setRegionRanking] = useState<RegionPerformance[]>([]);
+    const [serviceDistribution, setServiceDistribution] = useState<any[]>([]);
     const [globalStats, setGlobalStats] = useState({
         avgCompletionTime: 0,
         totalFinished: 0,
         successRate: 0,
+        totalKm: 0,
+        totalRevenue: 0,
     });
 
     const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
@@ -57,7 +78,8 @@ const Performance = () => {
                 .select(`
           *,
           main_agent:agents!tickets_main_agent_id_fkey(name),
-          operator:operators(name)
+          operator:operators(name),
+          ticket_support_agents(km_start, km_end)
         `);
 
             // Also fetch operators separately to ensure we can map even if join fails or for fallbacks
@@ -92,6 +114,10 @@ const Performance = () => {
             // 1. Process Agent Ranking (Finished Tickets only)
             const finishedTickets = filteredTickets.filter(t => t.status === 'finalizado');
             const agentMap: Record<string, { name: string, count: number, totalMinutes: number }> = {};
+            let totalKm = 0;
+            let totalRevenue = 0;
+            const regionMap: Record<string, { city: string, state: string, count: number }> = {};
+            const serviceMap: Record<string, number> = {};
 
             finishedTickets.forEach(t => {
                 const agentId = t.main_agent_id;
@@ -107,6 +133,34 @@ const Performance = () => {
                     const diff = differenceInMinutes(parseISO(t.end_datetime), parseISO(t.created_at));
                     if (diff > 0) agentMap[agentId].totalMinutes += diff;
                 }
+
+                // Revenue calculation
+                totalRevenue += (Number(t.revenue_total) || 0);
+
+                // KM calculation (Main Agent)
+                const mainKm = Math.max(0, (Number(t.km_end) || 0) - (Number(t.km_start) || 0));
+                totalKm += mainKm;
+
+                // KM calculation (Support Agents)
+                if (t.ticket_support_agents) {
+                    t.ticket_support_agents.forEach((sa: any) => {
+                        const supportKm = Math.max(0, (Number(sa.km_end) || 0) - (Number(sa.km_start) || 0));
+                        totalKm += supportKm;
+                    });
+                }
+
+                // Region activity
+                if (t.city) {
+                    const regionKey = `${t.city}-${t.state}`;
+                    if (!regionMap[regionKey]) {
+                        regionMap[regionKey] = { city: t.city, state: t.state || 'SC', count: 0 };
+                    }
+                    regionMap[regionKey].count += 1;
+                }
+
+                // Service Distribution
+                const serviceLabel = serviceTypeLabels[t.service_type] || t.service_type;
+                serviceMap[serviceLabel] = (serviceMap[serviceLabel] || 0) + 1;
             });
 
             const processedAgents = Object.entries(agentMap).map(([id, data]) => ({
@@ -131,11 +185,22 @@ const Performance = () => {
                 operatorMap[opId].count += 1;
             });
 
-            setOperatorRanking(
-                Object.entries(operatorMap)
-                    .map(([id, data]) => ({ id, name: data.name, count: data.count }))
-                    .sort((a, b) => b.count - a.count)
-            );
+                setOperatorRanking(
+                    Object.entries(operatorMap)
+                        .map(([id, data]) => ({ id, name: data.name, count: data.count }))
+                        .sort((a, b) => b.count - a.count)
+                );
+
+                setRegionRanking(
+                    Object.values(regionMap)
+                        .sort((a, b) => b.count - a.count)
+                        .slice(0, 10)
+                );
+
+                setServiceDistribution(
+                    Object.entries(serviceMap).map(([name, value]) => ({ name, value }))
+                        .sort((a, b) => b.value - a.value)
+                );
 
             // 3. Global Stats
             const totalMinutes = finishedTickets.reduce((acc, t) => {
@@ -151,11 +216,13 @@ const Performance = () => {
                 ? Math.round((totalFinished / (totalFinished + totalCancelled || 1)) * 100)
                 : 0;
 
-            setGlobalStats({
-                avgCompletionTime: totalFinished > 0 ? Math.round(totalMinutes / totalFinished) : 0,
-                totalFinished,
-                successRate,
-            });
+                setGlobalStats({
+                    avgCompletionTime: totalFinished > 0 ? Math.round(totalMinutes / totalFinished) : 0,
+                    totalFinished,
+                    successRate,
+                    totalKm,
+                    totalRevenue,
+                });
 
         } catch (error) {
             console.error('Erro ao buscar dados de performance:', error);
@@ -265,8 +332,38 @@ const Performance = () => {
                                 <p className="text-xs mt-1 opacity-70 italic">Profissionais em campo no período</p>
                             </CardContent>
                         </Card>
-                    </div>
 
+                        <Card className="border-none shadow-md bg-gradient-to-br from-indigo-600 to-indigo-700 text-white overflow-hidden relative">
+                            <Truck className="absolute -right-4 -bottom-4 h-32 w-32 opacity-10" />
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium opacity-80 flex items-center gap-2">
+                                    <Truck className="h-4 w-4" /> Quilometragem Total
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-3xl font-black">{globalStats.totalKm.toLocaleString('pt-BR')} KM</div>
+                                <p className="text-xs mt-1 opacity-70 italic">Percorridos por toda a equipe</p>
+                            </CardContent>
+                        </Card>
+
+                        {isAdmin && (
+                            <Card className="border-none shadow-md bg-gradient-to-br from-slate-700 to-slate-900 border-l-4 border-l-amber-500 text-white overflow-hidden relative">
+                                <Building2 className="absolute -right-4 -bottom-4 h-32 w-32 opacity-10 text-amber-500" />
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm font-medium opacity-80 flex items-center gap-2">
+                                        <Building2 className="h-4 w-4 text-amber-500" /> Faturamento Gerado
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-3xl font-black text-amber-400">
+                                        {globalStats.totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    </div>
+                                    <p className="text-xs mt-1 opacity-70 italic text-amber-100/60">Impacto financeiro do período</p>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                    
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <Card className="shadow-xl border-none bg-card/50 backdrop-blur-sm overflow-hidden">
                             <CardHeader className="bg-primary/5 border-b mb-4">
@@ -349,6 +446,87 @@ const Performance = () => {
                                 ) : (
                                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
                                         <Users className="h-12 w-12 mb-2" />
+                                        <p>Sem dados no período</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <Card className="shadow-xl border-none bg-card/50 backdrop-blur-sm overflow-hidden">
+                            <CardHeader className="bg-primary/5 border-b mb-4">
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <MapPin className="h-5 w-5 text-red-500" /> Top Regiões de Atuação
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="h-[400px] pt-4 min-h-[400px] overflow-auto">
+                                {regionRanking.length > 0 ? (
+                                    <div className="space-y-4 pr-2">
+                                        {regionRanking.map((region, index) => (
+                                            <div key={`${region.city}-${index}`} className="flex items-center justify-between group">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">
+                                                        {index + 1}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold leading-none">{region.city}</p>
+                                                        <p className="text-[10px] text-muted-foreground uppercase">{region.state}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="text-right">
+                                                        <p className="text-sm font-black text-primary">{region.count}</p>
+                                                        <p className="text-[9px] text-muted-foreground uppercase font-bold">Chamados</p>
+                                                    </div>
+                                                    <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden hidden xl:block">
+                                                        <div 
+                                                            className="h-full bg-primary transition-all duration-500" 
+                                                            style={{ width: `${(region.count / regionRanking[0].count) * 100}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
+                                        <MapPin className="h-12 w-12 mb-2" />
+                                        <p>Sem dados no período</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                        <Card className="shadow-xl border-none bg-card/50 backdrop-blur-sm overflow-hidden">
+                            <CardHeader className="bg-primary/5 border-b mb-4">
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                    <PieChartIcon className="h-5 w-5 text-indigo-500" /> Diversidade de Serviços
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="h-[400px] pt-4 min-h-[400px]">
+                                {serviceDistribution.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={serviceDistribution}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={80}
+                                                outerRadius={120}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                            >
+                                                {serviceDistribution.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip 
+                                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                            />
+                                            <Legend verticalAlign="bottom" height={36}/>
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
+                                        <TrendingUp className="h-12 w-12 mb-2" />
                                         <p>Sem dados no período</p>
                                     </div>
                                 )}

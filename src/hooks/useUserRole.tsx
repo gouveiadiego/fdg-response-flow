@@ -12,16 +12,19 @@ interface UserRoleState {
   isOperador: boolean;
   isAgente: boolean;
   isClienteVisualizacao: boolean;
+  isApproved: boolean;
 }
 
 export function useUserRole(): UserRoleState {
   const { user } = useAuth();
   const [role, setRole] = useState<AppRole | null>(null);
+  const [isApproved, setIsApproved] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) {
       setRole(null);
+      setIsApproved(false);
       setLoading(false);
       return;
     }
@@ -30,19 +33,22 @@ export function useUserRole(): UserRoleState {
       try {
         const { data, error } = await supabase
           .from('user_roles')
-          .select('role')
+          .select('role, is_approved')
           .eq('user_id', user.id)
           .single();
 
         if (error) {
           console.error('Erro ao buscar papel do usuário:', error);
           setRole(null);
+          setIsApproved(false);
         } else {
           setRole(data?.role || null);
+          setIsApproved(data?.is_approved ?? false);
         }
       } catch (error) {
         console.error('Erro ao buscar papel do usuário:', error);
         setRole(null);
+        setIsApproved(false);
       } finally {
         setLoading(false);
       }
@@ -58,5 +64,6 @@ export function useUserRole(): UserRoleState {
     isOperador: role === 'operador',
     isAgente: role === 'agente',
     isClienteVisualizacao: role === 'cliente_visualizacao',
+    isApproved: isApproved,
   };
 }

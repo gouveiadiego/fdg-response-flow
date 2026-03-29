@@ -20,7 +20,7 @@ import {
 import {
     DollarSign, CheckCircle2, Clock, Search, User, Users, CreditCard, Copy, Filter,
     FileText, HandCoins, Building2, Calculator, ChevronDown, ChevronUp, History,
-    Truck, Ban, Clock3
+    Truck, Ban, Clock3, TrendingUp
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FaturamentoDialog } from '@/components/finance/FaturamentoDialog';
@@ -59,6 +59,19 @@ interface PaymentItem {
     departure: string | null;
 }
 
+interface TicketProfit {
+    ticketId: string;
+    code: string;
+    clientName: string;
+    date: string;
+    revenue: number;
+    totalCost: number;
+    profit: number;
+    margin: number;
+    revenueStatus: string;
+    allPaymentsPaid: boolean;
+}
+
 const Financeiro = () => {
     const [items, setItems] = useState<PaymentItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -70,6 +83,7 @@ const Financeiro = () => {
     });
     const [showPaidHistory, setShowPaidHistory] = useState(false);
     const [showPaidFaturamento, setShowPaidFaturamento] = useState(false);
+    const [profitData, setProfitData] = useState<TicketProfit[]>([]);
 
     // Faturamento Dialog State
     const [faturamentoDialogOpen, setFaturamentoDialogOpen] = useState(false);
@@ -251,6 +265,83 @@ const Financeiro = () => {
             });
 
             setItems(paymentItems);
+
+            // Calculate Profit Data
+            const profitMap: Record<string, TicketProfit> = {};
+            (data || []).forEach((ticket: any) => {
+                const ticketRevenue = Number(ticket.revenue_total) || 0;
+                let ticketTotalCost = 0;
+
+                // Main Agent Cost
+                if (ticket.main_agent) {
+                    const startKm = Number(ticket.km_start) || 0;
+                    const endKm = Number(ticket.km_end) || 0;
+                    const totalKm = Math.max(0, endKm - startKm);
+                    const arrival = ticket.main_agent_arrival ? new Date(ticket.main_agent_arrival) : null;
+                    const departure = ticket.main_agent_departure ? new Date(ticket.main_agent_departure) : null;
+                    const durationHours = arrival && departure ? (departure.getTime() - arrival.getTime()) / (1000 * 60 * 60) : 0;
+
+                    let compensation = Number(ticket.main_agent_compensation_total) || 0;
+                    if (compensation === 0) {
+                        compensation = calculateAgentHonorary({
+                            planName: ticket.plans?.name,
+                            agentRole: 'principal',
+                            agentIsArmed: !!ticket.main_agent.is_armed,
+                            durationHours,
+                            totalKm
+                        });
+                    }
+                    ticketTotalCost += compensation + (Number(ticket.toll_cost) || 0) + (Number(ticket.food_cost) || 0) + (Number(ticket.other_costs) || 0);
+                }
+
+                // Support Agents Cost
+                if (ticket.ticket_support_agents) {
+                    ticket.ticket_support_agents.forEach((sa: any, index: number) => {
+                        const startKm = Number(sa.km_start) || 0;
+                        const endKm = Number(sa.km_end) || 0;
+                        const totalKm = Math.max(0, endKm - startKm);
+                        const arrival = sa.arrival ? new Date(sa.arrival) : null;
+                        const departure = sa.departure ? new Date(sa.departure) : null;
+                        const durationHours = arrival && departure ? (departure.getTime() - arrival.getTime()) / (1000 * 60 * 60) : 0;
+
+                        let compensation = Number(sa.compensation_total) || 0;
+                        if (compensation === 0) {
+                            compensation = calculateAgentHonorary({
+                                planName: ticket.plans?.name,
+                                agentRole: `apoio_${index + 1}`,
+                                agentIsArmed: !!sa.agent?.is_armed,
+                                durationHours,
+                                totalKm
+                            });
+                        }
+                        ticketTotalCost += compensation + (Number(sa.toll_cost) || 0) + (Number(sa.food_cost) || 0) + (Number(sa.other_costs) || 0);
+                    });
+                }
+
+                const profit = ticketRevenue - ticketTotalCost;
+                const margin = ticketRevenue > 0 ? (profit / ticketRevenue) * 100 : 0;
+
+                // Check if all payments are paid
+                let allPaid = (ticket.main_agent_payment_status === 'pago');
+                if (ticket.ticket_support_agents && ticket.ticket_support_agents.length > 0) {
+                    const supportAllPaid = ticket.ticket_support_agents.every((sa: any) => sa.payment_status === 'pago');
+                    allPaid = allPaid && supportAllPaid;
+                }
+
+                profitMap[ticket.id] = {
+                    ticketId: ticket.id,
+                    code: ticket.code || '-',
+                    clientName: ticket.clients?.name || '-',
+                    date: ticket.start_datetime,
+                    revenue: ticketRevenue,
+                    totalCost: ticketTotalCost,
+                    profit: profit,
+                    margin: margin,
+                    revenueStatus: ticket.revenue_status || 'pendente',
+                    allPaymentsPaid: allPaid
+                };
+            });
+            setProfitData(Object.values(profitMap).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
         } catch (error: any) {
             console.error('Erro ao buscar pagamentos:', error);
             const msg = error?.message || 'Erro desconhecido';
@@ -468,7 +559,7 @@ const Financeiro = () => {
             </div>
 
             <Tabs defaultValue="pagamentos" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+                <TabsList className="grid w-full grid-cols-3 max-w-[550px]">
                     <TabsTrigger 
                         value="pagamentos" 
                         className="flex gap-2 items-center data-[state=active]:text-red-600 data-[state=active]:bg-red-50 dark:data-[state=active]:bg-red-950/30"
@@ -482,6 +573,13 @@ const Financeiro = () => {
                     >
                         <Building2 className="h-4 w-4" />
                         Faturamento (Clientes)
+                    </TabsTrigger>
+                    <TabsTrigger 
+                        value="balanco" 
+                        className="flex gap-2 items-center data-[state=active]:text-blue-600 data-[state=active]:bg-blue-50 dark:data-[state=active]:bg-blue-950/30"
+                    >
+                        <Calculator className="h-4 w-4" />
+                        Balanço Geral
                     </TabsTrigger>
                 </TabsList>
 
@@ -804,6 +902,144 @@ const Financeiro = () => {
                             )}
                         </div>
                     )}
+                </TabsContent>
+
+                <TabsContent value="balanco" className="space-y-6">
+                    <div className="bg-blue-500/5 rounded-lg border border-blue-500/20 p-4 mt-4">
+                        <h2 className="text-lg font-bold text-blue-700 dark:text-blue-400 mb-1">Análise de Lucratividade Operacional</h2>
+                        <p className="text-sm text-muted-foreground italic">Visão consolidada de Receita vs. Custos de Agentes.</p>
+                    </div>
+
+                    {/* General Summary Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <Card className="border-blue-500/10 shadow-sm">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Receita Bruta</span>
+                                    <Building2 className="h-4 w-4 text-blue-500" />
+                                </div>
+                                <p className="text-2xl font-black text-foreground">
+                                    {(profitData.reduce((sum, p) => sum + p.revenue, 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground mt-1">Soma de todos os faturamentos</p>
+                            </CardContent>
+                        </Card>
+                        <Card className="border-red-500/10 shadow-sm">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Custo de Agentes</span>
+                                    <Users className="h-4 w-4 text-red-500" />
+                                </div>
+                                <p className="text-2xl font-black text-foreground">
+                                    {(profitData.reduce((sum, p) => sum + p.totalCost, 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground mt-1">Honorários + Despesas pagas/pendentes</p>
+                            </CardContent>
+                        </Card>
+                        <Card className="border-emerald-500/20 bg-emerald-500/5 shadow-md">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] uppercase font-black text-emerald-600 tracking-widest">Lucro Operacional</span>
+                                    <TrendingUp className="h-4 w-4 text-emerald-600" />
+                                </div>
+                                <p className="text-2xl font-black text-emerald-700 dark:text-emerald-400">
+                                    {(profitData.reduce((sum, p) => sum + p.profit, 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </p>
+                                <p className="text-[10px] text-emerald-600 mt-1 font-medium">Margem Projetada</p>
+                            </CardContent>
+                        </Card>
+                        <Card className="border-primary/20 bg-primary/5 shadow-md">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] uppercase font-black text-primary tracking-widest">Margem Bruta Média</span>
+                                    <Calculator className="h-4 w-4 text-primary" />
+                                </div>
+                                <p className="text-2xl font-black text-primary">
+                                    {(() => {
+                                        const totalRev = profitData.reduce((sum, p) => sum + p.revenue, 0);
+                                        const totalProf = profitData.reduce((sum, p) => sum + p.profit, 0);
+                                        return totalRev > 0 ? ((totalProf / totalRev) * 100).toFixed(1) : '0';
+                                    })()}%
+                                </p>
+                                <p className="text-[10px] text-primary/60 mt-1 font-medium">Eficiência por chamado</p>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                <FileText className="h-4 w-4" />
+                                Detalhamento por Chamado
+                            </h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                            {profitData.map((p) => (
+                                <Card key={p.ticketId} className="border-none shadow-sm bg-muted/20 hover:bg-muted/30 transition-colors">
+                                    <CardContent className="p-4">
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                            <div className="flex items-center gap-4 min-w-[200px]">
+                                                <Badge className="bg-primary/10 text-primary border-primary/20 font-black h-8 px-3">
+                                                    {p.code}
+                                                </Badge>
+                                                <div>
+                                                    <p className="text-sm font-bold text-foreground leading-tight">{p.clientName}</p>
+                                                    <p className="text-[10px] text-muted-foreground uppercase font-medium">
+                                                        {format(new Date(p.date), 'dd/MM/yyyy')}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-1 grid grid-cols-2 lg:grid-cols-4 gap-4 px-4 border-l border-r border-border/50">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[9px] uppercase font-bold text-muted-foreground">Faturamento</span>
+                                                    <span className="text-sm font-bold">{p.revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[9px] uppercase font-bold text-muted-foreground">Custo Total</span>
+                                                    <span className="text-sm font-medium text-red-600/80">-{p.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[9px] uppercase font-bold text-muted-foreground">Lucro</span>
+                                                    <span className={`text-sm font-black ${p.profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                        {p.profit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[9px] uppercase font-bold text-muted-foreground">Margem</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`text-sm font-black ${p.margin >= 30 ? 'text-emerald-500' : p.margin >= 15 ? 'text-amber-500' : 'text-red-500'}`}>
+                                                            {p.margin.toFixed(1)}%
+                                                        </span>
+                                                        <div className="flex-1 max-w-[60px] h-1.5 bg-muted rounded-full overflow-hidden hidden lg:block">
+                                                            <div 
+                                                                className={`h-full rounded-full ${p.margin >= 30 ? 'bg-emerald-500' : p.margin >= 15 ? 'bg-amber-500' : 'bg-red-500'}`}
+                                                                style={{ width: `${Math.min(100, Math.max(0, p.margin))}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex flex-col items-end">
+                                                    <div className="flex gap-1">
+                                                        <Badge variant="outline" className={`text-[8px] h-4 py-0 uppercase ${p.revenueStatus === 'recebido' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                                            Fat: {p.revenueStatus}
+                                                        </Badge>
+                                                        <Badge variant="outline" className={`text-[8px] h-4 py-0 uppercase ${p.allPaymentsPaid ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                                            Pag: {p.allPaymentsPaid ? 'Pago' : 'Pendente'}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
                 </TabsContent>
 
                 <TabsContent value="faturamento" className="space-y-6">

@@ -3,20 +3,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import {
   FileText, Users, UserCheck, TrendingUp,
-  Calendar, Clock, Filter, AlertCircle, CheckCircle2, XCircle
+  Calendar, Clock, Filter, AlertCircle, CheckCircle2, XCircle,
+  DollarSign, Building2
 } from 'lucide-react';
 import {
   TrendChart,
   StatusDistributionChart,
-  TopClientsChart
+  TopClientsChart,
+  RankingChart
 } from '@/components/dashboard/AnalyticsCharts';
+import ActivityFeed from '@/components/dashboard/ActivityFeed';
+import DashboardMap from '@/components/dashboard/DashboardMap';
+import GoalProgress from '@/components/dashboard/GoalProgress';
 import { DatePickerWithRange } from '@/components/dashboard/DateRangePicker';
-import { format, subDays, startOfMonth, startOfYear, isWithinInterval, endOfDay, startOfDay } from 'date-fns';
+import { format, subDays, startOfMonth, startOfYear, isWithinInterval, endOfDay, startOfDay, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
 import { DateRange } from "react-day-picker";
+import { useUserRole } from '@/hooks/useUserRole';
+import { TicketDetails } from '@/components/tickets/TicketDetails';
+import { EditTicketDialog } from '@/components/tickets/EditTicketDialog';
 
 interface Stats {
   totalTickets: number;
@@ -30,11 +38,15 @@ interface Stats {
   pendingPaymentAgents: number;
   paidPaymentValue: number;
   paidPaymentAgents: number;
+  pendingRevenue: number;
+  receivedRevenue: number;
+  totalProfit: number;
 }
 
 type FilterRange = '7days' | 'month' | 'year' | 'all' | 'custom';
 
 const Dashboard = () => {
+  const { isAdmin } = useUserRole();
   const [stats, setStats] = useState<Stats>({
     totalTickets: 0,
     openTickets: 0,
@@ -46,16 +58,25 @@ const Dashboard = () => {
     pendingPaymentAgents: 0,
     paidPaymentValue: 0,
     paidPaymentAgents: 0,
+    pendingRevenue: 0,
+    receivedRevenue: 0,
+    totalProfit: 0,
   });
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<FilterRange>('month');
   const [date, setDate] = useState<DateRange | undefined>({
     from: startOfMonth(new Date()),
-    to: endOfDay(new Date()),
+    to: endOfMonth(new Date()),
   });
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [trendData, setTrendData] = useState<any[]>([]);
   const [statusData, setStatusData] = useState<any[]>([]);
   const [topClientsData, setTopClientsData] = useState<any[]>([]);
+  const [rankingData, setRankingData] = useState<any[]>([]);
+  const [allTickets, setAllTickets] = useState<any[]>([]);
+  const [filteredTickets, setFilteredTickets] = useState<any[]>([]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -65,11 +86,13 @@ const Dashboard = () => {
         .select(`
           *,
           clients(name),
+          operators(name),
           ticket_support_agents(
             agent_id,
             toll_cost,
             food_cost,
             other_costs,
+            compensation_total,
             payment_status
           )
         `);
@@ -81,9 +104,11 @@ const Dashboard = () => {
 
       if (ticketsError) throw ticketsError;
 
+      setAllTickets(tickets || []);
+
       // Filter by range or custom date
       const now = new Date();
-      let filteredTickets = tickets || [];
+      let filtered = tickets || [];
 
       let start: Date;
       let end: Date = endOfDay(now);
@@ -92,26 +117,19 @@ const Dashboard = () => {
         start = startOfDay(date.from);
         if (date.to) end = endOfDay(date.to);
 
-        filteredTickets = (tickets || []).filter(t => {
-          const ticketDate = new Date(t.created_at);
-          return isWithinInterval(ticketDate, { start, end });
-        });
-      } else if (range !== 'all') {
-        start = range === '7days' ? subDays(now, 7) :
-          range === 'month' ? startOfMonth(now) :
-            startOfYear(now);
-
-        filteredTickets = (tickets || []).filter(t => {
+        filtered = (tickets || []).filter(t => {
           const ticketDate = new Date(t.created_at);
           return isWithinInterval(ticketDate, { start, end });
         });
       }
 
+      setFilteredTickets(filtered);
+
       // Process Payment Stats
 
       // 1. Pending Payments (ALL TIME, finalizado status)
-      const allTickets = tickets || [];
-      const pendingTickets = allTickets.filter(t => t.status === 'finalizado');
+      const allTicketsData = tickets || [];
+      const pendingTickets = allTicketsData.filter(t => t.status === 'finalizado');
 
       let pendingValue = 0;
       const pendingAgents = new Set<string>();
@@ -119,7 +137,10 @@ const Dashboard = () => {
       pendingTickets.forEach(t => {
         // Main Agent
         if (t.main_agent_id && (t.main_agent_payment_status === 'pendente' || !t.main_agent_payment_status)) {
-          const cost = (Number(t.toll_cost) || 0) + (Number(t.food_cost) || 0) + (Number(t.other_costs) || 0);
+          const cost = (Number(t.main_agent_compensation_total) || 0) + 
+                       (Number(t.toll_cost) || 0) + 
+                       (Number(t.food_cost) || 0) + 
+                       (Number(t.other_costs) || 0);
           pendingValue += cost;
           pendingAgents.add(t.main_agent_id);
         }
@@ -128,7 +149,10 @@ const Dashboard = () => {
         if (t.ticket_support_agents && t.ticket_support_agents.length > 0) {
           t.ticket_support_agents.forEach((sa: any) => {
             if (sa.payment_status === 'pendente' || !sa.payment_status) {
-              const cost = (Number(sa.toll_cost) || 0) + (Number(sa.food_cost) || 0) + (Number(sa.other_costs) || 0);
+              const cost = (Number(sa.compensation_total) || 0) + 
+                           (Number(sa.toll_cost) || 0) + 
+                           (Number(sa.food_cost) || 0) + 
+                           (Number(sa.other_costs) || 0);
               pendingValue += cost;
               pendingAgents.add(sa.agent_id);
             }
@@ -136,16 +160,33 @@ const Dashboard = () => {
         }
       });
 
-      // 2. Paid Payments (FILTERED by date range)
-      const paidTickets = filteredTickets.filter(t => t.status === 'finalizado');
+      // 3. Revenue Stats (from ALL tickets for pending, filtered for received)
+      let pRevenue = 0;
+      let rRevenue = 0;
 
+      allTicketsData.filter(t => t.status === 'finalizado').forEach(t => {
+        if (!t.revenue_status || t.revenue_status === 'pendente') {
+          pRevenue += (Number(t.revenue_total) || 0);
+        }
+      });
+
+      filtered.filter(t => t.status === 'finalizado').forEach(t => {
+        if (t.revenue_status === 'recebido') {
+          rRevenue += (Number(t.revenue_total) || 0);
+        }
+      });
+
+      // 4. Paid Payments (FILTERED by date range)
       let paidValue = 0;
       const paidAgents = new Set<string>();
 
-      paidTickets.forEach(t => {
+      filtered.filter(t => t.status === 'finalizado').forEach(t => {
         // Main Agent
         if (t.main_agent_id && t.main_agent_payment_status === 'pago') {
-          const cost = (Number(t.toll_cost) || 0) + (Number(t.food_cost) || 0) + (Number(t.other_costs) || 0);
+          const cost = (Number(t.main_agent_compensation_total) || 0) + 
+                       (Number(t.toll_cost) || 0) + 
+                       (Number(t.food_cost) || 0) + 
+                       (Number(t.other_costs) || 0);
           paidValue += cost;
           paidAgents.add(t.main_agent_id);
         }
@@ -154,7 +195,10 @@ const Dashboard = () => {
         if (t.ticket_support_agents && t.ticket_support_agents.length > 0) {
           t.ticket_support_agents.forEach((sa: any) => {
             if (sa.payment_status === 'pago') {
-              const cost = (Number(sa.toll_cost) || 0) + (Number(sa.food_cost) || 0) + (Number(sa.other_costs) || 0);
+              const cost = (Number(sa.compensation_total) || 0) + 
+                           (Number(sa.toll_cost) || 0) + 
+                           (Number(sa.food_cost) || 0) + 
+                           (Number(sa.other_costs) || 0);
               paidValue += cost;
               paidAgents.add(sa.agent_id);
             }
@@ -164,10 +208,10 @@ const Dashboard = () => {
 
       // Process Stats
       const statsObj: Stats = {
-        totalTickets: filteredTickets.length,
-        openTickets: filteredTickets.filter(t => t.status === 'aberto').length,
-        completedTickets: filteredTickets.filter(t => t.status === 'finalizado').length,
-        cancelledTickets: filteredTickets.filter(t => t.status === 'cancelado').length,
+        totalTickets: filtered.length,
+        openTickets: filtered.filter(t => t.status === 'aberto').length,
+        completedTickets: filtered.filter(t => t.status === 'finalizado').length,
+        cancelledTickets: filtered.filter(t => t.status === 'cancelado').length,
         totalClients: clientsResult.count || 0,
         totalAgents: agentsResult.count || 0,
         // Payment Stats
@@ -175,12 +219,16 @@ const Dashboard = () => {
         pendingPaymentAgents: pendingAgents.size,
         paidPaymentValue: paidValue,
         paidPaymentAgents: paidAgents.size,
+        // Revenue Stats
+        pendingRevenue: pRevenue,
+        receivedRevenue: rRevenue,
+        totalProfit: (pRevenue + rRevenue) - (pendingValue + paidValue),
       };
       setStats(statsObj);
 
       // Process Trend Data (Last 7-10 entries of grouping)
       const dailyData: Record<string, number> = {};
-      filteredTickets.forEach(t => {
+      filtered.forEach(t => {
         const day = format(new Date(t.created_at), 'dd/MM');
         dailyData[day] = (dailyData[day] || 0) + 1;
       });
@@ -195,7 +243,7 @@ const Dashboard = () => {
 
       // Process Top Clients
       const clientMap: Record<string, number> = {};
-      filteredTickets.forEach(t => {
+      filtered.forEach(t => {
         const name = (t.clients as any)?.name || 'Outros';
         clientMap[name] = (clientMap[name] || 0) + 1;
       });
@@ -204,6 +252,21 @@ const Dashboard = () => {
           .map(([name, value]) => ({ name, value }))
           .sort((a, b) => b.value - a.value)
           .slice(0, 5)
+      );
+
+      // Process Operator Ranking (by completed tickets in filtered period)
+      const operatorMap: Record<string, number> = {};
+      filtered
+        .filter(t => t.status === 'finalizado')
+        .forEach(t => {
+          const opName = (t.operators as any)?.name || (t.operator_id ? `Operador ${t.operator_id.slice(0, 6)}` : null);
+          if (opName) operatorMap[opName] = (operatorMap[opName] || 0) + 1;
+        });
+      setRankingData(
+        Object.entries(operatorMap)
+          .map(([name, value]) => ({ name, value }))
+          .sort((a, b) => b.value - a.value)
+          .slice(0, 7)
       );
 
     } catch (error) {
@@ -216,6 +279,16 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, [range, date]);
+
+  const handleViewDetails = (id: string) => {
+    setSelectedTicketId(id);
+    setDetailOpen(true);
+  };
+
+  const handleEdit = (id: string) => {
+    setSelectedTicketId(id);
+    setEditOpen(true);
+  };
 
   const statCards = [
     {
@@ -250,10 +323,11 @@ const Dashboard = () => {
       title: 'Pagamentos Pendentes',
       value: stats.pendingPaymentValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
       subValue: `${stats.pendingPaymentAgents} agentes a receber`,
-      icon: Clock, // Reusing Clock icon or maybe DollarSign?
+      icon: Clock,
       color: 'text-amber-600 dark:text-amber-400',
       bgColor: 'bg-amber-50 dark:bg-amber-500/10',
       isCurrency: true,
+      hide: !isAdmin,
     },
     {
       title: 'Pagamentos Realizados',
@@ -263,8 +337,39 @@ const Dashboard = () => {
       color: 'text-emerald-600 dark:text-emerald-400',
       bgColor: 'bg-emerald-50 dark:bg-emerald-500/10',
       isCurrency: true,
+      hide: !isAdmin,
+    },
+    {
+      title: 'Faturamento Pendente',
+      value: stats.pendingRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      icon: DollarSign,
+      color: 'text-amber-600 dark:text-amber-400',
+      bgColor: 'bg-amber-50 dark:bg-amber-500/10',
+      isCurrency: true,
+      hide: !isAdmin,
+    },
+    {
+      title: 'Faturamento Recebido',
+      value: stats.receivedRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      icon: Building2,
+      color: 'text-emerald-600 dark:text-emerald-400',
+      bgColor: 'bg-emerald-50 dark:bg-emerald-500/10',
+      isCurrency: true,
+      hide: !isAdmin,
+    },
+    {
+      title: 'Lucro Projetado',
+      value: stats.totalProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      subValue: `Margem: ${((stats.totalProfit / (stats.pendingRevenue + stats.receivedRevenue || 1)) * 100).toFixed(1)}%`,
+      icon: TrendingUp,
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-50 dark:bg-blue-500/10',
+      isCurrency: true,
+      hide: !isAdmin,
     },
   ];
+
+  const filteredStatCards = statCards.filter(card => !card.hide);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -316,8 +421,8 @@ const Dashboard = () => {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {statCards.map((stat) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredStatCards.map((stat) => {
               const Icon = stat.icon;
               return (
                 <Card key={stat.title} className="group border-none shadow-sm hover:shadow-xl transition-all duration-300 bg-card overflow-hidden">
@@ -348,15 +453,53 @@ const Dashboard = () => {
             })}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <TrendChart data={trendData} title="Volume de Atendimentos" />
-            <StatusDistributionChart data={statusData} title="Performance" />
+          {/* New Command Center Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-8 h-full">
+              <DashboardMap tickets={allTickets} onViewDetails={handleViewDetails} />
+            </div>
+            <div className="lg:col-span-4 h-full">
+              <ActivityFeed tickets={allTickets} onViewDetails={handleViewDetails} />
+            </div>
+          </div>
+
+          {/* Monthly Goals Row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <GoalProgress 
+              title="Atendimentos Mensais" 
+              current={stats.completedTickets} 
+              target={150} 
+              icon="target"
+              description="Meta de chamados finalizados este mês"
+            />
+            <GoalProgress 
+              title="Eficiência Operacional" 
+              current={Math.round((stats.completedTickets / (stats.totalTickets || 1)) * 100)} 
+              target={95} 
+              icon="efficiency"
+              unit="%"
+              description="Percentual de conclusão vs abertos"
+            />
+            <GoalProgress 
+              title="Tempo Estimado de Chegada" 
+              current={22} 
+              target={15} 
+              icon="zap"
+              unit="min"
+              description="Média de deslocamento dos agentes"
+            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <TrendChart data={trendData} title="Volume de Atendimentos" />
+            <StatusDistributionChart data={statusData} title="Performance" />
             <TopClientsChart data={topClientsData} title="Top Clientes" />
+          </div>
 
-            <Card className="lg:col-span-2 shadow-md border-none bg-gradient-to-br from-primary/5 to-primary/10 overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <RankingChart data={rankingData} title="Ranking de Operadores — Chamados Finalizados" className="lg:col-span-2" />
+            
+            <Card className="shadow-md border-none bg-gradient-to-br from-primary/5 to-primary/10 overflow-hidden">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-primary" />
@@ -386,6 +529,28 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           </div>
+
+          {/* Modals for details and editing */}
+          {selectedTicketId && (
+            <>
+              <TicketDetails
+                ticketId={selectedTicketId}
+                open={detailOpen}
+                onOpenChange={setDetailOpen}
+                onEdit={(id) => {
+                  setDetailOpen(false);
+                  handleEdit(id);
+                }}
+                onStatusChange={fetchDashboardData}
+              />
+              <EditTicketDialog
+                ticketId={selectedTicketId}
+                open={editOpen}
+                onOpenChange={setEditOpen}
+                onSuccess={fetchDashboardData}
+              />
+            </>
+          )}
         </>
       )}
     </div>

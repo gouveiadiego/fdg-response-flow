@@ -1,34 +1,38 @@
-import { ReactNode, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
+import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
-  children: ReactNode;
+  children: React.ReactNode;
+  requireAdmin?: boolean;
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
+export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
+  const { user, loading: authLoading } = useAuth();
+  const { role, loading: roleLoading, isAdmin, isApproved } = useUserRole();
+  const location = useLocation();
 
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth');
-    }
-  }, [user, loading, navigate]);
-
-  if (loading) {
+  if (authLoading || roleLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (!user) {
-    return null;
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  // Se o usuário não estiver aprovado, redireciona para a página de espera
+  if (!isApproved) {
+    return <Navigate to="/pending-approval" replace />;
+  }
+
+  if (requireAdmin && !isAdmin) {
+    // Se precisar de admin e o usuário não for, redireciona para a página principal permitida (dashboard)
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

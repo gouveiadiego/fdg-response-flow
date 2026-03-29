@@ -36,6 +36,7 @@ import {
   Link as LinkIcon,
 } from 'lucide-react';
 import { AddPhotosDialog } from './AddPhotosDialog';
+import { useUserRole } from '@/hooks/useUserRole';
 import { generateTicketPDF, type TicketPDFData } from './TicketPDFGenerator';
 
 interface TicketDetailsProps {
@@ -162,6 +163,8 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [addPhotosOpen, setAddPhotosOpen] = useState(false);
+  const { isAdmin, isOperador } = useUserRole();
+  const [activeTab, setActiveTab] = useState('detalhes');
 
   useEffect(() => {
     if (ticketId && open) {
@@ -703,33 +706,35 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                         </span>
                       </div>
                     </div>
-                    {/* Costs Grid */}
-                    <div className="grid grid-cols-4 gap-2 border-t pt-2 border-dashed">
-                      <div className="text-center">
-                        <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Pedágio</span>
-                        <span className="text-xs font-semibold">
-                          {ticket.toll_cost ? ticket.toll_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
-                        </span>
+                    {/* Costs Grid - Admin/Operador Only */}
+                    {(isAdmin || isOperador) && (
+                      <div className="grid grid-cols-4 gap-2 border-t pt-2 border-dashed">
+                        <div className="text-center">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Pedágio</span>
+                          <span className="text-xs font-semibold">
+                            {ticket.toll_cost ? ticket.toll_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                          </span>
+                        </div>
+                        <div className="text-center">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Alimentação</span>
+                          <span className="text-xs font-semibold">
+                            {ticket.food_cost ? ticket.food_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                          </span>
+                        </div>
+                        <div className="text-center">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Outros</span>
+                          <span className="text-xs font-semibold">
+                            {ticket.other_costs ? ticket.other_costs.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                          </span>
+                        </div>
+                        <div className="text-center bg-muted/20 rounded">
+                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Total</span>
+                          <span className="text-xs font-bold">
+                            {((ticket.toll_cost || 0) + (ticket.food_cost || 0) + (ticket.other_costs || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-center">
-                        <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Alimentação</span>
-                        <span className="text-xs font-semibold">
-                          {ticket.food_cost ? ticket.food_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
-                        </span>
-                      </div>
-                      <div className="text-center">
-                        <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Outros</span>
-                        <span className="text-xs font-semibold">
-                          {ticket.other_costs ? ticket.other_costs.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
-                        </span>
-                      </div>
-                      <div className="text-center bg-muted/20 rounded">
-                        <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Total</span>
-                        <span className="text-xs font-bold">
-                          {((ticket.toll_cost || 0) + (ticket.food_cost || 0) + (ticket.other_costs || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </span>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Support Agents */}
@@ -795,33 +800,35 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                           </span>
                         </div>
                       </div>
-                      {/* Costs Grid */}
-                      <div className="grid grid-cols-4 gap-2 border-t pt-2 border-dashed">
-                        <div className="text-center">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Pedágio</span>
-                          <span className="text-xs font-semibold">
-                            {supportAgent.toll_cost ? supportAgent.toll_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
-                          </span>
+                      {/* Costs Grid - Admin/Operador Only */}
+                      {(isAdmin || isOperador) && (
+                        <div className="grid grid-cols-4 gap-2 border-t pt-2 border-dashed">
+                          <div className="text-center">
+                            <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Pedágio</span>
+                            <span className="text-xs font-semibold">
+                              {supportAgent.toll_cost ? supportAgent.toll_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                            </span>
+                          </div>
+                          <div className="text-center">
+                            <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Alimentação</span>
+                            <span className="text-xs font-semibold">
+                              {supportAgent.food_cost ? supportAgent.food_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                            </span>
+                          </div>
+                          <div className="text-center">
+                            <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Outros</span>
+                            <span className="text-xs font-semibold">
+                              {supportAgent.other_costs ? supportAgent.other_costs.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
+                            </span>
+                          </div>
+                          <div className="text-center bg-muted/20 rounded">
+                            <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Total</span>
+                            <span className="text-xs font-bold">
+                              {((supportAgent.toll_cost || 0) + (supportAgent.food_cost || 0) + (supportAgent.other_costs || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-center">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Alimentação</span>
-                          <span className="text-xs font-semibold">
-                            {supportAgent.food_cost ? supportAgent.food_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
-                          </span>
-                        </div>
-                        <div className="text-center">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Outros</span>
-                          <span className="text-xs font-semibold">
-                            {supportAgent.other_costs ? supportAgent.other_costs.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}
-                          </span>
-                        </div>
-                        <div className="text-center bg-muted/20 rounded">
-                          <span className="text-[10px] text-muted-foreground uppercase block mb-0.5">Total</span>
-                          <span className="text-xs font-bold">
-                            {((supportAgent.toll_cost || 0) + (supportAgent.food_cost || 0) + (supportAgent.other_costs || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </span>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -974,8 +981,8 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
               </CardContent>
             </Card>
 
-            {/* Alarme: pricing info card */}
-            {ticket.service_type === 'alarme' && (
+            {/* Alarme: pricing info card - Admin/Operador Only */}
+            {ticket.service_type === 'alarme' && (isAdmin || isOperador) && (
               <div className="border border-orange-300 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-lg">🔔</span>
@@ -989,6 +996,28 @@ export function TicketDetails({ ticketId, open, onOpenChange, onEdit, onStatusCh
                   <div className="flex justify-between"><span className="text-muted-foreground">KM adicional</span><strong>R$ 1,50/km</strong></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Pedágio</span><strong>Reembolso integral</strong></div>
                 </div>
+                {(isAdmin || isOperador) && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-muted/30 p-3 rounded-lg border border-dashed mt-4">
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase text-muted-foreground font-bold">Pedágio</span>
+                      <p className="text-sm font-semibold">{ticket.toll_cost ? ticket.toll_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase text-muted-foreground font-bold">Alimentação</span>
+                      <p className="text-sm font-semibold">{ticket.food_cost ? ticket.food_cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase text-muted-foreground font-bold">Outros</span>
+                      <p className="text-sm font-semibold">{ticket.other_costs ? ticket.other_costs.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase text-muted-foreground font-bold text-primary">Sum (Total)</span>
+                      <p className="text-sm font-bold text-primary">
+                        {((ticket.toll_cost || 0) + (ticket.food_cost || 0) + (ticket.other_costs || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <p className="text-[10px] text-muted-foreground mt-2 border-t border-orange-200 dark:border-orange-800 pt-2">
                   Prazo de pagamento: 1 dia útil após recebimento da documentação completa.
                 </p>

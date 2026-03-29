@@ -1,9 +1,10 @@
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend,
-    BarChart, Bar
+    BarChart, Bar, LabelList
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Trophy } from 'lucide-react';
 
 // Custom Colors
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -19,10 +20,11 @@ const THEME_COLORS = {
 interface ChartProps {
     data: any[];
     title: string;
+    className?: string;
 }
 
-export const TrendChart = ({ data, title }: ChartProps) => (
-    <Card className="col-span-1 md:col-span-2 shadow-md hover:shadow-xl transition-all duration-300 border-none bg-card/50 backdrop-blur-sm">
+export const TrendChart = ({ data, title, className }: ChartProps) => (
+    <Card className={`col-span-1 md:col-span-2 shadow-md hover:shadow-xl transition-all duration-300 border-none bg-card/50 backdrop-blur-sm ${className || ''}`}>
         <CardHeader>
             <CardTitle className="text-lg font-semibold flex items-center justify-between">
                 {title}
@@ -71,8 +73,8 @@ export const TrendChart = ({ data, title }: ChartProps) => (
     </Card>
 );
 
-export const StatusDistributionChart = ({ data, title }: ChartProps) => (
-    <Card className="shadow-md hover:shadow-xl transition-all duration-300 border-none bg-card/50 backdrop-blur-sm">
+export const StatusDistributionChart = ({ data, title, className }: ChartProps) => (
+    <Card className={`shadow-md hover:shadow-xl transition-all duration-300 border-none bg-card/50 backdrop-blur-sm ${className || ''}`}>
         <CardHeader>
             <CardTitle className="text-lg font-semibold">{title}</CardTitle>
         </CardHeader>
@@ -106,8 +108,8 @@ export const StatusDistributionChart = ({ data, title }: ChartProps) => (
     </Card>
 );
 
-export const TopClientsChart = ({ data, title }: ChartProps) => (
-    <Card className="shadow-md hover:shadow-xl transition-all duration-300 border-none bg-card/50 backdrop-blur-sm">
+export const TopClientsChart = ({ data, title, className }: ChartProps) => (
+    <Card className={`shadow-md hover:shadow-xl transition-all duration-300 border-none bg-card/50 backdrop-blur-sm ${className || ''}`}>
         <CardHeader>
             <CardTitle className="text-lg font-semibold">{title}</CardTitle>
         </CardHeader>
@@ -136,3 +138,71 @@ export const TopClientsChart = ({ data, title }: ChartProps) => (
         </CardContent>
     </Card>
 );
+
+const RANKING_COLORS = ['#F59E0B', '#94A3B8', '#CD7C2F', '#3B82F6', '#8B5CF6', '#10B981', '#06B6D4'];
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+export const RankingChart = ({ data, title, className }: ChartProps) => {
+    const enriched = data.map((item: any, i: number) => ({ ...item, medal: MEDALS[i] ?? '' }));
+
+    return (
+        <Card className={`col-span-1 md:col-span-2 shadow-md hover:shadow-xl transition-all duration-300 border-none bg-card/50 backdrop-blur-sm ${className || ''}`}>
+            <CardHeader>
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-yellow-500" />
+                    {title}
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="h-[280px] w-full">
+                {data.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+                        Nenhum chamado finalizado no período.
+                    </div>
+                ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={enriched} layout="vertical" margin={{ left: 10, right: 40 }}>
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                            <XAxis type="number" hide />
+                            <YAxis
+                                type="category"
+                                dataKey="name"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={(props: any) => {
+                                    const { x, y, payload, index } = props;
+                                    return (
+                                        <text x={x} y={y} dy={4} textAnchor="end" fill={THEME_COLORS.textSecondary} fontSize={12}>
+                                            {MEDALS[index] ? `${MEDALS[index]} ` : ''}{payload.value}
+                                        </text>
+                                    );
+                                }}
+                                width={120}
+                            />
+                            <Tooltip
+                                cursor={{ fill: '#f1f5f9' }}
+                                formatter={(value: number) => [`${value} chamados`, 'Finalizados']}
+                            />
+                            <Bar
+                                dataKey="value"
+                                radius={[0, 6, 6, 0]}
+                                barSize={16}
+                            >
+                                {enriched.map((_: any, index: number) => (
+                                    <Cell
+                                        key={`cell-${index}`}
+                                        fill={RANKING_COLORS[index] ?? RANKING_COLORS[RANKING_COLORS.length - 1]}
+                                    />
+                                ))}
+                                <LabelList
+                                    dataKey="value"
+                                    position="right"
+                                    style={{ fill: THEME_COLORS.textSecondary, fontSize: 11, fontWeight: 700 }}
+                                />
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                )}
+            </CardContent>
+        </Card>
+    );
+};

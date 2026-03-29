@@ -1,8 +1,9 @@
-import { Home, Users, UserCheck, FileText, LogOut, Truck, ClipboardList, TrendingUp, DollarSign } from 'lucide-react';
+import { Home, Users, UserCog, UserCheck, FileText, LogOut, Truck, ClipboardList, TrendingUp, DollarSign } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { ModeToggle } from '@/components/ModeToggle';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 
 import {
   Sidebar,
@@ -25,7 +26,8 @@ const menuItems = [
   { title: 'Veículos', url: '/vehicles', icon: Truck },
   { title: 'Agentes', url: '/agents', icon: UserCheck },
   { title: 'Operadores', url: '/operators', icon: Users },
-  { title: 'Financeiro', url: '/financeiro', icon: DollarSign },
+  { title: 'Faturamento', url: '/financeiro', icon: DollarSign },
+  { title: 'Usuários', url: '/users', icon: UserCog },
   { title: 'Planos', url: '/plans', icon: ClipboardList },
 ];
 
@@ -33,6 +35,7 @@ export function AppSidebar() {
   const { open, setOpenMobile } = useSidebar();
   const location = useLocation();
   const { signOut } = useAuth();
+  const { isAdmin } = useUserRole();
   const currentPath = location.pathname;
 
   const isActive = (path: string) => currentPath === path;
@@ -40,6 +43,13 @@ export function AppSidebar() {
   const handleNavClick = () => {
     setOpenMobile(false);
   };
+
+  const filteredMenuItems = menuItems.filter(item => {
+    if (['/performance', '/financeiro', '/plans', '/operators', '/users'].includes(item.url)) {
+      return isAdmin;
+    }
+    return true;
+  });
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
@@ -64,7 +74,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {filteredMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <NavLink
