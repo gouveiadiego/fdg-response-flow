@@ -304,9 +304,11 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
                   </Select>
                   <FormMessage />
                 </FormItem>
+              )} />
 
               {clientId && <ClientVehiclesSection clientId={clientId} />}
 
+              <div className="flex gap-3 pt-4">
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isLoading}>
                   Cancelar
                 </Button>
