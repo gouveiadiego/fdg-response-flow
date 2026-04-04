@@ -90,6 +90,7 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
           city: data.city,
           state: data.state,
           notes: data.notes || '',
+          status: (data as any).status || 'ativo',
         });
       }
     } catch (error) {
