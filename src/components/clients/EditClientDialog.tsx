@@ -286,7 +286,26 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
                 </FormItem>
               )} />
 
-              {clientId && <ClientVehiclesSection clientId={clientId} />}
+              {/* Status */}
+              <FormField control={form.control} name="status" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status do Cliente</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="ativo">Ativo</SelectItem>
+                      <SelectItem value="pre_cadastro">Pré-cadastro (Prospecção)</SelectItem>
+                      <SelectItem value="inativo">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
 
               <div className="flex gap-3 pt-4">
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isLoading}>
