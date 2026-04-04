@@ -142,6 +142,7 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
         city: data.city,
         state: data.state,
         notes: data.notes || null,
+        status: data.status,
       } as any).eq('id', clientId);
 
       if (error) throw error;
