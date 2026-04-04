@@ -748,18 +748,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_approved: boolean | null
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_approved?: boolean | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_approved?: boolean | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
@@ -862,6 +865,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_change_password: {
+        Args: { new_password: string; target_user_id: string }
+        Returns: Json
+      }
+      delete_user: { Args: { target_user_id: string }; Returns: boolean }
       get_ticket_tracking_info: { Args: { p_ticket_id: string }; Returns: Json }
       has_role: {
         Args: {
