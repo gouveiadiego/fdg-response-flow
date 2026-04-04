@@ -63,6 +63,7 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
       name: '', document: '', contact_name: '', contact_phone: '',
       contact_email: '', cep: '', street: '', street_number: '',
       neighborhood: '', city: '', state: '', notes: '',
+      status: 'ativo',
     },
   });
 
