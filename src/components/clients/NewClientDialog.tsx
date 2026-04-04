@@ -295,6 +295,7 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
                 </FormItem>
               )} />
 
+              <FormField control={form.control} name="is_alarme" render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-orange-500/5 border-orange-500/20">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base text-orange-400">Cliente Exclusivo de Alarme</FormLabel>
