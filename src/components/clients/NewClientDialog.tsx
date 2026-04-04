@@ -109,6 +109,7 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
         city: data.city,
         state: data.state,
         notes: data.notes || null,
+        status: data.status,
       } as any).select().single();
 
       if (error) throw error;
