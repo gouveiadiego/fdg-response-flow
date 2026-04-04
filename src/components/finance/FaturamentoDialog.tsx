@@ -23,11 +23,11 @@ import { generateClientInvoicePDF } from './ClientInvoicePDFGenerator';
 const optionalNumber = z.number().or(z.string().transform(v => v === '' ? undefined : Number(v))).optional();
 
 const ALARME_PRICING = {
-    base: 100,
+    base: 180,
     includedHours: 0.5,
     includedKm: 50,
-    extraHourRate: 20,
-    extraKmRate: 1.50,
+    extraHourRate: 40,
+    extraKmRate: 2.50,
 };
 
 const faturamentoSchema = z.object({
