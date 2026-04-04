@@ -63,6 +63,7 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
       contact_email: '', cep: '', street: '', street_number: '',
       neighborhood: '', city: '', state: '', notes: '',
       is_alarme: false,
+      status: 'ativo',
     },
   });
 
