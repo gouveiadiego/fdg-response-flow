@@ -41,6 +41,7 @@ const clientSchema = z.object({
   city: z.string().min(1, 'Cidade é obrigatória').max(100),
   state: z.string().min(2, 'Estado é obrigatório').max(2),
   notes: z.string().max(1000).optional(),
+  status: z.enum(['ativo', 'inativo', 'pre_cadastro']).default('ativo'),
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
