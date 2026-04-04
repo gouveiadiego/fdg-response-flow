@@ -275,8 +275,26 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
                   <FormMessage />
                 </FormItem>
               )} />
-              
-              <FormField control={form.control} name="is_alarme" render={({ field }) => (
+
+              {/* Tipo de cadastro */}
+              <FormField control={form.control} name="status" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Cadastro</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="ativo">Cliente Ativo</SelectItem>
+                      <SelectItem value="pre_cadastro">Pré-cadastro (Prospecção)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-orange-500/5 border-orange-500/20">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base text-orange-400">Cliente Exclusivo de Alarme</FormLabel>
