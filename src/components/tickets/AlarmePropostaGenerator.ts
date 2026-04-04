@@ -12,11 +12,11 @@ const COMPANY_INFO = {
 };
 
 const ALARME_PRICING = {
-    base: 100,
+    base: 180,
     includedMinutes: 30,
     includedKm: 50,
-    extraHourRate: 20,
-    extraKmRate: 1.50,
+    extraHourRate: 40,
+    extraKmRate: 2.50,
 };
 
 const THEME = {
