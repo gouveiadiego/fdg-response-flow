@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Search, Loader2 } from 'lucide-react';
 import {
@@ -40,6 +41,7 @@ const clientSchema = z.object({
   state: z.string().min(2, 'Estado é obrigatório').max(2),
   notes: z.string().max(1000).optional(),
   is_alarme: z.boolean().default(false),
+  status: z.enum(['ativo', 'pre_cadastro']).default('ativo'),
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
@@ -61,6 +63,7 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
       contact_email: '', cep: '', street: '', street_number: '',
       neighborhood: '', city: '', state: '', notes: '',
       is_alarme: false,
+      status: 'ativo',
     },
   });
 
@@ -106,6 +109,7 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
         city: data.city,
         state: data.state,
         notes: data.notes || null,
+        status: data.status,
       } as any).select().single();
 
       if (error) throw error;
@@ -271,7 +275,26 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
                   <FormMessage />
                 </FormItem>
               )} />
-              
+
+              {/* Tipo de cadastro */}
+              <FormField control={form.control} name="status" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Cadastro</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="ativo">Cliente Ativo</SelectItem>
+                      <SelectItem value="pre_cadastro">Pré-cadastro (Prospecção)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
               <FormField control={form.control} name="is_alarme" render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-orange-500/5 border-orange-500/20">
                   <div className="space-y-0.5">

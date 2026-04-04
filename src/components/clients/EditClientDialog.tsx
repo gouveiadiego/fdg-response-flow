@@ -5,6 +5,7 @@ import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Search, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,7 @@ const clientSchema = z.object({
   city: z.string().min(1, 'Cidade é obrigatória').max(100),
   state: z.string().min(2, 'Estado é obrigatório').max(2),
   notes: z.string().max(1000).optional(),
+  status: z.enum(['ativo', 'inativo', 'pre_cadastro']).default('ativo'),
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
@@ -60,6 +62,7 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
       name: '', document: '', contact_name: '', contact_phone: '',
       contact_email: '', cep: '', street: '', street_number: '',
       neighborhood: '', city: '', state: '', notes: '',
+      status: 'ativo',
     },
   });
 
@@ -86,6 +89,7 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
           city: data.city,
           state: data.state,
           notes: data.notes || '',
+          status: (data as any).status || 'ativo',
         });
       }
     } catch (error) {
@@ -137,6 +141,7 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
         city: data.city,
         state: data.state,
         notes: data.notes || null,
+        status: data.status,
       } as any).eq('id', clientId);
 
       if (error) throw error;
@@ -277,6 +282,26 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
                   <FormControl>
                     <Textarea placeholder="Observações sobre o cliente..." className="resize-none" rows={3} {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              {/* Status */}
+              <FormField control={form.control} name="status" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status do Cliente</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="ativo">Ativo</SelectItem>
+                      <SelectItem value="pre_cadastro">Pré-cadastro (Prospecção)</SelectItem>
+                      <SelectItem value="inativo">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )} />

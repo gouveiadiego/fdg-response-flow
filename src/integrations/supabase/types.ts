@@ -244,6 +244,7 @@ export type Database = {
           neighborhood: string | null
           notes: string | null
           state: string
+          status: Database["public"]["Enums"]["client_status"]
           street: string | null
           street_number: string | null
           updated_at: string
@@ -264,6 +265,7 @@ export type Database = {
           neighborhood?: string | null
           notes?: string | null
           state: string
+          status?: Database["public"]["Enums"]["client_status"]
           street?: string | null
           street_number?: string | null
           updated_at?: string
@@ -284,6 +286,7 @@ export type Database = {
           neighborhood?: string | null
           notes?: string | null
           state?: string
+          status?: Database["public"]["Enums"]["client_status"]
           street?: string | null
           street_number?: string | null
           updated_at?: string
@@ -890,6 +893,7 @@ export type Database = {
         | "frigorifico"
         | "container"
         | "prancha"
+      client_status: "ativo" | "inativo" | "pre_cadastro"
       service_type:
         | "alarme"
         | "averiguacao"
@@ -1035,6 +1039,7 @@ export const Constants = {
         "container",
         "prancha",
       ],
+      client_status: ["ativo", "inativo", "pre_cadastro"],
       service_type: [
         "alarme",
         "averiguacao",

@@ -4,13 +4,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Search, Building2, MapPin, Trash2, FileSpreadsheet } from 'lucide-react';
+import { Plus, Search, Building2, MapPin, Trash2, FileSpreadsheet, CheckCircle2, XCircle, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { NewClientDialog } from '@/components/clients/NewClientDialog';
 import { EditClientDialog } from '@/components/clients/EditClientDialog';
 import { Badge } from '@/components/ui/badge';
 import { DeleteAlertDialog } from '@/components/DeleteAlertDialog';
 import { exportClientsToExcel } from '@/utils/exportClientsToExcel';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+type ClientStatus = 'ativo' | 'inativo' | 'pre_cadastro';
 
 interface Client {
   id: string;
@@ -26,8 +29,15 @@ interface Client {
   city: string;
   state: string;
   notes: string | null;
+  status: ClientStatus;
   vehicles: { plate_main: string }[];
 }
+
+const statusConfig: Record<ClientStatus, { label: string; color: string; icon: React.ReactNode }> = {
+  ativo: { label: 'Ativo', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', icon: <CheckCircle2 className="h-3 w-3" /> },
+  inativo: { label: 'Inativo', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: <XCircle className="h-3 w-3" /> },
+  pre_cadastro: { label: 'Pré-cadastro', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20', icon: <UserPlus className="h-3 w-3" /> },
+};
 
 const Clients = () => {
   const navigate = useNavigate();
@@ -37,6 +47,7 @@ const Clients = () => {
   const [newClientOpen, setNewClientOpen] = useState(false);
   const [editClientOpen, setEditClientOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<ClientStatus>('ativo');
 
   // Delete state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -51,7 +62,7 @@ const Clients = () => {
     try {
       const { data, error } = await supabase
         .from('clients')
-        .select('id, name, document, contact_name, contact_phone, contact_email, cep, street, street_number, neighborhood, city, state, notes, vehicles(plate_main)')
+        .select('id, name, document, contact_name, contact_phone, contact_email, cep, street, street_number, neighborhood, city, state, notes, status, vehicles(plate_main)')
         .order('name');
 
       if (error) throw error;
@@ -121,6 +132,19 @@ const Clients = () => {
     }
   };
 
+  const handleStatusChange = async (clientId: string, newStatus: ClientStatus) => {
+    try {
+      const { error } = await supabase.from('clients').update({ status: newStatus } as any).eq('id', clientId);
+      if (error) throw error;
+      const statusLabel = statusConfig[newStatus].label;
+      toast.success(`Cliente alterado para ${statusLabel}`);
+      fetchClients();
+    } catch (error) {
+      console.error('Erro ao alterar status:', error);
+      toast.error('Erro ao alterar status do cliente');
+    }
+  };
+
   const handleExportExcel = () => {
     if (clients.length === 0) {
       toast.error('Nenhum cliente para exportar');
@@ -135,9 +159,11 @@ const Clients = () => {
     navigate(`/vehicles?client=${clientId}`);
   };
 
-  const filteredClients = clients.filter((client) =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredClients = clients
+    .filter(c => c.status === activeTab)
+    .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+  const countByStatus = (s: ClientStatus) => clients.filter(c => c.status === s).length;
 
   if (loading) {
     return (
@@ -169,6 +195,27 @@ const Clients = () => {
         </div>
       </div>
 
+      {/* Tabs de status */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ClientStatus)}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="ativo" className="gap-1.5">
+            <CheckCircle2 className="h-4 w-4" />
+            Ativos
+            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{countByStatus('ativo')}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="pre_cadastro" className="gap-1.5">
+            <UserPlus className="h-4 w-4" />
+            Pré-cadastro
+            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{countByStatus('pre_cadastro')}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="inativo" className="gap-1.5">
+            <XCircle className="h-4 w-4" />
+            Inativos
+            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{countByStatus('inativo')}</Badge>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -185,7 +232,7 @@ const Clients = () => {
             <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg font-medium text-foreground mb-2">Nenhum cliente encontrado</p>
             <p className="text-sm text-muted-foreground mb-4">
-              {searchTerm ? 'Tente buscar com outros termos' : 'Comece cadastrando um novo cliente'}
+              {searchTerm ? 'Tente buscar com outros termos' : `Nenhum cliente ${statusConfig[activeTab].label.toLowerCase()} cadastrado`}
             </p>
             {!searchTerm && (
               <Button onClick={() => setNewClientOpen(true)}>
@@ -219,7 +266,40 @@ const Clients = () => {
                 {client.contact_phone && (
                   <p className="text-sm text-muted-foreground truncate">{client.contact_phone}</p>
                 )}
-                <div className="flex gap-2 pt-2">
+                {/* Botões de ação de status */}
+                <div className="flex gap-1.5 pt-1">
+                  {activeTab === 'pre_cadastro' && (
+                    <Button
+                      variant="outline" size="sm"
+                      className="text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10 text-xs h-7"
+                      onClick={() => handleStatusChange(client.id, 'ativo')}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                      Ativar
+                    </Button>
+                  )}
+                  {activeTab === 'ativo' && (
+                    <Button
+                      variant="outline" size="sm"
+                      className="text-destructive border-destructive/30 hover:bg-destructive/10 text-xs h-7"
+                      onClick={() => handleStatusChange(client.id, 'inativo')}
+                    >
+                      <XCircle className="h-3.5 w-3.5 mr-1" />
+                      Inativar
+                    </Button>
+                  )}
+                  {activeTab === 'inativo' && (
+                    <Button
+                      variant="outline" size="sm"
+                      className="text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10 text-xs h-7"
+                      onClick={() => handleStatusChange(client.id, 'ativo')}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                      Reativar
+                    </Button>
+                  )}
+                </div>
+                <div className="flex gap-2 pt-1">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => handleViewVehicles(client.id)}>
                     Ver Veículos
                   </Button>
