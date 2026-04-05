@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Search, MapPin, UserCheck, Phone, Shield, Navigation, Loader2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
+import { NewDemandDialog } from './NewDemandDialog';
+import { useGeocoding } from '@/hooks/useGeocoding';
 
 // Fix for default marker icons in Leaflet with Vite
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -32,6 +34,14 @@ const searchCenterIcon = L.divIcon({
     iconAnchor: [12, 12],
 });
 
+// Custom icon for unmet agent demands (red pin)
+const demandIcon = L.divIcon({
+    html: `<div class="w-6 h-6 bg-destructive rounded-full border-[3px] border-white shadow-[0_0_10px_rgba(239,68,68,0.7)] flex items-center justify-center animate-pulse"><div class="w-1.5 h-1.5 bg-white rounded-full"></div></div>`,
+    className: '',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+});
+
 interface Agent {
     id: string;
     name: string;
@@ -46,6 +56,16 @@ interface Agent {
     has_preservation_skill: boolean;
     has_logistics_skill: boolean;
     has_auditing_skill: boolean;
+    distance?: number;
+}
+
+interface AgentDemand {
+    id: string;
+    city: string;
+    state: string;
+    notes: string | null;
+    latitude: number | null;
+    longitude: number | null;
     distance?: number;
 }
 
@@ -69,16 +89,28 @@ interface AgentMapProps {
 
 export function AgentMap({ onSelect, onEdit }: AgentMapProps) {
     const navigate = useNavigate();
+    const { reverseGeocode } = useGeocoding();
     const [agents, setAgents] = useState<Agent[]>([]);
+    const [demands, setDemands] = useState<AgentDemand[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [mapCenter, setMapCenter] = useState<[number, number]>([-23.55052, -46.633309]); // São Paulo default
     const [searchPoint, setSearchPoint] = useState<[number, number] | null>(null);
     const [zoom, setZoom] = useState(13);
+    
+    // Demands state
+    const [isDemandDialogOpen, setIsDemandDialogOpen] = useState(false);
+    const [searchCity, setSearchCity] = useState('');
+    const [searchState, setSearchState] = useState('');
+
+    // Filters
+    const [showActive, setShowActive] = useState(true);
+    const [showDemands, setShowDemands] = useState(true);
 
     useEffect(() => {
         fetchAgents();
+        fetchDemands();
     }, []);
 
     const fetchAgents = async () => {
@@ -97,6 +129,20 @@ export function AgentMap({ onSelect, onEdit }: AgentMapProps) {
             toast.error('Erro ao carregar mapa');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchDemands = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('agent_demands')
+                .select('id, city, state, notes, latitude, longitude')
+                .eq('status', 'pendente');
+
+            if (error && error.code !== '42P01') throw error;
+            if (data) setDemands(data);
+        } catch (error: any) {
+            console.error('Erro ao buscar demandas para o mapa:', error);
         }
     };
 
@@ -131,6 +177,15 @@ export function AgentMap({ onSelect, onEdit }: AgentMapProps) {
                 setMapCenter([lat, lon]);
                 setSearchPoint([lat, lon]);
                 setZoom(14);
+                
+                const geoResult = await reverseGeocode(lat, lon);
+                if (geoResult) {
+                    setSearchCity(geoResult.city);
+                    setSearchState(geoResult.state);
+                } else {
+                    setSearchCity(searchQuery.split(',')[0].trim());
+                    setSearchState('');
+                }
 
                 // Calculate distances and sort
                 const agentsWithDistance = agents.map(agent => ({
@@ -156,8 +211,19 @@ export function AgentMap({ onSelect, onEdit }: AgentMapProps) {
 
     const sortedAgents = useMemo(() => {
         if (!searchPoint) return agents;
-        return [...agents].sort((a, b) => (a.distance || 0) - (b.distance || 0));
+        return [...agents]
+            .sort((a, b) => (a.distance || 0) - (b.distance || 0));
     }, [agents, searchPoint]);
+
+    const sortedDemands = useMemo(() => {
+        if (!searchPoint) return demands;
+        return [...demands]
+            .map(d => ({
+                ...d,
+                distance: (d.latitude && d.longitude) ? calculateDistance(searchPoint[0], searchPoint[1], d.latitude, d.longitude) : undefined
+            }))
+            .sort((a, b) => (a.distance || 0) - (b.distance || 0));
+    }, [demands, searchPoint]);
 
     if (loading) {
         return (
@@ -170,23 +236,51 @@ export function AgentMap({ onSelect, onEdit }: AgentMapProps) {
         );
     }
 
+    const visibleAgents = showActive ? sortedAgents : [];
+    const visibleDemands = showDemands ? sortedDemands : [];
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div className="lg:col-span-3 space-y-4">
-                <form onSubmit={handleSearch} className="flex gap-2">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            placeholder="Digite endereço ou coordenadas (ex: -23.55, -46.63)..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9"
-                        />
+                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                    <form onSubmit={handleSearch} className="flex gap-2 flex-1 w-full max-w-md">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                placeholder="Digite endereço ou coordenadas (ex: -23.55, -46.63)..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9"
+                            />
+                        </div>
+                        <Button type="submit" disabled={isSearching}>
+                            {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Buscar'}
+                        </Button>
+                    </form>
+
+                    <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                        <Button 
+                            type="button" 
+                            variant={showActive ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setShowActive(!showActive)}
+                            className={`whitespace-nowrap ${!showActive ? "text-primary border-primary/50" : ""}`}
+                        >
+                            <UserCheck className="w-4 h-4 mr-2" />
+                            Agentes Ativos
+                        </Button>
+                        <Button 
+                            type="button" 
+                            variant={showDemands ? "destructive" : "outline"}
+                            size="sm"
+                            onClick={() => setShowDemands(!showDemands)}
+                            className={`whitespace-nowrap ${!showDemands ? "text-destructive border-destructive/50" : ""}`}
+                        >
+                            <MapPin className="w-4 h-4 mr-2" />
+                            Em Prospecção
+                        </Button>
                     </div>
-                    <Button type="submit" disabled={isSearching}>
-                        {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Buscar'}
-                    </Button>
-                </form>
+                </div>
 
                 <div className="h-[600px] rounded-lg border overflow-hidden relative z-0">
                     <MapContainer
@@ -209,13 +303,40 @@ export function AgentMap({ onSelect, onEdit }: AgentMapProps) {
                                 </Marker>
                                 <Circle
                                     center={searchPoint}
-                                    radius={5000} // 5km circle
+                                    radius={50000} // 50km circle
                                     pathOptions={{ color: 'var(--primary)', fillColor: 'var(--primary)', fillOpacity: 0.1 }}
                                 />
                             </>
                         )}
 
-                        {agents.map((agent) => (
+                        {showDemands && demands.map((demand) => {
+                            // Provide a fallback center-of-brazil coordinate if null
+                            const lat = demand.latitude ?? -14.2350;
+                            const lng = demand.longitude ?? -51.9253;
+                            
+                            return (
+                                <Marker
+                                    key={`demand-${demand.id}`}
+                                    position={[lat, lng]}
+                                    icon={demandIcon}
+                                >
+                                <Popup className="demand-popup">
+                                    <div className="p-1 space-y-2 max-w-[220px]">
+                                        <h3 className="font-bold text-sm text-destructive flex items-center gap-1">
+                                            <MapPin className="h-4 w-4" /> Falta de Agente
+                                        </h3>
+                                        <p className="text-xs font-semibold">{demand.city} - {demand.state}</p>
+                                        {demand.notes && (
+                                            <p className="text-xs text-muted-foreground italic border-t pt-1 mt-1 text-balance">"{demand.notes}"</p>
+                                        )}
+                                    </div>
+                                </Popup>
+                                </Marker>
+                            );
+                        })}
+
+                        {/* Se tiver busca, mostra só o raio de 50km (sortedAgents). Se não, mostra todos. */}
+                        {showActive && (searchPoint ? sortedAgents : agents).map((agent) => (
                             <Marker
                                 key={agent.id}
                                 position={[agent.latitude!, agent.longitude!]}
@@ -262,12 +383,64 @@ export function AgentMap({ onSelect, onEdit }: AgentMapProps) {
             </div>
 
             <div className="space-y-4 h-[650px] overflow-y-auto pr-2">
-                <h3 className="font-bold text-lg flex items-center gap-2">
-                    {searchPoint ? 'Próximos ao Local' : 'Todos os Agentes'}
-                    <Badge variant="secondary" className="ml-auto">{sortedAgents.length}</Badge>
-                </h3>
+                <div className="space-y-3 mb-4">
+                    <h3 className="font-bold text-lg flex items-center justify-between">
+                        {searchPoint ? 'Próximos ao Local' : 'Agentes e Demandas'}
+                        <div className="flex gap-2 ml-auto">
+                            {showActive && <Badge variant="secondary">{visibleAgents.length}</Badge>}
+                            {showDemands && <Badge variant="destructive" className="bg-destructive/10 text-destructive hover:bg-destructive/20 border-none">{visibleDemands.length}</Badge>}
+                        </div>
+                    </h3>
 
-                {sortedAgents.map((agent, index) => (
+                    {searchPoint && (
+                        <Card className="bg-destructive/5 border-destructive/20 shadow-sm">
+                            <CardContent className="p-3 flex items-center justify-between gap-3">
+                                <div className="text-sm font-medium text-destructive">
+                                    Não tem ninguém perto?
+                                </div>
+                                <Button 
+                                    variant="destructive" 
+                                    size="sm" 
+                                    onClick={() => setIsDemandDialogOpen(true)}
+                                >
+                                    Registrar Falta
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
+
+                {visibleDemands.map((demand) => (
+                    <Card
+                        key={`list-demand-${demand.id}`}
+                        className="cursor-pointer border-destructive/30 hover:border-destructive transition-colors bg-destructive/5"
+                        onClick={() => {
+                            if (demand.latitude && demand.longitude) {
+                                setMapCenter([demand.latitude, demand.longitude]);
+                                setZoom(16);
+                            }
+                        }}
+                    >
+                        <CardHeader className="p-4 pb-2">
+                            <div className="flex justify-between items-start">
+                                <CardTitle className="text-sm font-bold text-destructive flex items-center gap-1">
+                                    <MapPin className="h-4 w-4" /> Falta de Agente
+                                </CardTitle>
+                                {demand.distance !== undefined && (
+                                    <span className="text-xs font-bold text-destructive">{demand.distance.toFixed(1)}km</span>
+                                )}
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-4 pt-0 space-y-2">
+                            <p className="text-sm font-semibold">{demand.city} - {demand.state}</p>
+                            {demand.notes && (
+                                <p className="text-xs text-muted-foreground italic border-t border-destructive/10 pt-2 mt-1 line-clamp-2">"{demand.notes}"</p>
+                            )}
+                        </CardContent>
+                    </Card>
+                ))}
+
+                {visibleAgents.map((agent, index) => (
                     <Card
                         key={agent.id}
                         className={`cursor-pointer hover:border-primary transition-colors ${index === 0 && searchPoint ? 'border-primary bg-primary/5 shadow-md' : ''}`}
@@ -351,13 +524,34 @@ export function AgentMap({ onSelect, onEdit }: AgentMapProps) {
                     </Card>
                 ))}
 
-                {sortedAgents.length === 0 && (
-                    <div className="text-center py-12 text-muted-foreground">
+                {visibleAgents.length === 0 && visibleDemands.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground flex flex-col items-center">
                         <MapPin className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                        <p className="text-sm">Nenhum agente localizado no mapa.</p>
+                        <p className="text-sm mb-4">Nenhum registro localizado no mapa.</p>
+                        {searchPoint && (
+                            <Button 
+                                variant="destructive" 
+                                onClick={() => setIsDemandDialogOpen(true)}
+                                className="w-full"
+                            >
+                                <MapPin className="mr-2 h-4 w-4" />
+                                Registrar Falta de Agente para "{searchCity || searchQuery}"
+                            </Button>
+                        )}
                     </div>
                 )}
             </div>
+
+            <NewDemandDialog 
+                open={isDemandDialogOpen} 
+                onOpenChange={setIsDemandDialogOpen} 
+                onSuccess={() => {
+                   fetchDemands();
+                   toast.success("Demanda registrada e mapa atualizado!");
+                }} 
+                initialCity={searchCity}
+                initialState={searchState}
+            />
         </div>
     );
 }

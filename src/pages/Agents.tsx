@@ -20,6 +20,7 @@ import { NewAgentDialog } from '@/components/agents/NewAgentDialog';
 import { EditAgentDialog } from '@/components/agents/EditAgentDialog';
 import { AgentMap } from '@/components/agents/AgentMap';
 import { AgentRegistrationReview } from '@/components/agents/AgentRegistrationReview';
+import { AgentDemandsList } from '@/components/agents/AgentDemandsList';
 import { RoleGuard } from '@/components/RoleGuard';
 import { DeleteAlertDialog } from '@/components/DeleteAlertDialog';
 
@@ -65,6 +66,15 @@ const Agents = () => {
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  
+  // State for pre-filling new agent from demands
+  const [prefilledAgentData, setPrefilledAgentData] = useState<{
+    city: string;
+    state: string;
+    address: string | null;
+    latitude: number | null;
+    longitude: number | null;
+  } | null>(null);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -262,7 +272,10 @@ const Agents = () => {
               <Link2 className="h-4 w-4 mr-2" />
               Copiar Link de Cadastro
             </Button>
-            <Button onClick={() => setNewDialogOpen(true)}>
+            <Button onClick={() => {
+              setPrefilledAgentData(null); // Reset any pre-fills
+              setNewDialogOpen(true);
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Agente
             </Button>
@@ -289,6 +302,10 @@ const Agents = () => {
                   {pendingCount}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="demands" className="gap-2 text-destructive data-[state=active]:text-destructive">
+              <MapIcon className="h-4 w-4" />
+              Demandas de Busca
             </TabsTrigger>
           </TabsList>
         </div>
@@ -549,12 +566,24 @@ const Agents = () => {
         <TabsContent value="pending" className="mt-0">
           <AgentRegistrationReview onAgentApproved={() => { fetchAgents(); fetchPendingCount(); }} />
         </TabsContent>
+
+        <TabsContent value="demands" className="mt-0">
+          <AgentDemandsList onAgentFound={(data) => {
+            setPrefilledAgentData(data);
+            setNewDialogOpen(true);
+          }} />
+        </TabsContent>
       </Tabs>
 
       <NewAgentDialog
         open={newDialogOpen}
         onOpenChange={setNewDialogOpen}
         onSuccess={fetchAgents}
+        initialCity={prefilledAgentData?.city || ''}
+        initialState={prefilledAgentData?.state || ''}
+        initialStreet={prefilledAgentData?.address || ''}
+        initialLat={prefilledAgentData?.latitude || null}
+        initialLng={prefilledAgentData?.longitude || null}
       />
 
       <EditAgentDialog

@@ -4,13 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   FileText, Users, UserCheck, TrendingUp,
   Calendar, Clock, Filter, AlertCircle, CheckCircle2, XCircle,
-  DollarSign, Building2
+  DollarSign, Building2, Zap, Activity, ArrowUpRight, ArrowDownRight,
+  Wallet, Layers, MapPin
 } from 'lucide-react';
 import {
-  TrendChart,
   StatusDistributionChart,
-  TopClientsChart,
-  RankingChart
+  TopClientsChart
 } from '@/components/dashboard/AnalyticsCharts';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import DashboardMap from '@/components/dashboard/DashboardMap';
@@ -25,6 +24,7 @@ import { DateRange } from "react-day-picker";
 import { useUserRole } from '@/hooks/useUserRole';
 import { TicketDetails } from '@/components/tickets/TicketDetails';
 import { EditTicketDialog } from '@/components/tickets/EditTicketDialog';
+import { Badge } from '@/components/ui/badge';
 
 interface Stats {
   totalTickets: number;
@@ -41,6 +41,9 @@ interface Stats {
   pendingRevenue: number;
   receivedRevenue: number;
   totalProfit: number;
+  // Live Status
+  activeAgentsInField: number;
+  emergencyTickets: number;
 }
 
 type FilterRange = '7days' | 'month' | 'year' | 'all' | 'custom';
@@ -48,35 +51,21 @@ type FilterRange = '7days' | 'month' | 'year' | 'all' | 'custom';
 const Dashboard = () => {
   const { isAdmin } = useUserRole();
   const [stats, setStats] = useState<Stats>({
-    totalTickets: 0,
-    openTickets: 0,
-    totalClients: 0,
-    totalAgents: 0,
-    completedTickets: 0,
-    cancelledTickets: 0,
-    pendingPaymentValue: 0,
-    pendingPaymentAgents: 0,
-    paidPaymentValue: 0,
-    paidPaymentAgents: 0,
-    pendingRevenue: 0,
-    receivedRevenue: 0,
-    totalProfit: 0,
+    totalTickets: 0, openTickets: 0, totalClients: 0, totalAgents: 0,
+    completedTickets: 0, cancelledTickets: 0, pendingPaymentValue: 0,
+    pendingPaymentAgents: 0, paidPaymentValue: 0, paidPaymentAgents: 0,
+    pendingRevenue: 0, receivedRevenue: 0, totalProfit: 0,
+    activeAgentsInField: 0, emergencyTickets: 0
   });
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<FilterRange>('month');
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
-  });
+  const [date, setDate] = useState<DateRange | undefined>({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) });
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [trendData, setTrendData] = useState<any[]>([]);
   const [statusData, setStatusData] = useState<any[]>([]);
   const [topClientsData, setTopClientsData] = useState<any[]>([]);
-  const [rankingData, setRankingData] = useState<any[]>([]);
   const [allTickets, setAllTickets] = useState<any[]>([]);
-  const [filteredTickets, setFilteredTickets] = useState<any[]>([]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -87,14 +76,7 @@ const Dashboard = () => {
           *,
           clients(name),
           operators(name),
-          ticket_support_agents(
-            agent_id,
-            toll_cost,
-            food_cost,
-            other_costs,
-            compensation_total,
-            payment_status
-          )
+          ticket_support_agents(*)
         `);
 
       const [clientsResult, agentsResult] = await Promise.all([
@@ -103,296 +85,124 @@ const Dashboard = () => {
       ]);
 
       if (ticketsError) throw ticketsError;
-
       setAllTickets(tickets || []);
 
-      // Filter by range or custom date
       const now = new Date();
-      let filtered = tickets || [];
-
-      let start: Date;
-      let end: Date = endOfDay(now);
-
-      if (range === 'custom' && date?.from) {
-        start = startOfDay(date.from);
-        if (date.to) end = endOfDay(date.to);
-
-        filtered = (tickets || []).filter(t => {
-          const ticketDate = new Date(t.created_at);
+      let filtered = (tickets || []).filter(t => {
+        const ticketDate = new Date(t.created_at);
+        if (range === 'custom' && date?.from) {
+          const start = startOfDay(date.from);
+          const end = date.to ? endOfDay(date.to) : endOfDay(now);
           return isWithinInterval(ticketDate, { start, end });
-        });
-      }
+        }
+        if (range === 'all') return true;
+        const start = range === '7days' ? subDays(now, 7) : range === 'month' ? startOfMonth(now) : startOfYear(now);
+        return isWithinInterval(ticketDate, { start, end: endOfDay(now) });
+      });
 
-      setFilteredTickets(filtered);
+      // Financial Calculation
+      const finishedTickets = tickets?.filter(t => t.status === 'finalizado') || [];
+      let pendingValue = 0, paidValue = 0, pRevenue = 0, rRevenue = 0;
+      const pendingAgentsSet = new Set<string>(), paidAgentsSet = new Set<string>();
 
-      // Process Payment Stats
-
-      // 1. Pending Payments (ALL TIME, finalizado status)
-      const allTicketsData = tickets || [];
-      const pendingTickets = allTicketsData.filter(t => t.status === 'finalizado');
-
-      let pendingValue = 0;
-      const pendingAgents = new Set<string>();
-
-      pendingTickets.forEach(t => {
-        // Main Agent
+      finishedTickets.forEach(t => {
+        // Costs
+        const calcCost = (c: any) => (Number(c.compensation_total) || 0) + (Number(c.toll_cost) || 0) + (Number(c.food_cost) || 0) + (Number(c.other_costs) || 0);
+        
+        // Pendent Main
         if (t.main_agent_id && (t.main_agent_payment_status === 'pendente' || !t.main_agent_payment_status)) {
-          const cost = (Number(t.main_agent_compensation_total) || 0) + 
-                       (Number(t.toll_cost) || 0) + 
-                       (Number(t.food_cost) || 0) + 
-                       (Number(t.other_costs) || 0);
-          pendingValue += cost;
-          pendingAgents.add(t.main_agent_id);
+          pendingValue += calcCost(t);
+          pendingAgentsSet.add(t.main_agent_id);
+        } else if (t.main_agent_id && t.main_agent_payment_status === 'pago') {
+          paidValue += calcCost(t);
+          paidAgentsSet.add(t.main_agent_id);
         }
 
-        // Dynamic Support Agents
-        if (t.ticket_support_agents && t.ticket_support_agents.length > 0) {
-          t.ticket_support_agents.forEach((sa: any) => {
-            if (sa.payment_status === 'pendente' || !sa.payment_status) {
-              const cost = (Number(sa.compensation_total) || 0) + 
-                           (Number(sa.toll_cost) || 0) + 
-                           (Number(sa.food_cost) || 0) + 
-                           (Number(sa.other_costs) || 0);
-              pendingValue += cost;
-              pendingAgents.add(sa.agent_id);
-            }
-          });
-        }
-      });
-
-      // 3. Revenue Stats (from ALL tickets for pending, filtered for received)
-      let pRevenue = 0;
-      let rRevenue = 0;
-
-      allTicketsData.filter(t => t.status === 'finalizado').forEach(t => {
-        if (!t.revenue_status || t.revenue_status === 'pendente') {
-          pRevenue += (Number(t.revenue_total) || 0);
-        }
-      });
-
-      filtered.filter(t => t.status === 'finalizado').forEach(t => {
-        if (t.revenue_status === 'recebido') {
-          rRevenue += (Number(t.revenue_total) || 0);
-        }
-      });
-
-      // 4. Paid Payments (FILTERED by date range)
-      let paidValue = 0;
-      const paidAgents = new Set<string>();
-
-      filtered.filter(t => t.status === 'finalizado').forEach(t => {
-        // Main Agent
-        if (t.main_agent_id && t.main_agent_payment_status === 'pago') {
-          const cost = (Number(t.main_agent_compensation_total) || 0) + 
-                       (Number(t.toll_cost) || 0) + 
-                       (Number(t.food_cost) || 0) + 
-                       (Number(t.other_costs) || 0);
-          paidValue += cost;
-          paidAgents.add(t.main_agent_id);
-        }
-
-        // Dynamic Support Agents
-        if (t.ticket_support_agents && t.ticket_support_agents.length > 0) {
+        // Support
+        if (t.ticket_support_agents) {
           t.ticket_support_agents.forEach((sa: any) => {
             if (sa.payment_status === 'pago') {
-              const cost = (Number(sa.compensation_total) || 0) + 
-                           (Number(sa.toll_cost) || 0) + 
-                           (Number(sa.food_cost) || 0) + 
-                           (Number(sa.other_costs) || 0);
-              paidValue += cost;
-              paidAgents.add(sa.agent_id);
+               paidValue += calcCost(sa);
+               paidAgentsSet.add(sa.agent_id);
+            } else {
+               pendingValue += calcCost(sa);
+               pendingAgentsSet.add(sa.agent_id);
             }
           });
         }
+
+        // Revenue
+        if (!t.revenue_status || t.revenue_status === 'pendente') pRevenue += (Number(t.revenue_total) || 0);
+        else if (t.revenue_status === 'recebido') rRevenue += (Number(t.revenue_total) || 0);
       });
 
-      // Process Stats
-      const statsObj: Stats = {
+      const openNow = tickets?.filter(t => t.status === 'aberto' || t.status === 'em_transito' || t.status === 'no_local' || t.status === 'atendimento') || [];
+      const activeAgents = new Set(openNow.map(t => t.main_agent_id)).size;
+
+      setStats({
         totalTickets: filtered.length,
         openTickets: filtered.filter(t => t.status === 'aberto').length,
         completedTickets: filtered.filter(t => t.status === 'finalizado').length,
         cancelledTickets: filtered.filter(t => t.status === 'cancelado').length,
         totalClients: clientsResult.count || 0,
         totalAgents: agentsResult.count || 0,
-        // Payment Stats
         pendingPaymentValue: pendingValue,
-        pendingPaymentAgents: pendingAgents.size,
+        pendingPaymentAgents: pendingAgentsSet.size,
         paidPaymentValue: paidValue,
-        paidPaymentAgents: paidAgents.size,
-        // Revenue Stats
+        paidPaymentAgents: paidAgentsSet.size,
         pendingRevenue: pRevenue,
         receivedRevenue: rRevenue,
         totalProfit: (pRevenue + rRevenue) - (pendingValue + paidValue),
-      };
-      setStats(statsObj);
-
-      // Process Trend Data (Last 7-10 entries of grouping)
-      const dailyData: Record<string, number> = {};
-      filtered.forEach(t => {
-        const day = format(new Date(t.created_at), 'dd/MM');
-        dailyData[day] = (dailyData[day] || 0) + 1;
+        activeAgentsInField: activeAgents,
+        emergencyTickets: openNow.length
       });
-      setTrendData(Object.entries(dailyData).map(([name, value]) => ({ name, value })));
 
-      // Process Status Distribution
       setStatusData([
-        { name: 'Finalizados', value: statsObj.completedTickets },
-        { name: 'Em Aberto', value: statsObj.openTickets },
-        { name: 'Cancelados', value: statsObj.cancelledTickets },
+        { name: 'Finalizados', value: filtered.filter(t => t.status === 'finalizado').length },
+        { name: 'Em Aberto', value: filtered.filter(t => t.status === 'aberto').length },
+        { name: 'Cancelados', value: filtered.filter(t => t.status === 'cancelado').length },
       ]);
 
-      // Process Top Clients
       const clientMap: Record<string, number> = {};
       filtered.forEach(t => {
         const name = (t.clients as any)?.name || 'Outros';
         clientMap[name] = (clientMap[name] || 0) + 1;
       });
-      setTopClientsData(
-        Object.entries(clientMap)
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 5)
-      );
+      setTopClientsData(Object.entries(clientMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5));
 
-      // Process Operator Ranking (by completed tickets in filtered period)
-      const operatorMap: Record<string, number> = {};
-      filtered
-        .filter(t => t.status === 'finalizado')
-        .forEach(t => {
-          const opName = (t.operators as any)?.name || (t.operator_id ? `Operador ${t.operator_id.slice(0, 6)}` : null);
-          if (opName) operatorMap[opName] = (operatorMap[opName] || 0) + 1;
-        });
-      setRankingData(
-        Object.entries(operatorMap)
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 7)
-      );
-
-    } catch (error) {
-      console.error('Erro ao buscar estatísticas:', error);
+    } catch (err) {
+      console.error('Erro dashboard:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, [range, date]);
+  useEffect(() => { fetchDashboardData(); }, [range, date]);
 
-  const handleViewDetails = (id: string) => {
-    setSelectedTicketId(id);
-    setDetailOpen(true);
-  };
-
-  const handleEdit = (id: string) => {
-    setSelectedTicketId(id);
-    setEditOpen(true);
-  };
-
-  const statCards = [
-    {
-      title: 'Total de Chamados',
-      value: stats.totalTickets,
-      icon: FileText,
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-50 dark:bg-blue-500/10',
-    },
-    {
-      title: 'Em Aberto',
-      value: stats.openTickets,
-      icon: Clock,
-      color: 'text-amber-600 dark:text-amber-400',
-      bgColor: 'bg-amber-50 dark:bg-amber-500/10',
-    },
-    {
-      title: 'Finalizados',
-      value: stats.completedTickets,
-      icon: CheckCircle2,
-      color: 'text-emerald-600 dark:text-emerald-400',
-      bgColor: 'bg-emerald-50 dark:bg-emerald-500/10',
-    },
-    {
-      title: 'Cancelados',
-      value: stats.cancelledTickets,
-      icon: XCircle,
-      color: 'text-rose-600 dark:text-rose-400',
-      bgColor: 'bg-rose-50 dark:bg-rose-500/10',
-    },
-    {
-      title: 'Pagamentos Pendentes',
-      value: stats.pendingPaymentValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-      subValue: `${stats.pendingPaymentAgents} agentes a receber`,
-      icon: Clock,
-      color: 'text-amber-600 dark:text-amber-400',
-      bgColor: 'bg-amber-50 dark:bg-amber-500/10',
-      isCurrency: true,
-      hide: !isAdmin,
-    },
-    {
-      title: 'Pagamentos Realizados',
-      value: stats.paidPaymentValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-      subValue: `${stats.paidPaymentAgents} agentes pagos`,
-      icon: CheckCircle2,
-      color: 'text-emerald-600 dark:text-emerald-400',
-      bgColor: 'bg-emerald-50 dark:bg-emerald-500/10',
-      isCurrency: true,
-      hide: !isAdmin,
-    },
-    {
-      title: 'Faturamento Pendente',
-      value: stats.pendingRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-      icon: DollarSign,
-      color: 'text-amber-600 dark:text-amber-400',
-      bgColor: 'bg-amber-50 dark:bg-amber-500/10',
-      isCurrency: true,
-      hide: !isAdmin,
-    },
-    {
-      title: 'Faturamento Recebido',
-      value: stats.receivedRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-      icon: Building2,
-      color: 'text-emerald-600 dark:text-emerald-400',
-      bgColor: 'bg-emerald-50 dark:bg-emerald-500/10',
-      isCurrency: true,
-      hide: !isAdmin,
-    },
-    {
-      title: 'Lucro Projetado',
-      value: stats.totalProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-      subValue: `Margem: ${((stats.totalProfit / (stats.pendingRevenue + stats.receivedRevenue || 1)) * 100).toFixed(1)}%`,
-      icon: TrendingUp,
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-50 dark:bg-blue-500/10',
-      isCurrency: true,
-      hide: !isAdmin,
-    },
-  ];
-
-  const filteredStatCards = statCards.filter(card => !card.hide);
+  const handleEdit = (id: string) => { setSelectedTicketId(id); setEditOpen(true); };
+  const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-10">
+      
+      {/* ── HEADER ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <img src="/logo-fdg-premium.png" alt="Logo Falco" className="h-16 w-auto drop-shadow-lg animate-in zoom-in-75 duration-700" />
+          <div className="p-3 bg-primary/10 rounded-2xl shadow-inner"><Activity className="h-8 w-8 text-primary" /></div>
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight text-foreground">
-              Analytics Falco
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Gestão inteligente e visualização de performance
+            <h1 className="text-4xl font-extrabold tracking-tight">Centro de Operações</h1>
+            <p className="text-muted-foreground mt-1 flex items-center gap-2">
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              Live Pulse: Monitoramento em tempo real
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 bg-card p-1 px-2 rounded-xl shadow-sm border">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-card p-1 px-3 rounded-xl shadow-sm border">
             <Filter className="h-4 w-4 text-muted-foreground" />
             <Select value={range} onValueChange={(v: FilterRange) => setRange(v)}>
-              <SelectTrigger className="w-[140px] border-none focus:ring-0 shadow-none bg-transparent h-8 p-0">
-                <SelectValue placeholder="Período" />
-              </SelectTrigger>
+              <SelectTrigger className="w-[140px] border-none focus:ring-0 shadow-none bg-transparent h-9 p-0"><SelectValue placeholder="Período" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="7days">Últimos 7 dias</SelectItem>
                 <SelectItem value="month">Este Mês</SelectItem>
@@ -402,153 +212,133 @@ const Dashboard = () => {
               </SelectContent>
             </Select>
           </div>
-
-          {range === 'custom' && (
-            <DatePickerWithRange
-              date={date}
-              setDate={setDate}
-              className="animate-in slide-in-from-right-2 duration-300"
-            />
-          )}
+          {range === 'custom' && <DatePickerWithRange date={date} setDate={setDate} className="animate-in slide-in-from-right-2 duration-300" />}
         </div>
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map(i => (
-            <Card key={i} className="animate-pulse border-none bg-muted/50 h-32" />
-          ))}
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">{[1,2,3,4].map(i => <Card key={i} className="animate-pulse border-none bg-muted/50 h-32" />)}</div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredStatCards.map((stat) => {
-              const Icon = stat.icon;
-              return (
-                <Card key={stat.title} className="group border-none shadow-sm hover:shadow-xl transition-all duration-300 bg-card overflow-hidden">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {stat.title}
-                    </CardTitle>
-                    <div className={`p-2 rounded-xl transition-colors group-hover:scale-110 duration-300 ${stat.bgColor}`}>
-                      <Icon className={`h-4 w-4 ${stat.color}`} />
-                    </div>
+          {/* ── LIVE PULSE & OPERATIONAL GRID ── */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+             <Card className="border-none shadow-sm bg-gradient-to-br from-blue-600 to-indigo-700 text-white col-span-2">
+                <CardContent className="p-6">
+                   <div className="flex justify-between items-start">
+                      <div>
+                         <p className="text-xs font-bold uppercase opacity-70 tracking-widest">Atendimentos Ativos</p>
+                         <h3 className="text-4xl font-black mt-1">{stats.emergencyTickets}</h3>
+                         <p className="text-[10px] mt-2 bg-white/20 inline-block px-2 py-0.5 rounded-full font-bold">EM CAMPO AGORA</p>
+                      </div>
+                      <Zap className="h-8 w-8 text-amber-400 fill-amber-400" />
+                   </div>
+                </CardContent>
+             </Card>
+
+             {[
+               { label: 'Agentes Prontidão', val: stats.totalAgents, sub: `${stats.activeAgentsInField} em serviço`, icon: <UserCheck className="h-4 w-4 text-emerald-500" />, bg: 'bg-emerald-50/50' },
+               { label: 'Abertos no Período', val: stats.openTickets, sub: 'atendimento pendente', icon: <Clock className="h-4 w-4 text-amber-500" />, bg: 'bg-amber-50/50' },
+               { label: 'Finalizados', val: stats.completedTickets, sub: 'operações concluídas', icon: <CheckCircle2 className="h-4 w-4 text-blue-500" />, bg: 'bg-blue-50/50' },
+               { label: 'Clientes Ativos', val: stats.totalClients, sub: 'base cadastrada', icon: <Users className="h-4 w-4 text-indigo-500" />, bg: 'bg-indigo-50/50' },
+             ].map((c, i) => (
+               <Card key={i} className="border-none shadow-sm hover:shadow-md transition-all bg-card overflow-hidden">
+                  <CardHeader className="pb-1">
+                     <p className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1.5">{c.icon}{c.label}</p>
                   </CardHeader>
                   <CardContent>
-                    <div className={stat.isCurrency ? "text-2xl font-black" : "text-3xl font-black"}>
-                      {stat.value}
-                    </div>
-                    {stat.subValue && (
-                      <div className="text-xs font-medium text-muted-foreground mt-1">
-                        {stat.subValue}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1 mt-2 text-[10px] text-muted-foreground">
-                      <TrendingUp className="h-3 w-3 text-emerald-500" />
-                      <span>Atualizado em tempo real</span>
-                    </div>
+                     <p className="text-2xl font-black">{c.val}</p>
+                     <p className="text-[10px] text-muted-foreground mt-0.5 font-medium">{c.sub}</p>
                   </CardContent>
-                </Card>
-              );
-            })}
+               </Card>
+             ))}
           </div>
 
-          {/* New Command Center Row */}
+          {/* ── COMMAND CENTER MAP & FEED ── */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-8 h-full">
-              <DashboardMap tickets={allTickets} onViewDetails={handleViewDetails} />
-            </div>
-            <div className="lg:col-span-4 h-full">
-              <ActivityFeed tickets={allTickets} onViewDetails={handleViewDetails} />
-            </div>
+            <div className="lg:col-span-8 h-[550px]"><DashboardMap tickets={allTickets} onViewDetails={(id) => { setSelectedTicketId(id); setDetailOpen(true); }} /></div>
+            <div className="lg:col-span-4 h-[550px]"><ActivityFeed tickets={allTickets} onViewDetails={(id) => { setSelectedTicketId(id); setDetailOpen(true); }} /></div>
           </div>
 
-          {/* Monthly Goals Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <GoalProgress 
-              title="Atendimentos Mensais" 
-              current={stats.completedTickets} 
-              target={150} 
-              icon="target"
-              description="Meta de chamados finalizados este mês"
-            />
-            <GoalProgress 
-              title="Eficiência Operacional" 
-              current={Math.round((stats.completedTickets / (stats.totalTickets || 1)) * 100)} 
-              target={95} 
-              icon="efficiency"
-              unit="%"
-              description="Percentual de conclusão vs abertos"
-            />
-            <GoalProgress 
-              title="Tempo Estimado de Chegada" 
-              current={22} 
-              target={15} 
-              icon="zap"
-              unit="min"
-              description="Média de deslocamento dos agentes"
-            />
+          {/* ── FINANCIAL HEALTH & GOALS ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+             {/* Painel de Saúde Financeira Premium */}
+             {isAdmin && (
+               <Card className="lg:col-span-12 border-none shadow-xl bg-gradient-to-br from-slate-900 to-slate-800 text-white overflow-hidden relative group">
+                  <div className="absolute right-0 top-0 h-full w-1/3 bg-primary/10 -skew-x-12 translate-x-1/2 group-hover:translate-x-1/3 transition-transform duration-1000" />
+                  <CardHeader className="relative z-10 border-b border-white/10 flex flex-row items-center justify-between pb-4">
+                     <CardTitle className="text-lg flex items-center gap-2">
+                        <Wallet className="h-5 w-5 text-emerald-400" /> Saúde Financeira do Período
+                     </CardTitle>
+                     <Badge variant="outline" className="text-[10px] border-emerald-500/50 text-emerald-400 bg-emerald-500/10">Visão CFO</Badge>
+                  </CardHeader>
+                  <CardContent className="p-8 relative z-10 grid grid-cols-1 md:grid-cols-4 gap-8">
+                     <div className="md:col-span-1 space-y-1">
+                        <p className="text-xs font-medium text-slate-400 uppercase tracking-widest">Saldo Operacional Real</p>
+                        <h2 className={`text-4xl font-black ${stats.receivedRevenue - stats.paidPaymentValue >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                           {fmt(stats.receivedRevenue - stats.paidPaymentValue)}
+                        </h2>
+                        <p className="text-[10px] text-slate-500 mt-2">Baseado no fluxo de caixa atual (Recebido − Pago)</p>
+                     </div>
+
+                     <div className="grid grid-cols-2 gap-4 col-span-2 border-x border-white/5 px-8">
+                        <div>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 flex items-center gap-1.5"><ArrowUpRight className="h-3 w-3 text-emerald-500" /> Receitas</p>
+                           <div className="space-y-4">
+                              <div><p className="text-[10px] text-slate-500 mb-0.5">Líquido Recebido</p><p className="text-lg font-black text-emerald-400">{fmt(stats.receivedRevenue)}</p></div>
+                              <div><p className="text-[10px] text-slate-500 mb-0.5">A Receber de Clientes</p><p className="text-lg font-black text-slate-300">{fmt(stats.pendingRevenue)}</p></div>
+                           </div>
+                        </div>
+                        <div>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 flex items-center gap-1.5"><ArrowDownRight className="h-3 w-3 text-rose-500" /> Despesas</p>
+                           <div className="space-y-4">
+                              <div><p className="text-[10px] text-slate-500 mb-0.5">Custos Pagos</p><p className="text-lg font-black text-rose-400">{fmt(stats.paidPaymentValue)}</p></div>
+                              <div><p className="text-[10px] text-slate-500 mb-0.5">A Pagar (Agentes)</p><p className="text-lg font-black text-slate-300">{fmt(stats.pendingPaymentValue)}</p></div>
+                           </div>
+                        </div>
+                     </div>
+
+                     <div className="flex flex-col justify-center items-center bg-white/5 rounded-2xl p-4 border border-white/5">
+                        <div className="text-center">
+                           <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Margem de Lucro Real</p>
+                           <div className="relative inline-flex items-center justify-center">
+                              <svg className="w-20 h-20"><circle className="text-slate-700" strokeWidth="5" stroke="currentColor" fill="transparent" r="30" cx="40" cy="40"/><circle className="text-emerald-500" strokeWidth="5" strokeDasharray={188.4} strokeDashoffset={188.4 - (188.4 * Math.min(100, Math.max(0, (stats.totalProfit / (stats.pendingRevenue + stats.receivedRevenue || 1)) * 100))) / 100} strokeLinecap="round" stroke="currentColor" fill="transparent" r="30" cx="40" cy="40"/></svg>
+                              <span className="absolute text-sm font-black">{((stats.totalProfit / (stats.pendingRevenue + stats.receivedRevenue || 1)) * 100).toFixed(1)}%</span>
+                           </div>
+                        </div>
+                     </div>
+                  </CardContent>
+               </Card>
+             )}
+
+             <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <GoalProgress title="Atendimentos Mensais" current={stats.completedTickets} target={150} icon="target" description="Meta de chamados finalizados" />
+                <GoalProgress title="Eficiência Operacional" current={Math.round((stats.completedTickets / (stats.totalTickets || 1)) * 100)} target={95} icon="efficiency" unit="%" description="Percentual de conclusão" />
+                <GoalProgress title="Tempo de Resposta" current={22} target={15} icon="zap" unit="min" description="Média de chegada ao local" />
+             </div>
+
+             <div className="lg:col-span-4 h-full">
+                <StatusDistributionChart data={statusData} title="Distribuição de Status" className="h-full" />
+             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <TrendChart data={trendData} title="Volume de Atendimentos" />
-            <StatusDistributionChart data={statusData} title="Performance" />
-            <TopClientsChart data={topClientsData} title="Top Clientes" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+             <TopClientsChart data={topClientsData} title="Concentração por Cliente" />
+             <Card className="shadow-md border-none bg-gradient-to-br from-primary/5 to-indigo-500/5 overflow-hidden">
+                <CardHeader><CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" /> Ativação da Rede Falco</CardTitle></CardHeader>
+                <CardContent className="space-y-5">
+                   <div className="flex items-center justify-between p-5 bg-card border rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-4"><div className="p-3 bg-blue-100 rounded-xl"><Users className="h-6 w-6 text-blue-600" /></div><div><p className="text-xl font-black">{stats.totalClients}</p><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Clientes em Carteira</p></div></div>
+                      <div className="flex items-center gap-4 text-right"><div><p className="text-xl font-black">{stats.totalAgents}</p><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Agentes Disponíveis</p></div><div className="p-3 bg-emerald-100 rounded-xl"><UserCheck className="h-6 w-6 text-emerald-600" /></div></div>
+                   </div>
+                   <div className="p-5 bg-primary/5 rounded-2xl border-l-4 border-primary"><p className="text-sm font-medium italic text-slate-600 dark:text-slate-300">"Priorizando a excelência operacional e a agilidade em cada chamado operacionalizado."</p></div>
+                </CardContent>
+             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <RankingChart data={rankingData} title="Ranking de Operadores — Chamados Finalizados" className="lg:col-span-2" />
-            
-            <Card className="shadow-md border-none bg-gradient-to-br from-primary/5 to-primary/10 overflow-hidden">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-primary" />
-                  Status da Rede Falco Peregrinus
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-white/50 dark:bg-background/50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <Users className="h-5 w-5 text-blue-500" />
-                    <div>
-                      <p className="font-semibold">{stats.totalClients}</p>
-                      <p className="text-xs text-muted-foreground">Clientes na base</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <UserCheck className="h-5 w-5 text-emerald-500" />
-                    <div>
-                      <p className="font-semibold">{stats.totalAgents}</p>
-                      <p className="text-xs text-muted-foreground">Agentes de prontidão</p>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground italic">
-                  "Otimizando a resposta rápida com dados em tempo real."
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Modals for details and editing */}
           {selectedTicketId && (
             <>
-              <TicketDetails
-                ticketId={selectedTicketId}
-                open={detailOpen}
-                onOpenChange={setDetailOpen}
-                onEdit={(id) => {
-                  setDetailOpen(false);
-                  handleEdit(id);
-                }}
-                onStatusChange={fetchDashboardData}
-              />
-              <EditTicketDialog
-                ticketId={selectedTicketId}
-                open={editOpen}
-                onOpenChange={setEditOpen}
-                onSuccess={fetchDashboardData}
-              />
+              <TicketDetails ticketId={selectedTicketId} open={detailOpen} onOpenChange={setDetailOpen} onEdit={(id) => { setDetailOpen(false); handleEdit(id); }} onStatusChange={fetchDashboardData} />
+              <EditTicketDialog ticketId={selectedTicketId} open={editOpen} onOpenChange={setEditOpen} onSuccess={fetchDashboardData} />
             </>
           )}
         </>

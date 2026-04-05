@@ -9,6 +9,29 @@ interface GeocodingResult {
 export function useGeocoding() {
   const [isLoading, setIsLoading] = useState(false);
 
+  const geocode = async (address: string): Promise<{ lat: number; lng: number } | null> => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`,
+        { headers: { 'Accept-Language': 'pt-BR' } }
+      );
+
+      if (!response.ok) throw new Error('Erro na requisição de geocoding');
+
+      const data = await response.json();
+      if (data && data.length > 0) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+      return null;
+    } catch (error) {
+      console.error('Erro no geocoding:', error);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const reverseGeocode = async (lat: number, lng: number): Promise<GeocodingResult | null> => {
     setIsLoading(true);
     try {
@@ -52,7 +75,7 @@ export function useGeocoding() {
     }
   };
 
-  return { reverseGeocode, isLoading };
+  return { reverseGeocode, geocode, isLoading };
 }
 
 function getStateAbbreviation(stateName: string): string {

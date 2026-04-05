@@ -182,6 +182,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
   const [photoGroups, setPhotoGroups] = useState<PhotoGroup[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openAgent, setOpenAgent] = useState(false);
+  const [openClient, setOpenClient] = useState(false);
   const [openSupport1, setOpenSupport1] = useState(false);
   const [openSupport2, setOpenSupport2] = useState(false);
   const [isMapDialogOpen, setIsMapDialogOpen] = useState(false);
@@ -337,7 +338,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
 
   const fetchData = async () => {
     try {
-      const { data: clientsData } = await supabase.from('clients').select('id, name, city, state').order('name');
+      const { data: clientsData } = await supabase.from('clients').select('id, name, city, state').eq('status', 'ativo').order('name');
       const { data: vehiclesData } = await supabase.from('vehicles').select('id, description, plate_main, client_id');
       const { data: plansData } = await supabase.from('plans').select('id, name').order('name');
       const { data: agentsData } = await supabase.from('agents').select('id, name, is_armed').eq('status', 'ativo').order('name');
@@ -704,22 +705,60 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
                       control={form.control}
                       name="client_id"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex flex-col">
                           <FormLabel>Cliente *</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o cliente" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {clients.map((client) => (
-                                <SelectItem key={client.id} value={client.id}>
-                                  {client.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Popover open={openClient} onOpenChange={setOpenClient}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={openClient}
+                                  className={cn(
+                                    "w-full justify-between h-9",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value
+                                    ? clients.find(
+                                        (client) => client.id === field.value
+                                      )?.name
+                                    : "Selecione o cliente"}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[300px] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Buscar cliente..." />
+                                <CommandList>
+                                  <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                                  <CommandGroup>
+                                    {clients.map((client) => (
+                                      <CommandItem
+                                        value={client.name}
+                                        key={client.id}
+                                        onSelect={() => {
+                                          form.setValue("client_id", client.id, { shouldValidate: true, shouldDirty: true });
+                                          setOpenClient(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            client.id === field.value
+                                              ? "opacity-100"
+                                              : "opacity-0"
+                                          )}
+                                        />
+                                        {client.name}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                         </FormItem>
                       )}

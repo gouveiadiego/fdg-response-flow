@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -72,6 +72,11 @@ interface NewAgentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  initialCity?: string;
+  initialState?: string;
+  initialStreet?: string;
+  initialLat?: number | null;
+  initialLng?: number | null;
 }
 
 /** Monta o endereço composto para geocoding */
@@ -81,7 +86,16 @@ const buildFullAddress = (data: AgentFormData): string => {
     .join(', ');
 };
 
-export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialogProps) {
+export function NewAgentDialog({ 
+  open, 
+  onOpenChange, 
+  onSuccess,
+  initialCity = '',
+  initialState = '',
+  initialStreet = '',
+  initialLat = null,
+  initialLng = null
+}: NewAgentDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const { lookupCep, isLoading: isCepLoading } = useCepLookup();
@@ -115,10 +129,27 @@ export function NewAgentDialog({ open, onOpenChange, onSuccess }: NewAgentDialog
       has_preservation_skill: false,
       has_logistics_skill: false,
       has_auditing_skill: false,
-      latitude: null,
-      longitude: null,
+      latitude: initialLat,
+      longitude: initialLng,
     },
   });
+
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        name: '', document: '', phone: '', email: '', cep: '', street_number: '', neighborhood: '',
+        is_armed: false, vehicle_plate: '', status: 'ativo', notes: '', pix_key: '', bank_name: '', bank_agency: '',
+        bank_account: '', bank_account_type: undefined, performance_level: 'bom', vehicle_type: '',
+        has_alarm_skill: false, has_investigation_skill: false, has_preservation_skill: false,
+        has_logistics_skill: false, has_auditing_skill: false,
+        city: initialCity,
+        state: initialState,
+        street: initialStreet,
+        latitude: initialLat,
+        longitude: initialLng,
+      });
+    }
+  }, [open, initialCity, initialState, initialStreet, initialLat, initialLng, form]);
 
   const handleCepLookup = async () => {
     const cep = form.getValues('cep');

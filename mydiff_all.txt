@@ -1,0 +1,741 @@
+﻿commit 620371123d28138377a44444a23362eac6fd14e5
+Merge: ae2a203 ee83e3a
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:28:56 2026 +0000
+
+    Add client status enum
+    
+    - Created public.client_status enum with values ativo, inativo, pre_cadastro
+    - Added status column to clients table defaulting to ativo
+    
+    X-Lovable-Edit-ID: edt-dffb1977-7d88-4e32-9377-52e64fe7a2b5
+    Co-authored-by: gouveiadiego <196828959+gouveiadiego@users.noreply.github.com>
+
+commit ee83e3a54f57ef5ef9cb353c0a417257ad91c0dd
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:28:41 2026 +0000
+
+    Add client status enum
+    
+    Co-authored-by: gouveiadiego <196828959+gouveiadiego@users.noreply.github.com>
+
+diff --git a/src/components/clients/EditClientDialog.tsx b/src/components/clients/EditClientDialog.tsx
+index e67829e..2e92bf0 100644
+--- a/src/components/clients/EditClientDialog.tsx
++++ b/src/components/clients/EditClientDialog.tsx
+@@ -304,9 +304,11 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
+                   </Select>
+                   <FormMessage />
+                 </FormItem>
++              )} />
+ 
+               {clientId && <ClientVehiclesSection clientId={clientId} />}
+ 
++              <div className="flex gap-3 pt-4">
+                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isLoading}>
+                   Cancelar
+                 </Button>
+
+commit b704d185e75c97e42fd6cfde8b766ec51a0a96f1
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:28:31 2026 +0000
+
+    Add client status enum
+    
+    Co-authored-by: gouveiadiego <196828959+gouveiadiego@users.noreply.github.com>
+
+diff --git a/src/components/clients/EditClientDialog.tsx b/src/components/clients/EditClientDialog.tsx
+index 509f7d4..e67829e 100644
+--- a/src/components/clients/EditClientDialog.tsx
++++ b/src/components/clients/EditClientDialog.tsx
+@@ -304,10 +304,9 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
+                   </Select>
+                   <FormMessage />
+                 </FormItem>
+-              )} />
+ 
++              {clientId && <ClientVehiclesSection clientId={clientId} />}
+ 
+-              <div className="flex gap-3 pt-4">
+                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isLoading}>
+                   Cancelar
+                 </Button>
+
+commit 46ea61e98d9e03e594cd7b7c22daa44bd0ac25f0
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:28:16 2026 +0000
+
+    Add client status enum
+    
+    Co-authored-by: gouveiadiego <196828959+gouveiadiego@users.noreply.github.com>
+
+diff --git a/src/components/clients/EditClientDialog.tsx b/src/components/clients/EditClientDialog.tsx
+index e143a57..509f7d4 100644
+--- a/src/components/clients/EditClientDialog.tsx
++++ b/src/components/clients/EditClientDialog.tsx
+@@ -286,7 +286,26 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
+                 </FormItem>
+               )} />
+ 
+-              {clientId && <ClientVehiclesSection clientId={clientId} />}
++              {/* Status */}
++              <FormField control={form.control} name="status" render={({ field }) => (
++                <FormItem>
++                  <FormLabel>Status do Cliente</FormLabel>
++                  <Select onValueChange={field.onChange} value={field.value}>
++                    <FormControl>
++                      <SelectTrigger>
++                        <SelectValue placeholder="Selecione" />
++                      </SelectTrigger>
++                    </FormControl>
++                    <SelectContent>
++                      <SelectItem value="ativo">Ativo</SelectItem>
++                      <SelectItem value="pre_cadastro">Pr├®-cadastro (Prospec├º├úo)</SelectItem>
++                      <SelectItem value="inativo">Inativo</SelectItem>
++                    </SelectContent>
++                  </Select>
++                  <FormMessage />
++                </FormItem>
++              )} />
++
+ 
+               <div className="flex gap-3 pt-4">
+                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1" disabled={isLoading}>
+
+commit f672fbe9abaae4d651efaae6c14537c18467e173
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:28:05 2026 +0000
+
+    Add client status enum
+    
+    Co-authored-by: gouveiadiego <196828959+gouveiadiego@users.noreply.github.com>
+
+diff --git a/src/components/clients/EditClientDialog.tsx b/src/components/clients/EditClientDialog.tsx
+index 2ec288c..e143a57 100644
+--- a/src/components/clients/EditClientDialog.tsx
++++ b/src/components/clients/EditClientDialog.tsx
+@@ -6,7 +6,6 @@ import { supabase } from '@/integrations/supabase/client';
+ import { toast } from 'sonner';
+ import { Search, Loader2 } from 'lucide-react';
+ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+-import { Search, Loader2 } from 'lucide-react';
+ import {
+   Dialog,
+   DialogContent,
+
+commit 6a6ebb4d9e62ffab20820056e4503b5a07e373aa
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:27:54 2026 +0000
+
+    Add client status enum
+    
+    Co-authored-by: gouveiadiego <196828959+gouveiadiego@users.noreply.github.com>
+
+diff --git a/src/components/clients/EditClientDialog.tsx b/src/components/clients/EditClientDialog.tsx
+index 0b2289c..2ec288c 100644
+--- a/src/components/clients/EditClientDialog.tsx
++++ b/src/components/clients/EditClientDialog.tsx
+@@ -142,6 +142,7 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
+         city: data.city,
+         state: data.state,
+         notes: data.notes || null,
++        status: data.status,
+       } as any).eq('id', clientId);
+ 
+       if (error) throw error;
+
+commit 5a58f0a271b707683776ed5d02a8cd6cc0f4490b
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:27:54 2026 +0000
+
+    Preceding changes
+
+diff --git a/src/components/clients/EditClientDialog.tsx b/src/components/clients/EditClientDialog.tsx
+index a296149..0b2289c 100644
+--- a/src/components/clients/EditClientDialog.tsx
++++ b/src/components/clients/EditClientDialog.tsx
+@@ -90,6 +90,7 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
+           city: data.city,
+           state: data.state,
+           notes: data.notes || '',
++          status: (data as any).status || 'ativo',
+         });
+       }
+     } catch (error) {
+
+commit 76ee5b3f3227a66199ba4850c8bed0727ccd4b21
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:27:52 2026 +0000
+
+    Preceding changes
+
+diff --git a/src/components/clients/EditClientDialog.tsx b/src/components/clients/EditClientDialog.tsx
+index 75282a4..a296149 100644
+--- a/src/components/clients/EditClientDialog.tsx
++++ b/src/components/clients/EditClientDialog.tsx
+@@ -63,6 +63,7 @@ export function EditClientDialog({ clientId, open, onOpenChange, onSuccess }: Ed
+       name: '', document: '', contact_name: '', contact_phone: '',
+       contact_email: '', cep: '', street: '', street_number: '',
+       neighborhood: '', city: '', state: '', notes: '',
++      status: 'ativo',
+     },
+   });
+ 
+
+commit 37df6e80668ec6ab20dc86a4295e0032bb721852
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:27:51 2026 +0000
+
+    Preceding changes
+
+diff --git a/src/components/clients/EditClientDialog.tsx b/src/components/clients/EditClientDialog.tsx
+index 4f2ea1d..75282a4 100644
+--- a/src/components/clients/EditClientDialog.tsx
++++ b/src/components/clients/EditClientDialog.tsx
+@@ -41,6 +41,7 @@ const clientSchema = z.object({
+   city: z.string().min(1, 'Cidade ├® obrigat├│ria').max(100),
+   state: z.string().min(2, 'Estado ├® obrigat├│rio').max(2),
+   notes: z.string().max(1000).optional(),
++  status: z.enum(['ativo', 'inativo', 'pre_cadastro']).default('ativo'),
+ });
+ 
+ type ClientFormData = z.infer<typeof clientSchema>;
+
+commit 8b0a53a5ad907d93562cc3d0deda2bd4be769fd3
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:27:48 2026 +0000
+
+    Preceding changes
+
+diff --git a/src/components/clients/EditClientDialog.tsx b/src/components/clients/EditClientDialog.tsx
+index aa4df1d..4f2ea1d 100644
+--- a/src/components/clients/EditClientDialog.tsx
++++ b/src/components/clients/EditClientDialog.tsx
+@@ -5,6 +5,8 @@ import * as z from 'zod';
+ import { supabase } from '@/integrations/supabase/client';
+ import { toast } from 'sonner';
+ import { Search, Loader2 } from 'lucide-react';
++import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
++import { Search, Loader2 } from 'lucide-react';
+ import {
+   Dialog,
+   DialogContent,
+
+commit 187ecbff492672cac058c1d41dfcdb00e61110b4
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:27:39 2026 +0000
+
+    Add client_status enum
+    
+    Co-authored-by: gouveiadiego <196828959+gouveiadiego@users.noreply.github.com>
+
+diff --git a/src/components/clients/NewClientDialog.tsx b/src/components/clients/NewClientDialog.tsx
+index 4c05737..97af60f 100644
+--- a/src/components/clients/NewClientDialog.tsx
++++ b/src/components/clients/NewClientDialog.tsx
+@@ -295,6 +295,7 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
+                 </FormItem>
+               )} />
+ 
++              <FormField control={form.control} name="is_alarme" render={({ field }) => (
+                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-orange-500/5 border-orange-500/20">
+                   <div className="space-y-0.5">
+                     <FormLabel className="text-base text-orange-400">Cliente Exclusivo de Alarme</FormLabel>
+
+commit 784afb5386c41e37a05ccf5eda0dd89fb8b02dc0
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:27:21 2026 +0000
+
+    Add client_status enum migration
+    
+    Co-authored-by: gouveiadiego <196828959+gouveiadiego@users.noreply.github.com>
+
+diff --git a/src/components/clients/NewClientDialog.tsx b/src/components/clients/NewClientDialog.tsx
+index d90ed04..4c05737 100644
+--- a/src/components/clients/NewClientDialog.tsx
++++ b/src/components/clients/NewClientDialog.tsx
+@@ -275,8 +275,26 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
+                   <FormMessage />
+                 </FormItem>
+               )} />
+-              
+-              <FormField control={form.control} name="is_alarme" render={({ field }) => (
++
++              {/* Tipo de cadastro */}
++              <FormField control={form.control} name="status" render={({ field }) => (
++                <FormItem>
++                  <FormLabel>Tipo de Cadastro</FormLabel>
++                  <Select onValueChange={field.onChange} defaultValue={field.value}>
++                    <FormControl>
++                      <SelectTrigger>
++                        <SelectValue placeholder="Selecione" />
++                      </SelectTrigger>
++                    </FormControl>
++                    <SelectContent>
++                      <SelectItem value="ativo">Cliente Ativo</SelectItem>
++                      <SelectItem value="pre_cadastro">Pr├®-cadastro (Prospec├º├úo)</SelectItem>
++                    </SelectContent>
++                  </Select>
++                  <FormMessage />
++                </FormItem>
++              )} />
++
+                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-orange-500/5 border-orange-500/20">
+                   <div className="space-y-0.5">
+                     <FormLabel className="text-base text-orange-400">Cliente Exclusivo de Alarme</FormLabel>
+
+commit 51d2aeb956bbbc1a6b2f198482ce29ee60989535
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:27:11 2026 +0000
+
+    Add client status enum
+    
+    Co-authored-by: gouveiadiego <196828959+gouveiadiego@users.noreply.github.com>
+
+diff --git a/src/components/clients/NewClientDialog.tsx b/src/components/clients/NewClientDialog.tsx
+index 6d08552..d90ed04 100644
+--- a/src/components/clients/NewClientDialog.tsx
++++ b/src/components/clients/NewClientDialog.tsx
+@@ -109,6 +109,7 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
+         city: data.city,
+         state: data.state,
+         notes: data.notes || null,
++        status: data.status,
+       } as any).select().single();
+ 
+       if (error) throw error;
+
+commit 0870a7c04cece66460c1b1707544a2e4ea2e9ce7
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:27:10 2026 +0000
+
+    Preceding changes
+
+diff --git a/src/components/clients/NewClientDialog.tsx b/src/components/clients/NewClientDialog.tsx
+index f5cb149..6d08552 100644
+--- a/src/components/clients/NewClientDialog.tsx
++++ b/src/components/clients/NewClientDialog.tsx
+@@ -63,6 +63,7 @@ export function NewClientDialog({ open, onOpenChange, onSuccess }: NewClientDial
+       contact_email: '', cep: '', street: '', street_number: '',
+       neighborhood: '', city: '', state: '', notes: '',
+       is_alarme: false,
++      status: 'ativo',
+     },
+   });
+ 
+
+commit 1d6a5868ecf9fcc7220eb86356b540ac3bc561a5
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:27:09 2026 +0000
+
+    Preceding changes
+
+diff --git a/src/components/clients/NewClientDialog.tsx b/src/components/clients/NewClientDialog.tsx
+index 517d6ba..f5cb149 100644
+--- a/src/components/clients/NewClientDialog.tsx
++++ b/src/components/clients/NewClientDialog.tsx
+@@ -41,6 +41,7 @@ const clientSchema = z.object({
+   state: z.string().min(2, 'Estado ├® obrigat├│rio').max(2),
+   notes: z.string().max(1000).optional(),
+   is_alarme: z.boolean().default(false),
++  status: z.enum(['ativo', 'pre_cadastro']).default('ativo'),
+ });
+ 
+ type ClientFormData = z.infer<typeof clientSchema>;
+
+commit 6034e8fd82fc309a6d283df1be97119f09589ef8
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:27:07 2026 +0000
+
+    Preceding changes
+
+diff --git a/src/components/clients/NewClientDialog.tsx b/src/components/clients/NewClientDialog.tsx
+index d80b52e..517d6ba 100644
+--- a/src/components/clients/NewClientDialog.tsx
++++ b/src/components/clients/NewClientDialog.tsx
+@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
+ import { zodResolver } from '@hookform/resolvers/zod';
+ import * as z from 'zod';
+ import { supabase } from '@/integrations/supabase/client';
++import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+ import { toast } from 'sonner';
+ import { Search, Loader2 } from 'lucide-react';
+ import {
+
+commit abf4b489fdfb3c3756a0acdbdc6acb4610ef8219
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:26:53 2026 +0000
+
+    Add client_status enum
+    
+    Co-authored-by: gouveiadiego <196828959+gouveiadiego@users.noreply.github.com>
+
+diff --git a/src/pages/Clients.tsx b/src/pages/Clients.tsx
+index 9c4dd4f..af2b839 100644
+--- a/src/pages/Clients.tsx
++++ b/src/pages/Clients.tsx
+@@ -4,13 +4,16 @@ import { supabase } from '@/integrations/supabase/client';
+ import { Button } from '@/components/ui/button';
+ import { Input } from '@/components/ui/input';
+ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+-import { Plus, Search, Building2, MapPin, Trash2, FileSpreadsheet } from 'lucide-react';
++import { Plus, Search, Building2, MapPin, Trash2, FileSpreadsheet, CheckCircle2, XCircle, UserPlus } from 'lucide-react';
+ import { toast } from 'sonner';
+ import { NewClientDialog } from '@/components/clients/NewClientDialog';
+ import { EditClientDialog } from '@/components/clients/EditClientDialog';
+ import { Badge } from '@/components/ui/badge';
+ import { DeleteAlertDialog } from '@/components/DeleteAlertDialog';
+ import { exportClientsToExcel } from '@/utils/exportClientsToExcel';
++import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
++
++type ClientStatus = 'ativo' | 'inativo' | 'pre_cadastro';
+ 
+ interface Client {
+   id: string;
+@@ -26,9 +29,16 @@ interface Client {
+   city: string;
+   state: string;
+   notes: string | null;
++  status: ClientStatus;
+   vehicles: { plate_main: string }[];
+ }
+ 
++const statusConfig: Record<ClientStatus, { label: string; color: string; icon: React.ReactNode }> = {
++  ativo: { label: 'Ativo', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', icon: <CheckCircle2 className="h-3 w-3" /> },
++  inativo: { label: 'Inativo', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: <XCircle className="h-3 w-3" /> },
++  pre_cadastro: { label: 'Pr├®-cadastro', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20', icon: <UserPlus className="h-3 w-3" /> },
++};
++
+ const Clients = () => {
+   const navigate = useNavigate();
+   const [clients, setClients] = useState<Client[]>([]);
+@@ -37,6 +47,7 @@ const Clients = () => {
+   const [newClientOpen, setNewClientOpen] = useState(false);
+   const [editClientOpen, setEditClientOpen] = useState(false);
+   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
++  const [activeTab, setActiveTab] = useState<ClientStatus>('ativo');
+ 
+   // Delete state
+   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+@@ -51,7 +62,7 @@ const Clients = () => {
+     try {
+       const { data, error } = await supabase
+         .from('clients')
+-        .select('id, name, document, contact_name, contact_phone, contact_email, cep, street, street_number, neighborhood, city, state, notes, vehicles(plate_main)')
++        .select('id, name, document, contact_name, contact_phone, contact_email, cep, street, street_number, neighborhood, city, state, notes, status, vehicles(plate_main)')
+         .order('name');
+ 
+       if (error) throw error;
+@@ -121,6 +132,19 @@ const Clients = () => {
+     }
+   };
+ 
++  const handleStatusChange = async (clientId: string, newStatus: ClientStatus) => {
++    try {
++      const { error } = await supabase.from('clients').update({ status: newStatus } as any).eq('id', clientId);
++      if (error) throw error;
++      const statusLabel = statusConfig[newStatus].label;
++      toast.success(`Cliente alterado para ${statusLabel}`);
++      fetchClients();
++    } catch (error) {
++      console.error('Erro ao alterar status:', error);
++      toast.error('Erro ao alterar status do cliente');
++    }
++  };
++
+   const handleExportExcel = () => {
+     if (clients.length === 0) {
+       toast.error('Nenhum cliente para exportar');
+@@ -135,9 +159,11 @@ const Clients = () => {
+     navigate(`/vehicles?client=${clientId}`);
+   };
+ 
+-  const filteredClients = clients.filter((client) =>
+-    client.name.toLowerCase().includes(searchTerm.toLowerCase())
+-  );
++  const filteredClients = clients
++    .filter(c => c.status === activeTab)
++    .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
++
++  const countByStatus = (s: ClientStatus) => clients.filter(c => c.status === s).length;
+ 
+   if (loading) {
+     return (
+@@ -169,6 +195,27 @@ const Clients = () => {
+         </div>
+       </div>
+ 
++      {/* Tabs de status */}
++      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ClientStatus)}>
++        <TabsList className="grid w-full grid-cols-3">
++          <TabsTrigger value="ativo" className="gap-1.5">
++            <CheckCircle2 className="h-4 w-4" />
++            Ativos
++            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{countByStatus('ativo')}</Badge>
++          </TabsTrigger>
++          <TabsTrigger value="pre_cadastro" className="gap-1.5">
++            <UserPlus className="h-4 w-4" />
++            Pr├®-cadastro
++            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{countByStatus('pre_cadastro')}</Badge>
++          </TabsTrigger>
++          <TabsTrigger value="inativo" className="gap-1.5">
++            <XCircle className="h-4 w-4" />
++            Inativos
++            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{countByStatus('inativo')}</Badge>
++          </TabsTrigger>
++        </TabsList>
++      </Tabs>
++
+       <div className="relative">
+         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+         <Input
+@@ -185,7 +232,7 @@ const Clients = () => {
+             <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
+             <p className="text-lg font-medium text-foreground mb-2">Nenhum cliente encontrado</p>
+             <p className="text-sm text-muted-foreground mb-4">
+-              {searchTerm ? 'Tente buscar com outros termos' : 'Comece cadastrando um novo cliente'}
++              {searchTerm ? 'Tente buscar com outros termos' : `Nenhum cliente ${statusConfig[activeTab].label.toLowerCase()} cadastrado`}
+             </p>
+             {!searchTerm && (
+               <Button onClick={() => setNewClientOpen(true)}>
+@@ -219,7 +266,40 @@ const Clients = () => {
+                 {client.contact_phone && (
+                   <p className="text-sm text-muted-foreground truncate">{client.contact_phone}</p>
+                 )}
+-                <div className="flex gap-2 pt-2">
++                {/* Bot├Áes de a├º├úo de status */}
++                <div className="flex gap-1.5 pt-1">
++                  {activeTab === 'pre_cadastro' && (
++                    <Button
++                      variant="outline" size="sm"
++                      className="text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10 text-xs h-7"
++                      onClick={() => handleStatusChange(client.id, 'ativo')}
++                    >
++                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
++                      Ativar
++                    </Button>
++                  )}
++                  {activeTab === 'ativo' && (
++                    <Button
++                      variant="outline" size="sm"
++                      className="text-destructive border-destructive/30 hover:bg-destructive/10 text-xs h-7"
++                      onClick={() => handleStatusChange(client.id, 'inativo')}
++                    >
++                      <XCircle className="h-3.5 w-3.5 mr-1" />
++                      Inativar
++                    </Button>
++                  )}
++                  {activeTab === 'inativo' && (
++                    <Button
++                      variant="outline" size="sm"
++                      className="text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10 text-xs h-7"
++                      onClick={() => handleStatusChange(client.id, 'ativo')}
++                    >
++                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
++                      Reativar
++                    </Button>
++                  )}
++                </div>
++                <div className="flex gap-2 pt-1">
+                   <Button variant="outline" size="sm" className="flex-1" onClick={() => handleViewVehicles(client.id)}>
+                     Ver Ve├¡culos
+                   </Button>
+@@ -253,4 +333,4 @@ const Clients = () => {
+   );
+ };
+ 
+-export default Clients;
++export default Clients;
+\ No newline at end of file
+
+commit adddd7b3f5771277f70a8c584763bea5b2533a3e
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:25:57 2026 +0000
+
+    Add client status feature
+    
+    Co-authored-by: gouveiadiego <196828959+gouveiadiego@users.noreply.github.com>
+
+diff --git a/src/integrations/supabase/types.ts b/src/integrations/supabase/types.ts
+index 1768a15..f1e469e 100644
+--- a/src/integrations/supabase/types.ts
++++ b/src/integrations/supabase/types.ts
+@@ -244,6 +244,7 @@ export type Database = {
+           neighborhood: string | null
+           notes: string | null
+           state: string
++          status: Database["public"]["Enums"]["client_status"]
+           street: string | null
+           street_number: string | null
+           updated_at: string
+@@ -264,6 +265,7 @@ export type Database = {
+           neighborhood?: string | null
+           notes?: string | null
+           state: string
++          status?: Database["public"]["Enums"]["client_status"]
+           street?: string | null
+           street_number?: string | null
+           updated_at?: string
+@@ -284,6 +286,7 @@ export type Database = {
+           neighborhood?: string | null
+           notes?: string | null
+           state?: string
++          status?: Database["public"]["Enums"]["client_status"]
+           street?: string | null
+           street_number?: string | null
+           updated_at?: string
+@@ -890,6 +893,7 @@ export type Database = {
+         | "frigorifico"
+         | "container"
+         | "prancha"
++      client_status: "ativo" | "inativo" | "pre_cadastro"
+       service_type:
+         | "alarme"
+         | "averiguacao"
+@@ -1035,6 +1039,7 @@ export const Constants = {
+         "container",
+         "prancha",
+       ],
++      client_status: ["ativo", "inativo", "pre_cadastro"],
+       service_type: [
+         "alarme",
+         "averiguacao",
+diff --git a/supabase/migrations/20260404002556_abe7b458-c955-4bbf-b88a-4411e1093604.sql b/supabase/migrations/20260404002556_abe7b458-c955-4bbf-b88a-4411e1093604.sql
+new file mode 100644
+index 0000000..9c622d3
+--- /dev/null
++++ b/supabase/migrations/20260404002556_abe7b458-c955-4bbf-b88a-4411e1093604.sql
+@@ -0,0 +1,5 @@
++-- Create enum for client status
++CREATE TYPE public.client_status AS ENUM ('ativo', 'inativo', 'pre_cadastro');
++
++-- Add status column to clients table with default 'ativo' so existing clients are unaffected
++ALTER TABLE public.clients ADD COLUMN status public.client_status NOT NULL DEFAULT 'ativo';
+\ No newline at end of file
+
+commit ae2a2030cfb41a5a5d81aedacca9c20a5cb6415d
+Merge: 1ac221a fc2e33f
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:20:49 2026 +0000
+
+    Atualizou tarifa├º├úo alarme cliente
+    
+    Apenas o pricing de Alarme para cliente final foi ajustado:
+    - Faturamento: base 180, hora extra 40, KM 50km, taxa KM 2.50
+    - Proposta e gerar PDF: refletiram as novas tarifas
+    - Mantidos os pre├ºos para o agente inalterados
+    
+    X-Lovable-Edit-ID: edt-adda37da-a4e8-48f0-9e85-a24b5223bdbd
+    Co-authored-by: gouveiadiego <196828959+gouveiadiego@users.noreply.github.com>
+
+commit fc2e33fe474d5a2074f67700e9d177d38a3e2800
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:20:39 2026 +0000
+
+    Alarme para cliente final
+    
+    Co-authored-by: gouveiadiego <196828959+gouveiadiego@users.noreply.github.com>
+
+diff --git a/src/components/finance/FaturamentoDialog.tsx b/src/components/finance/FaturamentoDialog.tsx
+index 29e82ba..16fcda8 100644
+--- a/src/components/finance/FaturamentoDialog.tsx
++++ b/src/components/finance/FaturamentoDialog.tsx
+@@ -23,11 +23,11 @@ import { generateClientInvoicePDF } from './ClientInvoicePDFGenerator';
+ const optionalNumber = z.number().or(z.string().transform(v => v === '' ? undefined : Number(v))).optional();
+ 
+ const ALARME_PRICING = {
+-    base: 100,
++    base: 180,
+     includedHours: 0.5,
+     includedKm: 50,
+-    extraHourRate: 20,
+-    extraKmRate: 1.50,
++    extraHourRate: 40,
++    extraKmRate: 2.50,
+ };
+ 
+ const faturamentoSchema = z.object({
+diff --git a/src/components/tickets/AlarmePropostaGenerator.ts b/src/components/tickets/AlarmePropostaGenerator.ts
+index 5705751..63a6078 100644
+--- a/src/components/tickets/AlarmePropostaGenerator.ts
++++ b/src/components/tickets/AlarmePropostaGenerator.ts
+@@ -12,11 +12,11 @@ const COMPANY_INFO = {
+ };
+ 
+ const ALARME_PRICING = {
+-    base: 100,
++    base: 180,
+     includedMinutes: 30,
+     includedKm: 50,
+-    extraHourRate: 20,
+-    extraKmRate: 1.50,
++    extraHourRate: 40,
++    extraKmRate: 2.50,
+ };
+ 
+ const THEME = {
+
+commit 1ac221af0d98639bc63c8f9f6ffc66fc699d0a1a
+Merge: 2de9801 04d1569
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:19:26 2026 +0000
+
+    Atualizou cobran├ºa de Alarme
+    
+    Mudei os valores de faturamento ao cliente para o tipo de servi├ºo Alarme:
+    - Franquia base (30 min): 180
+    - Hora excedente: 40/h
+    - Franquia KM: 50 km
+    - KM excedente: 2.50/km
+    
+    Mantive o pagamento do agente inalterado (base 100, hora 20/h, KM 1.5/km). Altera├º├Áes impactam FaturamentoDialog e AlarmePropostaGenerator.
+    
+    X-Lovable-Edit-ID: edt-4bb396b9-7e9e-423b-9799-f5fda3c8dc79
+    Co-authored-by: gouveiadiego <196828959+gouveiadiego@users.noreply.github.com>
+
+commit 04d156918ab2d4bddbbc9bec1db6fa21d0d9227a
+Author: gpt-engineer-app[bot] <159125892+gpt-engineer-app[bot]@users.noreply.github.com>
+Date:   Sat Apr 4 00:19:22 2026 +0000
+
+    Changes
+    
+    Co-authored-by: gouveiadiego <196828959+gouveiadiego@users.noreply.github.com>
+
+diff --git a/src/integrations/supabase/types.ts b/src/integrations/supabase/types.ts
+index d79b19d..1768a15 100644
+--- a/src/integrations/supabase/types.ts
++++ b/src/integrations/supabase/types.ts
+@@ -748,18 +748,21 @@ export type Database = {
+         Row: {
+           created_at: string
+           id: string
++          is_approved: boolean | null
+           role: Database["public"]["Enums"]["app_role"]
+           user_id: string
+         }
+         Insert: {
+           created_at?: string
+           id?: string
++          is_approved?: boolean | null
+           role?: Database["public"]["Enums"]["app_role"]
+           user_id: string
+         }
+         Update: {
+           created_at?: string
+           id?: string
++          is_approved?: boolean | null
+           role?: Database["public"]["Enums"]["app_role"]
+           user_id?: string
+         }
+@@ -862,6 +865,11 @@ export type Database = {
+       [_ in never]: never
+     }
+     Functions: {
++      admin_change_password: {
++        Args: { new_password: string; target_user_id: string }
++        Returns: Json
++      }
++      delete_user: { Args: { target_user_id: string }; Returns: boolean }
+       get_ticket_tracking_info: { Args: { p_ticket_id: string }; Returns: Json }
+       has_role: {
+         Args: {
