@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_demands: {
+        Row: {
+          address: string | null
+          city: string
+          created_at: string
+          created_by_user_id: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          notes: string | null
+          resolved_at: string | null
+          state: string
+          status: Database["public"]["Enums"]["demand_status"]
+        }
+        Insert: {
+          address?: string | null
+          city: string
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          resolved_at?: string | null
+          state: string
+          status?: Database["public"]["Enums"]["demand_status"]
+        }
+        Update: {
+          address?: string | null
+          city?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          resolved_at?: string | null
+          state?: string
+          status?: Database["public"]["Enums"]["demand_status"]
+        }
+        Relationships: []
+      }
       agent_registrations: {
         Row: {
           address: string | null
@@ -894,6 +936,7 @@ export type Database = {
         | "container"
         | "prancha"
       client_status: "ativo" | "inativo" | "pre_cadastro"
+      demand_status: "pendente" | "resolvida"
       service_type:
         | "alarme"
         | "averiguacao"
@@ -1040,6 +1083,7 @@ export const Constants = {
         "prancha",
       ],
       client_status: ["ativo", "inativo", "pre_cadastro"],
+      demand_status: ["pendente", "resolvida"],
       service_type: [
         "alarme",
         "averiguacao",
