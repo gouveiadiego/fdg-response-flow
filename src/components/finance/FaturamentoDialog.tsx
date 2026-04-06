@@ -194,11 +194,11 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             setTicketStats({ durationHours, totalKm: totalKmList });
 
             form.reset({
-                revenue_base_value: ticket.revenue_base_value ?? (isAlarme ? ALARME_PRICING.base : 500),
-                revenue_included_hours: ticket.revenue_included_hours ?? (isAlarme ? ALARME_PRICING.includedHours : 3),
-                revenue_included_km: ticket.revenue_included_km ?? (isAlarme ? ALARME_PRICING.includedKm : 50),
-                revenue_extra_hour_rate: ticket.revenue_extra_hour_rate ?? (isAlarme ? ALARME_PRICING.extraHourRate : 90),
-                revenue_extra_km_rate: ticket.revenue_extra_km_rate ?? (isAlarme ? ALARME_PRICING.extraKmRate : 2.5),
+revenue_base_value: ticket.revenue_base_value ?? (isAlarme ? ALARME_CLIENT_PRICING.base : 500),
+                revenue_included_hours: ticket.revenue_included_hours ?? (isAlarme ? ALARME_CLIENT_PRICING.includedHours : 3),
+                revenue_included_km: ticket.revenue_included_km ?? (isAlarme ? ALARME_CLIENT_PRICING.includedKm : 50),
+                revenue_extra_hour_rate: ticket.revenue_extra_hour_rate ?? (isAlarme ? ALARME_CLIENT_PRICING.extraHourRate : 90),
+                revenue_extra_km_rate: ticket.revenue_extra_km_rate ?? (isAlarme ? ALARME_CLIENT_PRICING.extraKmRate : 2.5),
                 revenue_discount_addition: ticket.revenue_discount_addition ?? 0,
                 revenue_total: ticket.revenue_total ?? 0,
             });

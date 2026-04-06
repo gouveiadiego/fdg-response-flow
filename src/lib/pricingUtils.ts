@@ -1,9 +1,19 @@
+// Pricing for AGENT payment (alarme)
 export const ALARME_PRICING = {
     base: 100,
     includedHours: 0.5,
     includedKm: 50,
     extraHourRate: 20,
     extraKmRate: 1.50,
+};
+
+// Pricing for CLIENT billing (alarme) - different from agent payment
+export const ALARME_CLIENT_PRICING = {
+    base: 180,
+    includedHours: 0.5, // 30 minutes
+    includedKm: 50,
+    extraHourRate: 40,
+    extraKmRate: 2.50,
 };
 
 // Pricing per agent role based on armed/unarmed
