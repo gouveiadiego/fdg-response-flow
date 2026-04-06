@@ -136,7 +136,7 @@ const Dashboard = () => {
         else if (t.revenue_status === 'recebido') rRevenue += (Number(t.revenue_total) || 0);
       });
 
-      const openNow = tickets?.filter(t => t.status === 'aberto' || t.status === 'em_transito' || t.status === 'no_local' || t.status === 'atendimento') || [];
+      const openNow = tickets?.filter(t => t.status === 'aberto' || t.status === 'em_andamento') || [];
       const activeAgents = new Set(openNow.map(t => t.main_agent_id)).size;
 
       setStats({
