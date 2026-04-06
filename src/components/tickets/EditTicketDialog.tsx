@@ -52,7 +52,7 @@ import {
 import { cn } from '@/lib/utils';
 import { AgentMap } from '@/components/agents/AgentMap';
 import { MapPin, Search, Loader2, Upload, X, Camera, Trash2, Check, ChevronsUpDown, Plus } from 'lucide-react';
-import { ALARME_PRICING, ARMED_PRICING, UNARMED_PRICING, getIsArmedByPlan } from '@/lib/pricingUtils';
+import { ALARME_PRICING, ALARME_CLIENT_PRICING, ARMED_PRICING, UNARMED_PRICING, getIsArmedByPlan } from '@/lib/pricingUtils';
 
 // Converts a UTC ISO string from Supabase to a local datetime-local input value (YYYY-MM-DDTHH:mm)
 // WITHOUT re-converting to UTC — preserves the local (BRT) time the user entered
