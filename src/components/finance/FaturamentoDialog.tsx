@@ -119,7 +119,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const ticketPlanName = (ticket as any).plans?.name ?? null;
             setPlanName(ticketPlanName);
-            const isAlarme = ticketPlanName?.toLowerCase().includes('alarme') ?? false;
+            const isAlarme = ticket.service_type === 'alarme' || (ticketPlanName?.toLowerCase().includes('alarme') ?? false);
             setIsAlarmPlan(isAlarme);
 
             setContextInfo({

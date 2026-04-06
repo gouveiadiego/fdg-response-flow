@@ -8,7 +8,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useGeocoding } from "@/hooks/useGeocoding";
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { ALARME_PRICING, ARMED_PRICING, UNARMED_PRICING, getIsArmedByPlan } from '@/lib/pricingUtils';
+import { ALARME_PRICING, ALARME_CLIENT_PRICING, ARMED_PRICING, UNARMED_PRICING, getIsArmedByPlan } from '@/lib/pricingUtils';
 
 import {
   Dialog,
