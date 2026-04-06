@@ -193,13 +193,16 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             setAgentBreakdown(breakdown);
             setTicketStats({ durationHours, totalKm: totalKmList });
 
-            // For alarm plans, always use alarm pricing defaults unless user previously saved alarm-specific values
             const useAlarmDefaults = isAlarme;
+            const savedBaseValue = Number(ticket.revenue_base_value);
+            const savedIncludedHours = Number(ticket.revenue_included_hours);
+            const savedExtraHourRate = Number(ticket.revenue_extra_hour_rate);
+
             form.reset({
-                revenue_base_value: useAlarmDefaults ? (ticket.revenue_base_value != null && ticket.revenue_base_value !== 500 ? ticket.revenue_base_value : ALARME_PRICING.base) : (ticket.revenue_base_value ?? 500),
-                revenue_included_hours: useAlarmDefaults ? (ticket.revenue_included_hours != null && ticket.revenue_included_hours !== 3 ? ticket.revenue_included_hours : ALARME_PRICING.includedHours) : (ticket.revenue_included_hours ?? 3),
+                revenue_base_value: useAlarmDefaults ? ((ticket.revenue_base_value != null && savedBaseValue !== 500) ? savedBaseValue : ALARME_PRICING.base) : (ticket.revenue_base_value ?? 500),
+                revenue_included_hours: useAlarmDefaults ? ((ticket.revenue_included_hours != null && savedIncludedHours !== 3) ? savedIncludedHours : ALARME_PRICING.includedHours) : (ticket.revenue_included_hours ?? 3),
                 revenue_included_km: ticket.revenue_included_km ?? (isAlarme ? ALARME_PRICING.includedKm : 50),
-                revenue_extra_hour_rate: useAlarmDefaults ? (ticket.revenue_extra_hour_rate != null && ticket.revenue_extra_hour_rate !== 90 ? ticket.revenue_extra_hour_rate : ALARME_PRICING.extraHourRate) : (ticket.revenue_extra_hour_rate ?? 90),
+                revenue_extra_hour_rate: useAlarmDefaults ? ((ticket.revenue_extra_hour_rate != null && savedExtraHourRate !== 90) ? savedExtraHourRate : ALARME_PRICING.extraHourRate) : (ticket.revenue_extra_hour_rate ?? 90),
                 revenue_extra_km_rate: ticket.revenue_extra_km_rate ?? (isAlarme ? ALARME_PRICING.extraKmRate : 2.5),
                 revenue_discount_addition: ticket.revenue_discount_addition ?? 0,
                 revenue_total: ticket.revenue_total ?? 0,

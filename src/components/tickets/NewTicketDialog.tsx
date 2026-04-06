@@ -573,11 +573,21 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
           created_by_user_id: user.id,
           code: null,
           operator_id: data.operator_id && data.operator_id !== 'none' && data.operator_id !== '' ? data.operator_id : null,
-          revenue_base_value: data.revenue_base_value || 0,
-          revenue_included_hours: data.revenue_included_hours || 0,
-          revenue_included_km: data.revenue_included_km || 0,
-          revenue_extra_hour_rate: data.revenue_extra_hour_rate || 0,
-          revenue_extra_km_rate: data.revenue_extra_km_rate || 0,
+          revenue_base_value: data.service_type === 'alarme'
+            ? (Number(data.revenue_base_value) === 500 ? ALARME_CLIENT_PRICING.base : Number(data.revenue_base_value) || ALARME_CLIENT_PRICING.base)
+            : data.revenue_base_value || 0,
+          revenue_included_hours: data.service_type === 'alarme'
+            ? (Number(data.revenue_included_hours) === 3 ? ALARME_CLIENT_PRICING.includedHours : Number(data.revenue_included_hours) || ALARME_CLIENT_PRICING.includedHours)
+            : data.revenue_included_hours || 0,
+          revenue_included_km: data.service_type === 'alarme'
+            ? Number(data.revenue_included_km) || ALARME_CLIENT_PRICING.includedKm
+            : data.revenue_included_km || 0,
+          revenue_extra_hour_rate: data.service_type === 'alarme'
+            ? (Number(data.revenue_extra_hour_rate) === 90 ? ALARME_CLIENT_PRICING.extraHourRate : Number(data.revenue_extra_hour_rate) || ALARME_CLIENT_PRICING.extraHourRate)
+            : data.revenue_extra_hour_rate || 0,
+          revenue_extra_km_rate: data.service_type === 'alarme'
+            ? Number(data.revenue_extra_km_rate) || ALARME_CLIENT_PRICING.extraKmRate
+            : data.revenue_extra_km_rate || 0,
           revenue_discount_addition: data.revenue_discount_addition || 0,
           revenue_total: data.revenue_total || 0,
           main_agent_compensation_base_value: data.service_type === 'alarme' ? ALARME_PRICING.base : (agents.find(a => a.id === data.main_agent_id)?.is_armed ? ARMED_PRICING.base : UNARMED_PRICING.base),
