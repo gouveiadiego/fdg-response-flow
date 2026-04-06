@@ -164,48 +164,6 @@ export type Database = {
         }
         Relationships: []
       }
-      agent_demands: {
-        Row: {
-          id: string
-          created_at: string
-          city: string
-          state: string
-          address: string | null
-          latitude: number | null
-          longitude: number | null
-          notes: string | null
-          status: 'pendente' | 'resolvida'
-          created_by_user_id: string | null
-          resolved_at: string | null
-        }
-        Insert: {
-          id?: string
-          created_at?: string
-          city: string
-          state: string
-          address?: string | null
-          latitude?: number | null
-          longitude?: number | null
-          notes?: string | null
-          status?: 'pendente' | 'resolvida'
-          created_by_user_id?: string | null
-          resolved_at?: string | null
-        }
-        Update: {
-          id?: string
-          created_at?: string
-          city?: string
-          state?: string
-          address?: string | null
-          latitude?: number | null
-          longitude?: number | null
-          notes?: string | null
-          status?: 'pendente' | 'resolvida'
-          created_by_user_id?: string | null
-          resolved_at?: string | null
-        }
-        Relationships: []
-      }
       agents: {
         Row: {
           address: string | null
