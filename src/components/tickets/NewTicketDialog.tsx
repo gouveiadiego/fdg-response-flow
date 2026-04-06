@@ -221,6 +221,7 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
 
   const selectedClientId = form.watch('client_id');
   const selectedVehicleId = form.watch('vehicle_id');
+  const watchedServiceType = form.watch('service_type');
   const coordLat = form.watch('coordinates_lat');
   const coordLng = form.watch('coordinates_lng');
 
@@ -300,6 +301,26 @@ export function NewTicketDialog({ open, onOpenChange, onSuccess, initialAgentId 
   useEffect(() => {
     form.setValue('revenue_total', calculatedRevenueTotal);
   }, [calculatedRevenueTotal, form]);
+
+  useEffect(() => {
+    if (watchedServiceType !== 'alarme') return;
+
+    const currentBase = Number(form.getValues('revenue_base_value') ?? 0);
+    const currentIncludedHours = Number(form.getValues('revenue_included_hours') ?? 0);
+    const currentExtraHourRate = Number(form.getValues('revenue_extra_hour_rate') ?? 0);
+
+    if (currentBase === 500) {
+      form.setValue('revenue_base_value', ALARME_CLIENT_PRICING.base, { shouldDirty: true });
+    }
+
+    if (currentIncludedHours === 3) {
+      form.setValue('revenue_included_hours', ALARME_CLIENT_PRICING.includedHours, { shouldDirty: true });
+    }
+
+    if (currentExtraHourRate === 90) {
+      form.setValue('revenue_extra_hour_rate', ALARME_CLIENT_PRICING.extraHourRate, { shouldDirty: true });
+    }
+  }, [watchedServiceType, form]);
 
   useEffect(() => {
     if (open) {
