@@ -13,24 +13,28 @@ interface UserRoleState {
   isAgente: boolean;
   isClienteVisualizacao: boolean;
   isApproved: boolean;
+  fetchError: boolean;
 }
 
 export function useUserRole(): UserRoleState {
   const { user } = useAuth();
   const [role, setRole] = useState<AppRole | null>(null);
   const [isApproved, setIsApproved] = useState<boolean>(false);
+  const [fetchError, setFetchError] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) {
       setRole(null);
       setIsApproved(false);
+      setFetchError(false);
       setLoading(false);
       return;
     }
 
     const fetchRole = async () => {
       try {
+        setFetchError(false);
         const { data, error } = await supabase
           .from('user_roles')
           .select('role, is_approved')
@@ -39,6 +43,10 @@ export function useUserRole(): UserRoleState {
 
         if (error) {
           console.error('Erro ao buscar papel do usuário:', error);
+          // If it's an auth error (JWT expired, etc.), flag it
+          if (error.message?.includes('JWT') || error.code === 'PGRST301' || error.code === '401') {
+            setFetchError(true);
+          }
           setRole(null);
           setIsApproved(false);
         } else {
@@ -47,6 +55,7 @@ export function useUserRole(): UserRoleState {
         }
       } catch (error) {
         console.error('Erro ao buscar papel do usuário:', error);
+        setFetchError(true);
         setRole(null);
         setIsApproved(false);
       } finally {
@@ -64,6 +73,7 @@ export function useUserRole(): UserRoleState {
     isOperador: role === 'operador',
     isAgente: role === 'agente',
     isClienteVisualizacao: role === 'cliente_visualizacao',
-    isApproved: isApproved,
+    isApproved,
+    fetchError,
   };
 }

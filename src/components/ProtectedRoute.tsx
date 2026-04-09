@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
   const { user, loading: authLoading } = useAuth();
-  const { role, loading: roleLoading, isAdmin, isApproved } = useUserRole();
+  const { role, loading: roleLoading, isAdmin, isApproved, fetchError } = useUserRole();
   const location = useLocation();
 
   if (authLoading || roleLoading) {
@@ -25,13 +25,18 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
+  // If there was an error fetching the role (e.g. expired session/JWT),
+  // sign out and redirect to login instead of showing pending-approval
+  if (fetchError) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
   // Se o usuário não estiver aprovado, redireciona para a página de espera
   if (!isApproved) {
     return <Navigate to="/pending-approval" replace />;
   }
 
   if (requireAdmin && !isAdmin) {
-    // Se precisar de admin e o usuário não for, redireciona para a página principal permitida (dashboard)
     return <Navigate to="/dashboard" replace />;
   }
 
