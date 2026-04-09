@@ -128,11 +128,10 @@ const setColor = (pdf: jsPDF, color: { r: number; g: number; b: number }) => {
 
 const formatDurationText = (minutes: number | null): string => {
   if (!minutes) return '-';
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hours === 0) return `${mins} min`;
-  if (mins === 0) return `${hours} h`;
-  return `${hours}h ${mins}m`;
+  const h = Math.floor(minutes / 60);
+  const m = Math.floor(minutes % 60);
+  const s = Math.round((minutes % 1) * 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
 const calculateEfetivoMobilizado = (data: TicketPDFData): string => {

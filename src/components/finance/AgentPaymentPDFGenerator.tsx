@@ -220,7 +220,8 @@ export async function generateAgentPaymentPDF(data: PaymentPDFData): Promise<voi
     const diff = data.endTime.getTime() - data.startTime.getTime();
     const h = Math.floor(diff / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
-    pdf.text(`${h}h ${m}m`, cx + colW * 2, cy + 5);
+    const s = Math.floor((diff % 60000) / 1000);
+    pdf.text(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`, cx + colW * 2, cy + 5);
   } else {
     pdf.text('-', cx + colW * 2, cy + 5);
   }
