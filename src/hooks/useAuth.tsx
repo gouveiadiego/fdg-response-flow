@@ -27,6 +27,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // If token refresh failed, redirect to login
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          navigate('/auth');
+        }
+        if (event === 'SIGNED_OUT') {
+          navigate('/auth');
+        }
       }
     );
 
@@ -38,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   const signIn = async (email: string, password: string) => {
     try {
