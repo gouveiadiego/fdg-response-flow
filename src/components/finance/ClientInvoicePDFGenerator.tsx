@@ -208,9 +208,10 @@ export async function generateClientInvoicePDF(data: InvoicePDFData): Promise<vo
 
   setColor(pdf, THEME.text);
   pdf.setFontSize(8.5);
-  const dh = Math.floor(data.durationHours);
-  const dm = Math.floor((data.durationHours - dh) * 60);
-  const ds = Math.round(((data.durationHours - dh) * 60 - dm) * 60);
+  const totalSec = Math.floor(data.durationHours * 3600);
+  const dh = Math.floor(totalSec / 3600);
+  const dm = Math.floor((totalSec % 3600) / 60);
+  const ds = totalSec % 60;
   pdf.text(`${String(dh).padStart(2, '0')}:${String(dm).padStart(2, '0')}:${String(ds).padStart(2, '0')}`, cx, cy2 + 5);
   pdf.text(`${data.totalKm.toFixed(0)} km`, cx + colW, cy2 + 5);
   pdf.text('BRASIL', cx + colW * 2, cy2 + 5);

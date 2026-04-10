@@ -128,9 +128,10 @@ const setColor = (pdf: jsPDF, color: { r: number; g: number; b: number }) => {
 
 const formatDurationText = (minutes: number | null): string => {
   if (!minutes) return '-';
-  const h = Math.floor(minutes / 60);
-  const m = Math.floor(minutes % 60);
-  const s = Math.round((minutes % 1) * 60);
+  const totalSeconds = Math.floor(minutes * 60);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
