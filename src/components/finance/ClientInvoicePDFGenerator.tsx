@@ -257,9 +257,10 @@ export async function generateClientInvoicePDF(data: InvoicePDFData): Promise<vo
       pdf.text(timeStr, margin + 8, ay);
       
       // Totals on the right
-      const hours = Math.floor(agent.hours);
-      const mins = Math.floor((agent.hours - hours) * 60);
-      const secs = Math.floor(((agent.hours - hours) * 60 - mins) * 60);
+      const agentTotalSec = Math.floor(agent.hours * 3600);
+      const hours = Math.floor(agentTotalSec / 3600);
+      const mins = Math.floor((agentTotalSec % 3600) / 60);
+      const secs = agentTotalSec % 60;
       const durationStr = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
       
       pdf.setFont('helvetica', 'bold');
