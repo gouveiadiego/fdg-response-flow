@@ -54,7 +54,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
     const [isFetching, setIsFetching] = useState(false);
     const [isAlarmPlan, setIsAlarmPlan] = useState(false);
     const [planName, setPlanName] = useState<string | null>(null);
-    const [contextInfo, setContextInfo] = useState<{ clientName: string; plate: string; code: string } | null>(null);
+    const [contextInfo, setContextInfo] = useState<{ clientName: string; plate: string; code: string; city: string; state: string; coordinates_lat: number | null; coordinates_lng: number | null } | null>(null);
     const [agentBreakdown, setAgentBreakdown] = useState<{ 
         name: string; 
         role: string; 
@@ -102,6 +102,7 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                   revenue_base_value, revenue_included_hours, revenue_included_km,
                   revenue_extra_hour_rate, revenue_extra_km_rate, revenue_discount_addition,
                   revenue_total,
+                  city, state, coordinates_lat, coordinates_lng,
                   main_agent:agents!tickets_main_agent_id_fkey ( name ),
                   plans ( name ),
                   clients ( name ),
@@ -127,7 +128,15 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
                 clientName: (ticket as any).clients?.name || 'Não informado',
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 plate: (ticket as any).vehicles?.tractor_plate || 'Sem placa',
-                code: ticket.code || '-'
+                code: ticket.code || '-',
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                city: (ticket as any).city || '',
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                state: (ticket as any).state || '',
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                coordinates_lat: (ticket as any).coordinates_lat ?? null,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                coordinates_lng: (ticket as any).coordinates_lng ?? null,
             });
 
             // Calculate total duration and breakdown
@@ -238,6 +247,10 @@ export function FaturamentoDialog({ ticketId, open, onOpenChange, onSuccess }: F
             serviceType: isAlarmPlan ? 'ALARME' : 'ATENDIMENTO',
             planName: planName || 'N/A',
             vehiclePlate: contextInfo.plate,
+            city: contextInfo.city,
+            state: contextInfo.state,
+            coordinates_lat: contextInfo.coordinates_lat,
+            coordinates_lng: contextInfo.coordinates_lng,
             durationHours: ticketStats.durationHours,
             totalKm: ticketStats.totalKm,
             baseValue,

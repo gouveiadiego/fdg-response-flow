@@ -30,6 +30,10 @@ interface InvoicePDFData {
   serviceType: string;
   planName: string;
   vehiclePlate: string;
+  city?: string;
+  state?: string;
+  coordinates_lat?: number | null;
+  coordinates_lng?: number | null;
   durationHours: number;
   totalKm: number;
   baseValue: number;
@@ -173,7 +177,7 @@ export async function generateClientInvoicePDF(data: InvoicePDFData): Promise<vo
 
   // --- DETALHES DA OPERAÇÃO ---
   setColor(pdf, THEME.white);
-  drawRoundedRect(pdf, margin, y, contentWidth, 35, 2, 'F');
+  drawRoundedRect(pdf, margin, y, contentWidth, 42, 2, 'F');
   
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(8);
@@ -214,9 +218,29 @@ export async function generateClientInvoicePDF(data: InvoicePDFData): Promise<vo
   const ds = totalSec % 60;
   pdf.text(`${String(dh).padStart(2, '0')}:${String(dm).padStart(2, '0')}:${String(ds).padStart(2, '0')}`, cx, cy2 + 5);
   pdf.text(`${data.totalKm.toFixed(0)} km`, cx + colW, cy2 + 5);
-  pdf.text('BRASIL', cx + colW * 2, cy2 + 5);
 
-  y += 42;
+  // Localidade: Cidade / Estado
+  const localidadeText = (data.city && data.state)
+    ? `${data.city} / ${data.state}`
+    : (data.city || 'BRASIL');
+  pdf.setFont('helvetica', 'bold');
+  setColor(pdf, THEME.text);
+  pdf.text(localidadeText, cx + colW * 2, cy2 + 5);
+
+  // Coordenadas no estilo do relatório: label bold + valor inline
+  if (data.coordinates_lat && data.coordinates_lng) {
+    const coordLabelX = cx + colW * 2;
+    const coordY = cy2 + 12;
+    pdf.setFontSize(6.5);
+    pdf.setFont('helvetica', 'bold');
+    setColor(pdf, THEME.secondaryText);
+    pdf.text('COORD', coordLabelX, coordY);
+    pdf.setFont('helvetica', 'normal');
+    const coordText = `  ${data.coordinates_lat}, ${data.coordinates_lng}`;
+    pdf.text(coordText, coordLabelX + pdf.getTextWidth('COORD'), coordY);
+  }
+
+  y += 49;
 
   // --- DETALHAMENTO POR AGENTE ---
   if (data.agentBreakdown && data.agentBreakdown.length > 0) {
