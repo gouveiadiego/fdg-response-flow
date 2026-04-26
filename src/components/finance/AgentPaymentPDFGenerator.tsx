@@ -4,7 +4,7 @@ import { ptBR } from 'date-fns/locale';
 
 // Company data
 const COMPANY_INFO = {
-  name: 'FALCO PEREGRINUS OPERAÇÕES LOGÍSTICAS',
+  name: 'FALCO PEREGRINUS',
   cnpj: '59.355.128/0001-10',
   address: 'R. Dona Francisca, 801 Sala 05 - Saguaçu, Joinville - SC, 89221-006',
   email: 'financeiro@falcoperegrinus.com.br',
@@ -116,7 +116,7 @@ export async function generateAgentPaymentPDF(data: PaymentPDFData): Promise<voi
   // Load Logo
   let logoImg: { dataUrl: string; width: number; height: number } | null = null;
   try {
-    logoImg = await loadImage('/logo-fdg-premium.png');
+    logoImg = await loadImage('/logo-fdg-red.png');
   } catch (e) {
     try {
       logoImg = await loadImage('/logo-fdg.png');
@@ -337,7 +337,7 @@ export async function generateAgentPaymentPDF(data: PaymentPDFData): Promise<voi
   pdf.setFontSize(7);
   setColor(pdf, THEME.secondaryText);
   pdf.text('Este documento serve como registro para fins de conferência de honorários e despesas.', pageWidth / 2, footerY, { align: 'center' });
-  pdf.text('FALCO PEREGRINUS OPERAÇÕES LOGÍSTICAS - Excelência em Atendimento.', pageWidth / 2, footerY + 4, { align: 'center' });
+  pdf.text('FALCO PEREGRINUS - Excelência em Atendimento.', pageWidth / 2, footerY + 4, { align: 'center' });
 
   // Save PDF
   const fileName = `RECIBO_PAGAMENTO_${data.agentName.replace(/\s+/g, '_')}_${data.ticketCode}.pdf`;

@@ -262,13 +262,9 @@ export function PagamentoAgenteDialog({ ticketId, agentId, agentRole, open, onOp
             const val_food = parseSafeNumber(data.food_cost);
             const val_other = parseSafeNumber(data.other_costs);
 
-            const totalHon = calculateAgentHonorary({
-                planName,
-                agentRole,
-                agentIsArmed: !!agentInfo?.isArmed,
-                durationHours: detailedStats.durationHours,
-                totalKm: detailedStats.totalKm,
-            });
+            const ex_h = Math.max(0, detailedStats.durationHours - val_inc_h);
+            const ex_km = Math.max(0, detailedStats.totalKm - val_inc_km);
+            const totalHon = val_base + (ex_h * val_extra_h_rate) + (ex_km * val_extra_km_rate);
 
             if (agentRole === 'principal') {
                 const { error } = await supabase.from('tickets').update({

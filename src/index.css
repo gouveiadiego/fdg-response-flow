@@ -17,7 +17,7 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 220 13% 13%;
 
-    --primary: 217 91% 35%;
+    --primary: 0 84% 50%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 14% 96%;
@@ -43,18 +43,18 @@ All colors MUST be HSL.
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 217 91% 35%;
+    --ring: 0 84% 50%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 220 13% 13%;
-    --sidebar-primary: 217 91% 35%;
+    --sidebar-primary: 0 84% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 14% 96%;
     --sidebar-accent-foreground: 220 13% 13%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217 91% 35%;
+    --sidebar-ring: 0 84% 50%;
     
     --transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -70,7 +70,7 @@ All colors MUST be HSL.
     --popover: 220 23% 18%;
     --popover-foreground: 220 17% 93%;
 
-    --primary: 217 91% 45%;
+    --primary: 0 84% 55%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 20% 25%;
@@ -96,16 +96,16 @@ All colors MUST be HSL.
 
     --border: 220 20% 25%;
     --input: 220 20% 25%;
-    --ring: 217 91% 45%;
+    --ring: 0 84% 55%;
 
     --sidebar-background: 220 29% 10%;
     --sidebar-foreground: 220 17% 93%;
-    --sidebar-primary: 217 91% 45%;
+    --sidebar-primary: 0 84% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 20% 20%;
     --sidebar-accent-foreground: 220 17% 93%;
     --sidebar-border: 220 20% 20%;
-    --sidebar-ring: 217 91% 45%;
+    --sidebar-ring: 0 84% 55%;
   }
 }
 
@@ -122,5 +122,24 @@ All colors MUST be HSL.
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .glass-card {
+    @apply bg-background/60 backdrop-blur-xl border border-white/10 shadow-2xl;
+  }
+
+  .glass-morphism {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 shadow-xl;
+  }
+  
+  .premium-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, #a80000 100%);
+  }
+
+  .mesh-gradient {
+    background-color: hsla(220, 26%, 10%, 1);
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(0, 84%, 50%, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(0, 84%, 50%, 0.1) 0px, transparent 50%);
   }
 }

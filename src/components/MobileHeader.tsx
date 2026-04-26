@@ -40,9 +40,12 @@ export function MobileHeader() {
         <span className="sr-only">Toggle menu</span>
       </Button>
 
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-semibold text-sidebar-foreground">Falco Peregrinus</span>
-        <span className="text-xs text-sidebar-foreground/70">Operações Logísticas</span>
+      <div className="flex items-center gap-3">
+        <img src="/logo-fdg-red.png" alt="Logo" className="h-7 w-auto drop-shadow-[0_0_5px_rgba(255,0,0,0.3)]" />
+        <div className="flex flex-col leading-none">
+          <span className="text-sm font-black tracking-tighter text-white uppercase">FALCO</span>
+          <span className="text-[10px] font-bold text-white uppercase tracking-widest">PEREGRINUS</span>
+        </div>
       </div>
 
       <DropdownMenu>

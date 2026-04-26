@@ -190,10 +190,10 @@ const Dashboard = () => {
         <div className="flex items-center gap-4">
           <div className="p-3 bg-primary/10 rounded-2xl shadow-inner"><Activity className="h-8 w-8 text-primary" /></div>
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight">Centro de Operações</h1>
-            <p className="text-muted-foreground mt-1 flex items-center gap-2">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Live Pulse: Monitoramento em tempo real
+            <h1 className="text-4xl font-black tracking-tighter uppercase text-white">Painel de Operações</h1>
+            <p className="text-muted-foreground mt-1 flex items-center gap-2 font-medium">
+              <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
+              Pulse: Monitoramento Estratégico Falco Peregrinus
             </p>
           </div>
         </div>
@@ -222,24 +222,26 @@ const Dashboard = () => {
         <>
           {/* ── LIVE PULSE & OPERATIONAL GRID ── */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-             <Card className="border-none shadow-sm bg-gradient-to-br from-blue-600 to-indigo-700 text-white col-span-2">
-                <CardContent className="p-6">
+             <Card className="border-none shadow-xl bg-gradient-to-br from-primary to-red-800 text-white col-span-2 overflow-hidden relative group">
+                <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:scale-125 transition-transform duration-500">
+                  <Zap className="h-20 w-20 text-white fill-white" />
+                </div>
+                <CardContent className="p-6 relative z-10">
                    <div className="flex justify-between items-start">
                       <div>
-                         <p className="text-xs font-bold uppercase opacity-70 tracking-widest">Atendimentos Ativos</p>
-                         <h3 className="text-4xl font-black mt-1">{stats.emergencyTickets}</h3>
-                         <p className="text-[10px] mt-2 bg-white/20 inline-block px-2 py-0.5 rounded-full font-bold">EM CAMPO AGORA</p>
+                         <p className="text-[10px] font-black uppercase opacity-70 tracking-widest">Atendimentos Ativos</p>
+                         <h3 className="text-5xl font-black mt-1">{stats.emergencyTickets}</h3>
+                         <p className="text-[10px] mt-3 bg-white/20 backdrop-blur-md inline-block px-3 py-1 rounded-full font-bold tracking-wider">EM CAMPO AGORA</p>
                       </div>
-                      <Zap className="h-8 w-8 text-amber-400 fill-amber-400" />
                    </div>
                 </CardContent>
              </Card>
 
              {[
-               { label: 'Agentes Prontidão', val: stats.totalAgents, sub: `${stats.activeAgentsInField} em serviço`, icon: <UserCheck className="h-4 w-4 text-emerald-500" />, bg: 'bg-emerald-50/50' },
+               { label: 'Agentes Prontidão', val: stats.totalAgents, sub: `${stats.activeAgentsInField} em serviço`, icon: <UserCheck className="h-4 w-4 text-primary" />, bg: 'bg-primary/5' },
                { label: 'Abertos no Período', val: stats.openTickets, sub: 'atendimento pendente', icon: <Clock className="h-4 w-4 text-amber-500" />, bg: 'bg-amber-50/50' },
-               { label: 'Finalizados', val: stats.completedTickets, sub: 'operações concluídas', icon: <CheckCircle2 className="h-4 w-4 text-blue-500" />, bg: 'bg-blue-50/50' },
-               { label: 'Clientes Ativos', val: stats.totalClients, sub: 'base cadastrada', icon: <Users className="h-4 w-4 text-indigo-500" />, bg: 'bg-indigo-50/50' },
+               { label: 'Finalizados', val: stats.completedTickets, sub: 'operações concluídas', icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />, bg: 'bg-emerald-50/50' },
+               { label: 'Clientes Ativos', val: stats.totalClients, sub: 'base cadastrada', icon: <Users className="h-4 w-4 text-primary" />, bg: 'bg-primary/5' },
              ].map((c, i) => (
                <Card key={i} className="border-none shadow-sm hover:shadow-md transition-all bg-card overflow-hidden">
                   <CardHeader className="pb-1">
@@ -323,14 +325,14 @@ const Dashboard = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
              <TopClientsChart data={topClientsData} title="Concentração por Cliente" />
-             <Card className="shadow-md border-none bg-gradient-to-br from-primary/5 to-indigo-500/5 overflow-hidden">
-                <CardHeader><CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5 text-primary" /> Ativação da Rede Falco</CardTitle></CardHeader>
+             <Card className="shadow-xl border-none bg-gradient-to-br from-primary/5 to-red-500/5 overflow-hidden">
+                <CardHeader><CardTitle className="flex items-center gap-2 uppercase font-black text-sm tracking-widest text-zinc-500"><MapPin className="h-4 w-4 text-primary" /> Ativação da Rede FALCO PEREGRINUS</CardTitle></CardHeader>
                 <CardContent className="space-y-5">
                    <div className="flex items-center justify-between p-5 bg-card border rounded-2xl shadow-sm hover:shadow-md transition-shadow">
                       <div className="flex items-center gap-4"><div className="p-3 bg-blue-100 rounded-xl"><Users className="h-6 w-6 text-blue-600" /></div><div><p className="text-xl font-black">{stats.totalClients}</p><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Clientes em Carteira</p></div></div>
                       <div className="flex items-center gap-4 text-right"><div><p className="text-xl font-black">{stats.totalAgents}</p><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Agentes Disponíveis</p></div><div className="p-3 bg-emerald-100 rounded-xl"><UserCheck className="h-6 w-6 text-emerald-600" /></div></div>
                    </div>
-                   <div className="p-5 bg-primary/5 rounded-2xl border-l-4 border-primary"><p className="text-sm font-medium italic text-slate-600 dark:text-slate-300">"Priorizando a excelência operacional e a agilidade em cada chamado operacionalizado."</p></div>
+                   <div className="p-5 bg-primary/5 rounded-2xl border-l-4 border-primary"><p className="text-sm font-medium italic text-slate-600 dark:text-slate-300">"Priorizando a excelência operacional e a agilidade em cada chamado FALCO PEREGRINUS."</p></div>
                 </CardContent>
              </Card>
           </div>

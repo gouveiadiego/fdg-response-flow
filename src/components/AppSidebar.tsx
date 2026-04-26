@@ -56,14 +56,11 @@ export function AppSidebar() {
       <SidebarContent>
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <img src="/logo-fdg-premium.png" alt="Logo" className="h-8 w-auto" />
+            <img src="/logo-fdg-red.png" alt="Logo" className="h-9 w-auto drop-shadow-[0_0_8px_rgba(255,0,0,0.3)]" />
             {open && (
               <div className="flex flex-col">
-                <span className="text-sm font-bold tracking-tight">Falco Peregrinus</span>
-                <span className="text-[10px] leading-none text-muted-foreground flex items-center gap-1">
-                  <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
-                  Operações Logísticas
-                </span>
+                <span className="text-sm font-black tracking-tighter uppercase leading-none text-white">FALCO</span>
+                <span className="text-[10px] font-bold tracking-widest leading-none text-white uppercase">PEREGRINUS</span>
               </div>
             )}
           </div>

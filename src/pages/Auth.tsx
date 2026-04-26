@@ -49,65 +49,65 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-background transition-colors duration-500">
-      {/* Background Blobs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/20 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
-
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden mesh-gradient transition-colors duration-500">
       <div className="w-full max-w-md relative z-10 space-y-8">
         <div className="flex flex-col items-center justify-center mb-8 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="p-4 bg-primary/10 rounded-2xl backdrop-blur-xl border border-primary/20 shadow-2xl shadow-primary/20">
-            <Shield className="h-12 w-12 text-primary" />
+          <div className="p-4 bg-white/5 rounded-3xl backdrop-blur-2xl border border-white/10 shadow-2xl overflow-hidden group">
+            <img 
+              src="/logo-fdg-red.png" 
+              alt="FDG Logo" 
+              className="h-20 w-20 object-contain drop-shadow-[0_0_15px_rgba(255,0,0,0.5)] group-hover:scale-110 transition-transform duration-500" 
+            />
           </div>
           <div className="text-center">
-            <h1 className="text-4xl font-extrabold tracking-tight text-foreground mb-1">
-              Falco <span className="text-primary">Peregrinus</span>
+            <h1 className="text-4xl font-black tracking-tighter text-white mb-1 uppercase">
+              FALCO PEREGRINUS
             </h1>
-            <p className="text-muted-foreground font-medium">Operações Logísticas Padrão Alto</p>
+            <p className="text-zinc-400 font-medium tracking-widest text-xs uppercase">Operações Logísticas Padrão Alto</p>
           </div>
         </div>
 
         <Tabs defaultValue="login" className="w-full animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200">
-          <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted backdrop-blur-md border border-border p-1 h-12">
+          <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/5 backdrop-blur-md border border-white/10 p-1 h-12 rounded-xl">
             <TabsTrigger
               value="login"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300"
+              className="data-[state=active]:bg-primary data-[state=active]:text-white transition-all duration-300 rounded-lg font-bold"
             >
-              Entrar
+              ENTRAR
             </TabsTrigger>
             <TabsTrigger
               value="signup"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-300"
+              className="data-[state=active]:bg-primary data-[state=active]:text-white transition-all duration-300 rounded-lg font-bold"
             >
-              Cadastrar
+              CADASTRAR
             </TabsTrigger>
           </TabsList>
 
           {error && (
-            <Alert variant="destructive" className="mb-6 bg-destructive/10 border-destructive/20 text-destructive-foreground animate-in shake duration-500">
+            <Alert variant="destructive" className="mb-6 bg-destructive/20 border-destructive/30 text-white animate-in shake duration-500 rounded-xl backdrop-blur-md">
               <AlertCircle className="h-5 w-5" />
-              <AlertDescription className="font-medium">{error}</AlertDescription>
+              <AlertDescription className="font-bold">{error}</AlertDescription>
             </Alert>
           )}
 
           <TabsContent value="login" className="mt-0">
-            <Card className="bg-card backdrop-blur-xl border-border shadow-2xl relative overflow-hidden group transition-colors">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <Card className="glass-card border-white/10 rounded-3xl overflow-hidden group transition-all duration-500 hover:border-primary/30">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <form onSubmit={handleLogin} className="relative z-10">
-                <CardHeader>
-                  <CardTitle className="text-2xl text-card-foreground">Bem-vindo de volta</CardTitle>
-                  <CardDescription className="text-muted-foreground">Entre com suas credenciais para acessar o painel</CardDescription>
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-2xl font-black text-white">BEM-VINDO</CardTitle>
+                  <CardDescription className="text-zinc-400 font-medium">Acesse o painel operacional Falco Peregrinus</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-email" className="text-foreground/80">E-mail</Label>
+                    <Label htmlFor="login-email" className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest ml-1">E-mail</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-zinc-500" />
                       <Input
                         id="login-email"
                         type="email"
-                        placeholder="exemplo@email.com"
-                        className="pl-10 bg-background/50 border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-primary/50 transition-all"
+                        placeholder="seu@email.com"
+                        className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-zinc-600 focus:border-primary/50 focus:ring-primary/50 transition-all rounded-xl"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
                         required
@@ -116,17 +116,17 @@ const Auth = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <Label htmlFor="login-password" className="text-foreground/80">Senha</Label>
-                      <button type="button" className="text-xs text-primary hover:text-primary/80 transition-colors font-medium">Esqueceu a senha?</button>
+                    <div className="flex justify-between items-center px-1">
+                      <Label htmlFor="login-password" className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest">Senha</Label>
+                      <button type="button" className="text-[10px] text-primary hover:text-primary/80 transition-colors font-black uppercase tracking-widest">Esqueceu a senha?</button>
                     </div>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-zinc-500" />
                       <Input
                         id="login-password"
                         type="password"
                         placeholder="••••••••"
-                        className="pl-10 bg-background/50 border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-primary/50 transition-all"
+                        className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-zinc-600 focus:border-primary/50 focus:ring-primary/50 transition-all rounded-xl"
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
                         required
@@ -135,12 +135,12 @@ const Auth = () => {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold gap-2 group transition-all" disabled={isLoading}>
-                    {isLoading ? 'Autenticando...' : (
+                <CardFooter className="pt-2 pb-8">
+                  <Button type="submit" className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-black tracking-widest uppercase gap-3 group transition-all rounded-2xl shadow-[0_0_30px_rgba(var(--primary),0.2)]" disabled={isLoading}>
+                    {isLoading ? 'AUTENTICANDO...' : (
                       <>
-                        Entrar no Sistema
-                        <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                        ACESSAR SISTEMA
+                        <ArrowRight className="h-5 w-5 group-hover:translate-x-2 transition-transform" />
                       </>
                     )}
                   </Button>
@@ -150,22 +150,22 @@ const Auth = () => {
           </TabsContent>
 
           <TabsContent value="signup" className="mt-0">
-            <Card className="bg-card backdrop-blur-xl border-border shadow-2xl transition-colors">
+            <Card className="glass-card border-white/10 rounded-3xl overflow-hidden transition-all duration-500 hover:border-primary/30">
               <form onSubmit={handleSignup}>
                 <CardHeader>
-                  <CardTitle className="text-2xl text-card-foreground">Criar nova conta</CardTitle>
-                  <CardDescription className="text-muted-foreground">Cadastre-se para começar a gerenciar seus chamados</CardDescription>
+                  <CardTitle className="text-2xl font-black text-white uppercase">Nova Conta</CardTitle>
+                  <CardDescription className="text-zinc-400">Cadastre-se para gerenciar chamados</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-name" className="text-foreground/80">Nome Completo</Label>
+                    <Label htmlFor="signup-name" className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest ml-1">Nome Completo</Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <User className="absolute left-3 top-3 h-4 w-4 text-zinc-500" />
                       <Input
                         id="signup-name"
                         type="text"
-                        placeholder="Seu nome completo"
-                        className="pl-10 bg-background/50 border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
+                        placeholder="Seu nome"
+                        className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-zinc-600 focus:border-primary/50 rounded-xl"
                         value={signupName}
                         onChange={(e) => setSignupName(e.target.value)}
                         required
@@ -174,14 +174,14 @@ const Auth = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email" className="text-foreground/80">E-mail</Label>
+                    <Label htmlFor="signup-email" className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest ml-1">E-mail</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-zinc-500" />
                       <Input
                         id="signup-email"
                         type="email"
-                        placeholder="exemplo@email.com"
-                        className="pl-10 bg-background/50 border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
+                        placeholder="seu@email.com"
+                        className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-zinc-600 focus:border-primary/50 rounded-xl"
                         value={signupEmail}
                         onChange={(e) => setSignupEmail(e.target.value)}
                         required
@@ -190,14 +190,14 @@ const Auth = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="text-foreground/80">Senha</Label>
+                    <Label htmlFor="signup-password" className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest ml-1">Senha</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-zinc-500" />
                       <Input
                         id="signup-password"
                         type="password"
-                        placeholder="Mínimo 6 caracteres"
-                        className="pl-10 bg-background/50 border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
+                        placeholder="Mínimo 6 dígitos"
+                        className="pl-10 h-12 bg-white/5 border-white/10 text-white placeholder:text-zinc-600 focus:border-primary/50 rounded-xl"
                         value={signupPassword}
                         onChange={(e) => setSignupPassword(e.target.value)}
                         required
@@ -207,9 +207,9 @@ const Auth = () => {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold transition-all" disabled={isLoading}>
-                    {isLoading ? 'Processando...' : 'Criar minha conta'}
+                <CardFooter className="pb-8">
+                  <Button type="submit" className="w-full h-14 bg-primary hover:bg-primary/90 text-white font-black tracking-widest uppercase transition-all rounded-2xl shadow-[0_0_30px_rgba(var(--primary),0.2)]" disabled={isLoading}>
+                    {isLoading ? 'PROCESSANDO...' : 'CRIAR MINHA CONTA'}
                   </Button>
                 </CardFooter>
               </form>
@@ -217,8 +217,8 @@ const Auth = () => {
           </TabsContent>
         </Tabs>
 
-        <p className="text-center text-muted-foreground text-xs mt-8">
-          © 2026 Falco Peregrinus. Todos os direitos reservados.
+        <p className="text-center text-zinc-500 text-[10px] font-bold uppercase tracking-[0.2em] mt-8">
+          © 2026 FALCO PEREGRINUS. TODOS OS DIREITOS RESERVADOS.
         </p>
       </div>
     </div>
