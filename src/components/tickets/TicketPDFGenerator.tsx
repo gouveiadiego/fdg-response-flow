@@ -4,7 +4,7 @@ import { ptBR } from 'date-fns/locale';
 
 // Company data
 const COMPANY_INFO = {
-  name: 'FALCO PEREGRINUS OPERAÇÕES LOGÍSTICAS',
+  name: 'FALCO PEREGRINUS',
   cnpj: '59.355.128/0001-10',
   address: 'Edifício Oscar Bornoldt - R. Orestes Guimarães, 876 - 4º andar - América, Joinville - SC, 89204-060',
   phoneCommercial: '(47) 99135-6830',
@@ -314,20 +314,25 @@ const drawPremiumHeader = async (
   setColor(pdf, THEME.white);
 
   pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(22);
-  const pdfTitle = ticketCode ? `RELATÓRIO DE ATENDIMENTO - ${ticketCode}` : 'RELATÓRIO DE ATENDIMENTO';
-  pdf.text(pdfTitle, textStartX, 18);
+  pdf.setFontSize(18);
+  pdf.text('RELATÓRIO DE ATENDIMENTO', textStartX, 16);
+  
+  if (ticketCode) {
+    pdf.setFontSize(14);
+    setColor(pdf, THEME.white);
+    pdf.text(ticketCode, textStartX, 22);
+  }
 
   // Motto / Phrase - New
   pdf.setFont('helvetica', 'italic');
-  pdf.setFontSize(8.5);
-  pdf.setGState(new (pdf as any).GState({ opacity: 0.8 }));
-  pdf.text('Excelência em Operações Logísticas | Atuação 24h com rede validada.', textStartX, 23);
+  pdf.setFontSize(7.5);
+  pdf.setGState(new (pdf as any).GState({ opacity: 0.7 }));
+  pdf.text('Excelência em Operações Logísticas | Atuação 24h com rede validada.', textStartX, ticketCode ? 26 : 22);
   pdf.setGState(new (pdf as any).GState({ opacity: 1.0 }));
 
 
   // Contact Info - Refined and grouped
-  const iconY = 34;
+  const iconY = 38;
   const gap = 38;
 
   pdf.setFont('helvetica', 'normal');
@@ -365,14 +370,10 @@ const drawFooter = (pdf: jsPDF, pageWidth: number, pageHeight: number) => {
   // Text
   setColor(pdf, THEME.secondaryText); // actually light gray on dark bg
   pdf.setTextColor(200, 200, 200);
-  pdf.setFontSize(8);
+  pdf.setFontSize(6.5);
   pdf.setFont('helvetica', 'normal');
-  pdf.text(
-    `${COMPANY_INFO.name}  •  CNPJ ${COMPANY_INFO.cnpj}  •  ${COMPANY_INFO.address}`,
-    pageWidth / 2,
-    y + 8,
-    { align: 'center' }
-  );
+  const footerText = `${COMPANY_INFO.name}  •  CNPJ ${COMPANY_INFO.cnpj}  •  ${COMPANY_INFO.address}`;
+  pdf.text(footerText, pageWidth / 2, y + 7.5, { align: 'center' });
 };
 
 const drawCard = (pdf: jsPDF, x: number, y: number, w: number, h: number, title: string) => {

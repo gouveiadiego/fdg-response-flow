@@ -333,11 +333,12 @@ export async function generateAgentPaymentPDF(data: PaymentPDFData): Promise<voi
   y += 18;
 
   // --- FOOTER ---
-  const footerY = pageHeight - 20;
-  pdf.setFontSize(7);
+  const footerY = pageHeight - 10;
+  pdf.setFontSize(6.5);
   setColor(pdf, THEME.secondaryText);
-  pdf.text('Este documento serve como registro para fins de conferência de honorários e despesas.', pageWidth / 2, footerY, { align: 'center' });
-  pdf.text('FALCO PEREGRINUS - Excelência em Atendimento.', pageWidth / 2, footerY + 4, { align: 'center' });
+  const footerInfo = `${COMPANY_INFO.name}  •  CNPJ ${COMPANY_INFO.cnpj}  •  ${COMPANY_INFO.address}`;
+  pdf.text('Este documento serve como registro para fins de conferência de honorários e despesas.', pageWidth / 2, footerY - 4, { align: 'center' });
+  pdf.text(footerInfo, pageWidth / 2, footerY, { align: 'center' });
 
   // Save PDF
   const fileName = `RECIBO_PAGAMENTO_${data.agentName.replace(/\s+/g, '_')}_${data.ticketCode}.pdf`;

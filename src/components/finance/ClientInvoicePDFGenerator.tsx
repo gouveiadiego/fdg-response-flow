@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 
 // Company data
 const COMPANY_INFO = {
-  name: 'FALCO PEREGRINUS OPERAÇÕES LOGÍSTICAS',
+  name: 'FALCO PEREGRINUS',
   cnpj: '59.355.128/0001-10',
   address: 'Edifício Oscar Bornoldt - R. Orestes Guimarães, 876 - 4º andar - América, Joinville - SC, 89204-060',
   email: 'financeiro@falcoperegrinus.com.br',
@@ -402,11 +402,12 @@ export async function generateClientInvoicePDF(data: InvoicePDFData): Promise<vo
   pdf.text(pdf.splitTextToSize(footerText, contentWidth - 10), margin + 5, y + 8);
 
   // --- FOOTER ---
-  const footerY = pageHeight - 15;
-  pdf.setFontSize(7);
+  const footerY = pageHeight - 10;
+  pdf.setFontSize(6.5);
   setColor(pdf, THEME.secondaryText);
   pdf.setFont('helvetica', 'normal');
-  pdf.text('FALCO PEREGRINUS OPERAÇÕES LOGÍSTICAS - Excelência em Atendimento.', pageWidth / 2, footerY, { align: 'center' });
+  const footerInfo = `${COMPANY_INFO.name}  •  CNPJ ${COMPANY_INFO.cnpj}  •  ${COMPANY_INFO.address}`;
+  pdf.text(footerInfo, pageWidth / 2, footerY, { align: 'center' });
 
   // Save PDF
   const fileName = `FATURAMENTO_${data.clientName.replace(/\s+/g, '_')}_${data.ticketCode}.pdf`;
