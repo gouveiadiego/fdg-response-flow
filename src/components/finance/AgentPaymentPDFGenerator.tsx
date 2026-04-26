@@ -6,7 +6,7 @@ import { ptBR } from 'date-fns/locale';
 const COMPANY_INFO = {
   name: 'FALCO PEREGRINUS',
   cnpj: '59.355.128/0001-10',
-  address: 'R. Dona Francisca, 801 Sala 05 - Saguaçu, Joinville - SC, 89221-006',
+  address: 'Edifício Oscar Bornoldt - R. Orestes Guimarães, 876 - 4º andar - América, Joinville - SC, 89204-060',
   email: 'financeiro@falcoperegrinus.com.br',
   phone: '(47) 99135-6830',
   website: 'www.falcoperegrinus.com.br',
