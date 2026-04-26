@@ -118,7 +118,7 @@ export async function generateClientInvoicePDF(data: InvoicePDFData): Promise<vo
   // Load Logo
   let logoImg: { dataUrl: string; width: number; height: number } | null = null;
   try {
-    logoImg = await loadImage('/logo-fdg-premium.png');
+    logoImg = await loadImage('/logo-fdg-red.png');
   } catch (e) {
     try {
       logoImg = await loadImage('/logo-fdg.png');

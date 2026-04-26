@@ -450,7 +450,7 @@ export async function generateTicketPDF(data: TicketPDFData): Promise<void> {
   let logoImg: { dataUrl: string; width: number; height: number } | null = null;
   let headerBgImg: { dataUrl: string; width: number; height: number } | null = null;
   try {
-    logoImg = await loadImage('/logo-fdg-premium.png');
+    logoImg = await loadImage('/logo-fdg-red.png');
     headerBgImg = await loadImage('/header-luxury-bg.png');
   } catch (e) {
     console.error('Error loading PDF assets:', e);
